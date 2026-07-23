@@ -1,0 +1,166 @@
+MATRIZ PRELIMINAR DE MÓDULOS
+======================================================================
+
+Nota: las cantidades representan evidencias encontradas, no pantallas ni módulos independientes.
+
+Cobranza y cuentas por cobrar: 7 evidencias
+  - Línea 685 | Encabezado H3 | 📋 Registrar acción de cobranza
+  - Línea 2123 | Sección JavaScript | Última gestión de cobranza (historial)
+  - Línea 2662 | Sección JavaScript | cobranzas-fodor.vercel.app/index_cifrado.html?track='+trackToken;
+  - Línea 2801 | Sección JavaScript | NUEVAS — Gestión de Cobranzas Fodor Spa
+  - Línea 8410 | Comentario HTML | POPOVER NOTAS COBRANZA
+  - Línea 8987 | Sección JavaScript | Agregar como nueva si no está en D26 (pendiente O pagada — para que aparezca en Cobranza)
+  - Línea 13233 | Encabezado H3 | 📄 Facturas sin pago (cobranza)
+
+Pagos y conciliación bancaria: 56 evidencias
+  - Línea 528 | Comentario HTML | ==================== TAB VERIFICAR PAGOS ====================
+  - Línea 596 | Comentario HTML | ALERTAS PAGÓ KOMMO
+  - Línea 754 | Comentario HTML | ==================== TAB CONCILIACIÓN BANCARIA ====================
+  - Línea 2082 | Sección JavaScript | mapa id interno → obs (para cruzar con EST[folio].pagoId)
+  - Línea 2095 | Sección JavaScript | TRF obs: por folio en memoria O por pagoId interno guardado en EST
+  - Línea 2286 | Sección JavaScript | Nota de pago (filtrar boilerplate de banco Fodor)
+  - Línea 2455 | Sección JavaScript | Capturar ID de transferencia bancaria (ID azul)
+  - Línea 2465 | Sección JavaScript | Anular pago: limpiar referencia de transferencia
+  - Línea 2516 | Sección JavaScript | 1. Buscar en EST por pagoId (facturas marcadas con ID de transferencia)
+  - Línea 2562 | Sección JavaScript | Vía 2: EST[folio].pagoId === t.id (link via aplicar pago guardado en EST)
+  - Línea 2573 | Sección JavaScript | Vía 3: EST[folio].pagoId === q (link guardado con el número de banco directo)
+  - Línea 3474 | Sección JavaScript | CRUCE DIARIO — Pagos vs Facturas
+  - ... 44 evidencias adicionales
+
+Facturación y documentos: 37 evidencias
+  - Línea 418 | Encabezado H1 | 📊 Fodor Spa — Panel de Facturación 2025–2026
+  - Línea 769 | Comentario HTML | ── Importar Facturas Excel ──
+  - Línea 2082 | Sección JavaScript | mapa id interno → obs (para cruzar con EST[folio].pagoId)
+  - Línea 2095 | Sección JavaScript | TRF obs: por folio en memoria O por pagoId interno guardado en EST
+  - Línea 2516 | Sección JavaScript | 1. Buscar en EST por pagoId (facturas marcadas con ID de transferencia)
+  - Línea 2551 | Sección JavaScript | Buscar factura vinculada por 3 vías
+  - Línea 2562 | Sección JavaScript | Vía 2: EST[folio].pagoId === t.id (link via aplicar pago guardado en EST)
+  - Línea 2573 | Sección JavaScript | Vía 3: EST[folio].pagoId === q (link guardado con el número de banco directo)
+  - Línea 3244 | Sección JavaScript | Agrupar por RUT facturas no pagadas
+  - Línea 3252 | Sección JavaScript | Solo los que tienen >1 factura
+  - Línea 3293 | Sección JavaScript | Pills de días por factura
+  - Línea 3419 | Sección JavaScript | si tiene folio, agregar al historial de esa factura
+  - ... 25 evidencias adicionales
+
+Clientes y ventas: 22 evidencias
+  - Línea 1875 | Sección JavaScript | {rut_norm: {nombre,tel,correo}} — cargado desde Excel Kommo
+  - Línea 3244 | Sección JavaScript | Agrupar por RUT facturas no pagadas
+  - Línea 3928 | Sección JavaScript | ID propio de la candidata: buscar la TRF que tenga el RUT de esta factura
+  - Línea 4264 | Sección JavaScript | ── Top 10 clientes ──────────────────────────────────────────────────
+  - Línea 4310 | Sección JavaScript | Top 10 clientes
+  - Línea 6030 | Sección JavaScript | ── Calcular precio cliente ────────────────────────────────────────────────
+  - Línea 6220 | Sección JavaScript | Buscar pedido en Monday.com por nombre de empresa o cliente
+  - Línea 6289 | Sección JavaScript | Toggle cliente
+  - Línea 6314 | Sección JavaScript | default: cliente OK
+  - Línea 6320 | Sección JavaScript | Activar estado visual inicial (diseño y cliente = Sí por defecto)
+  - Línea 6361 | Sección JavaScript | Bloqueo por diseño o cliente incorrecto
+  - Línea 6896 | Sección JavaScript | ===== DETECCIÓN DE LINK DE TRACKING (cliente abre email) =====
+  - ... 10 evidencias adicionales
+
+Cotizaciones y pedidos: 18 evidencias
+  - Línea 5986 | Sección JavaScript | Botón cotizar
+  - Línea 5990 | Sección JavaScript | Resultado cotización (oculto hasta cotizar)
+  - Línea 6041 | Sección JavaScript | ── Cotizar precio en Envia.com ────────────────────────────────────────────
+  - Línea 6220 | Sección JavaScript | Buscar pedido en Monday.com por nombre de empresa o cliente
+  - Línea 6228 | Sección JavaScript | intentar por nombre del pedido
+  - Línea 8024 | Comentario HTML | ==================== TAB COTIZACIONES ====================
+  - Línea 8077 | Comentario HTML | Modal Nueva/Editar Cotización
+  - Línea 8080 | Encabezado H3 | Nueva Cotización
+  - Línea 8114 | Comentario HTML | Dropdown cambio de estado inline para cotizaciones
+  - Línea 8201 | Encabezado H3 | Nueva Orden de Trabajo
+  - Línea 9504 | Sección JavaScript | ════ MÓDULO COTIZACIONES (inyectado en script principal para acceso a XLSX) ════
+  - Línea 9506 | Sección JavaScript | MÓDULO COTIZACIONES
+  - ... 6 evidencias adicionales
+
+Inventario y productos: 6 evidencias
+  - Línea 11199 | Sección JavaScript | ==================== MÓDULO INVENTARIO ====================
+  - Línea 11844 | Sección JavaScript | ==================== FIN MÓDULO INVENTARIO ====================
+  - Línea 11848 | Comentario HTML | ==================== TAB INVENTARIO ====================
+  - Línea 11895 | Encabezado H3 | 🗺️ Mapear productos del informe → bodega
+  - Línea 12942 | Sección JavaScript | Bodeguero: solo muestra inventario, oculta todo lo demás
+  - Línea 12968 | Sección JavaScript | Mostrar tab inventario primero
+
+Producción, diseño y calidad: 12 evidencias
+  - Línea 1876 | Sección JavaScript | ítems del board de producción Monday (cargado al abrir tab Gráfica 1)
+  - Línea 6281 | Sección JavaScript | Toggle diseño
+  - Línea 6313 | Sección JavaScript | default: diseño OK
+  - Línea 6320 | Sección JavaScript | Activar estado visual inicial (diseño y cliente = Sí por defecto)
+  - Línea 6361 | Sección JavaScript | Bloqueo por diseño o cliente incorrecto
+  - Línea 7290 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/grafica1_msgs.json')
+  - Línea 10112 | Sección JavaScript | ══════════ CRUCE: GRÁFICA 1 + KOMMO + MONDAY PRODUCCIÓN ══════════
+  - Línea 10140 | Sección JavaScript | ── 3. Monday Producción (async, API) ──
+  - Línea 10265 | Sección JavaScript | ══════════ DETECTOR DE INCONSISTENCIAS MONDAY × GRÁFICA 1 ══════════
+  - Línea 12030 | Comentario HTML | ══════════ GRÁFICA 1 — FEED DE PRODUCCIÓN ══════════
+  - Línea 12035 | Encabezado H2 | 🖨️ Gráfica 1 — Feed de Producción
+  - Línea 12057 | Comentario HTML | ══ FIN MONITOR PRODUCCIÓN ══
+
+Despacho y logística: 11 evidencias
+  - Línea 1859 | Sección JavaScript | Fodor Fast envíos
+  - Línea 5756 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/kommo_envios.json');
+  - Línea 5782 | Sección JavaScript | Cargar también los envíos de Envia.com
+  - Línea 5910 | Sección JavaScript | ── Envia.com: crear envío ────────────────────────────────────────────────────
+  - Línea 5939 | Sección JavaScript | ── enviaCrearEnvio: abre modal con formulario de despacho ───────────────────
+  - Línea 6041 | Sección JavaScript | ── Cotizar precio en Envia.com ────────────────────────────────────────────
+  - Línea 6218 | Sección JavaScript | ══════════ CHECKLIST DE VERIFICACIÓN PRE-DESPACHO ══════════
+  - Línea 7030 | Sección JavaScript | FF_DATA: Sincronizar envíos Fodor Fast desde Firebase
+  - Línea 10628 | Sección JavaScript | Si vino de Kommo, señalar reset de ENVÍOS para que kommo-sync.js lo desmarque
+  - Línea 11952 | Comentario HTML | Tabla envíos
+  - Línea 12089 | Comentario HTML | ══════════ MODAL NUEVO/EDITAR ENVÍO FODOR FAST ══════════
+
+Integraciones externas: 80 evidencias
+  - Línea 409 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+  - Línea 410 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+  - Línea 411 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js">
+  - Línea 596 | Comentario HTML | ALERTAS PAGÓ KOMMO
+  - Línea 810 | Comentario HTML | ── Panel Consultas Rápidas ──
+  - Línea 1862 | Sección JavaScript | Kommo CRM
+  - Línea 1875 | Sección JavaScript | {rut_norm: {nombre,tel,correo}} — cargado desde Excel Kommo
+  - Línea 1876 | Sección JavaScript | ítems del board de producción Monday (cargado al abrir tab Gráfica 1)
+  - Línea 2690 | Sección JavaScript | ==================== TRELLO BULK SYNC ====================
+  - Línea 2756 | Sección JavaScript | ==================== FIN TRELLO BULK SYNC ====================
+  - Línea 2758 | Sección JavaScript | ==================== TRELLO AUTO-SYNC ====================
+  - Línea 2796 | Sección JavaScript | ==================== FIN TRELLO AUTO-SYNC ====================
+  - ... 68 evidencias adicionales
+
+Usuarios, roles y seguridad: 14 evidencias
+  - Línea 411 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js">
+  - Línea 513 | Comentario HTML | MODAL USUARIO
+  - Línea 1810 | Sección JavaScript | ─── USUARIO ACTIVO ──────────────────────────────────────────────────────────
+  - Línea 4625 | Sección JavaScript | Mostrar usuario activo o pedir identificación
+  - Línea 6904 | Sección JavaScript | Registrar en Firebase via REST (sin auth)
+  - Línea 9156 | Sección JavaScript | ✅ Subir a Firebase para que se refleje en todos los usuarios y no se pierda al sincronizar
+  - Línea 12767 | Sección JavaScript | ── Acceso usuario nombrado (Marcelo, Rodrigo, etc.) ─────────────────
+  - Línea 12794 | Sección JavaScript | Registrar nombre del usuario activo
+  - Línea 12807 | Sección JavaScript | Enter en inputs usuario
+  - Línea 12815 | Sección JavaScript | ── Gestión de usuarios (admin) ───────────────────────────────────────
+  - Línea 12845 | Sección JavaScript | Cargar lista de usuarios (independiente del modal)
+  - Línea 12885 | Sección JavaScript | Cifrar adminPass con contraseña del nuevo usuario
+  - ... 2 evidencias adicionales
+
+Reportes, KPI y dashboard: 12 evidencias
+  - Línea 536 | Comentario HTML | KPIs
+  - Línea 640 | Comentario HTML | KPIs año
+  - Línea 763 | Comentario HTML | KPI Detalles desplegables
+  - Línea 953 | Comentario HTML | ==================== TAB RESUMEN 2025 ====================
+  - Línea 1128 | Comentario HTML | ==================== TAB RESUMEN 2026 ====================
+  - Línea 7829 | Comentario HTML | KPIs
+  - Línea 8027 | Comentario HTML | KPIs
+  - Línea 8131 | Comentario HTML | KPIs
+  - Línea 9262 | Comentario HTML | Resumen y botón
+  - Línea 9269 | Comentario HTML | ==================== MODAL RESUMEN DIARIO ====================
+  - Línea 11904 | Comentario HTML | KPIs
+  - Línea 11993 | Comentario HTML | KPIs simples
+
+Importación y exportación: 10 evidencias
+  - Línea 769 | Comentario HTML | ── Importar Facturas Excel ──
+  - Línea 1875 | Sección JavaScript | {rut_norm: {nombre,tel,correo}} — cargado desde Excel Kommo
+  - Línea 4653 | Sección JavaScript | Repara fechas de WEBPAY_DATA guardadas como serial Excel float (ej: "45690.4831")
+  - Línea 4699 | Sección JavaScript | 1. Para registros importados desde Excel: usar el campo trfId (ID bancario real)
+  - Línea 4908 | Sección JavaScript | ==================== PAGOS EXCEL ====================
+  - Línea 6829 | Sección JavaScript | ============ IMPORTAR EXCEL KOMMO (teléfonos) ============
+  - Línea 7013 | Sección JavaScript | FIX-D26EXTRA: Cargar facturas importadas por Excel desde Firebase (antes solo se cargaban de localStorage)
+  - Línea 9106 | Sección JavaScript | IDs reales ya asignados (para evitar re-actualizar en importaciones repetidas)
+  - Línea 9115 | Sección JavaScript | Ya tiene este trfId real asignado (re-importación)
+  - Línea 9504 | Sección JavaScript | ════ MÓDULO COTIZACIONES (inyectado en script principal para acceso a XLSX) ════
+
+Referencias no clasificadas: 117

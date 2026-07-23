@@ -1,0 +1,18 @@
+AUDITORÍA TÉCNICA INICIAL — INDEX.HTML
+=============================================
+Tamaño del archivo: 3.09 MB
+Cantidad de líneas: 13249
+Bloques <script>: 11
+Bloques <style>: 3
+Funciones declaradas: 372
+Funciones flecha: 100
+Uso de localStorage: 102
+Uso de sessionStorage: 0
+Referencias a Firebase: 57
+Llamadas fetch: 17
+Eventos addEventListener: 32
+Asignaciones innerHTML: 151
+Eventos HTML onclick: 455
+Temporizadores setInterval: 4
+Temporizadores setTimeout: 36
+Uso de eval: 0

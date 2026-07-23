@@ -1,0 +1,71 @@
+MAPA DE DATOS, PERSISTENCIA E INTEGRACIONES
+===========================================================================
+
+Archivos analizados: 35
+Operaciones localStorage: 78
+Claves únicas localStorage: 21
+Referencias Firebase: 73
+Rutas únicas Firebase: 8
+Llamadas fetch con destino literal: 16
+Destinos fetch únicos: 12
+Scripts externos: 5
+Dominios externos identificados: 6
+
+CLAVES LOCALSTORAGE
+---------------------------------------------------------------------------
+_fsp_d26bk | operaciones: getItem, setItem
+_fsp_inv_bk | operaciones: getItem, setItem
+_fsp_kommo_tel | operaciones: getItem, setItem
+fodorspa_bode_v1 | operaciones: getItem, setItem
+fodorspa_cart_v1 | operaciones: getItem, setItem
+fodorspa_cot_v1 | operaciones: getItem, removeItem, setItem
+fodorspa_envia_token | operaciones: getItem, setItem
+fodorspa_ff_v1 | operaciones: getItem, setItem
+fodorspa_gn_v1 | operaciones: getItem, setItem
+fodorspa_kommo_token | operaciones: getItem, setItem
+fodorspa_mp_resueltos | operaciones: getItem
+fodorspa_mp_v1 | operaciones: getItem, setItem
+fodorspa_prov_v1 | operaciones: getItem, removeItem, setItem
+fodorspa_trf_delta_v1 | operaciones: setItem
+fodorspa_trf_v1 | operaciones: getItem, setItem
+fodorspa_user | operaciones: getItem, removeItem, setItem
+fodorspa_wp_v1 | operaciones: getItem, setItem
+mf_items | operaciones: getItem, setItem
+mf_ts | operaciones: getItem, setItem
+monday_token_fodor | operaciones: getItem, setItem
+rDia_ | operaciones: getItem, setItem
+
+RUTAS FIREBASE
+---------------------------------------------------------------------------
+_avisos_login | operaciones: on, push
+bode_pass | operaciones: once, set
+email_tracking | operaciones: on
+estado | operaciones: on, update
+kommo_notas_pago | operaciones: on
+kommo_pagos_alertas | operaciones: on
+kommo_pagos_descartadas | operaciones: on
+usuarios | operaciones: once
+
+DESTINOS FETCH
+---------------------------------------------------------------------------
+https://api.envia.com/ship/generate/
+https://api.envia.com/ship/rate/
+https://api.monday.com/v2
+https://odfor-bae97-default-rtdb.firebaseio.com/email_tracking/
+https://odfor-bae97-default-rtdb.firebaseio.com/envia_rate_result/
+https://odfor-bae97-default-rtdb.firebaseio.com/envia_shipments.json
+https://odfor-bae97-default-rtdb.firebaseio.com/envia_verificaciones/
+https://odfor-bae97-default-rtdb.firebaseio.com/estado/D26.json?auth=
+https://odfor-bae97-default-rtdb.firebaseio.com/grafica1_msgs.json
+https://odfor-bae97-default-rtdb.firebaseio.com/kommo_envios.json
+https://odfor-bae97-default-rtdb.firebaseio.com/kommo_pagos_alertas/
+https://odfor-bae97-default-rtdb.firebaseio.com/retiros_wa.json
+
+DOMINIOS EXTERNOS
+---------------------------------------------------------------------------
+api.envia.com
+api.monday.com
+cdn.sheetjs.com
+cdnjs.cloudflare.com
+odfor-bae97-default-rtdb.firebaseio.com
+www.gstatic.com

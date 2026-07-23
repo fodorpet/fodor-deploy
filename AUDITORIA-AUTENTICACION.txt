@@ -1,0 +1,23 @@
+AUDITORÍA DE AUTENTICACIÓN
+========================================================================
+
+Firebase Auth inicializado: 2 referencias
+Observador de sesión: 1 referencias
+Correo y contraseña: 0 referencias
+Autenticación anónima: 2 referencias
+Google Sign-In: 0 referencias
+Creación de usuario: 0 referencias
+Cierre de sesión: 0 referencias
+Usuario actual: 0 referencias
+Token de identidad: 1 referencias
+Autenticación REST: 1 referencias
+
+UBICACIONES
+------------------------------------------------------------------------
+Firebase Auth inicializado | index.html:6940
+Autenticación anónima | index.html:6940
+Autenticación anónima | index.html:7361
+Firebase Auth inicializado | index.html:12980
+Observador de sesión | index.html:12980
+Token de identidad | index.html:12983
+Autenticación REST | index.html:12984

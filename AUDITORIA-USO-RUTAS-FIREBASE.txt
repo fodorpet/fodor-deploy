@@ -1,0 +1,65 @@
+MAPA DE USO DE RUTAS FIREBASE
+======================================================================
+email_tracking | index.html:6905 | operaciones cercanas: PUT
+email_tracking | index.html:7316 | operaciones cercanas: ON
+envia_pending | envia-sync.js:408 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | envia-sync.js:423 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | envia-sync.js:474 | operaciones cercanas: PUT
+envia_pending | envia-sync.js:506 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | envios.html:552 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | index.html:6138 | operaciones cercanas: PUT
+envia_pending | kommo-widget-fodor/script.js:486 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | kommo-widget-v3-final/script.js:486 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | kommo-widget/script.js:486 | operaciones cercanas: NO IDENTIFICADA
+envia_pending | kommo-widget/widget.js:486 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_pending | envia-sync.js:557 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_pending | envia-sync.js:564 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_pending | envia-sync.js:579 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_pending | envia-sync.js:658 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_pending | index.html:6059 | operaciones cercanas: PUT
+envia_rate_result | envia-sync.js:651 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_result | envia-sync.js:653 | operaciones cercanas: NO IDENTIFICADA
+envia_rate_result | index.html:6074 | operaciones cercanas: PUT
+envia_rate_result | index.html:6082 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envia-sync.js:459 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envia-sync.js:471 | operaciones cercanas: PUT
+envia_shipments | envia-sync.js:497 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envia-sync.js:515 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envia-sync.js:536 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envios.html:551 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | envios.html:557 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | index.html:5784 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | index.html:5929 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget-fodor/script.js:485 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget-fodor/script.js:492 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget-v3-final/script.js:485 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget-v3-final/script.js:492 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget/script.js:485 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget/script.js:492 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget/widget.js:485 | operaciones cercanas: NO IDENTIFICADA
+envia_shipments | kommo-widget/widget.js:492 | operaciones cercanas: NO IDENTIFICADA
+envia_verificaciones | index.html:6392 | operaciones cercanas: PUT
+grafica1_msgs | index.html:7290 | operaciones cercanas: NO IDENTIFICADA
+grafica1_msgs | whatsapp-watcher.js:23 | operaciones cercanas: NO IDENTIFICADA
+kommo_auto_replied | envia-sync.js:729 | operaciones cercanas: NO IDENTIFICADA
+kommo_auto_replied | envia-sync.js:801 | operaciones cercanas: NO IDENTIFICADA
+kommo_envios | index.html:5756 | operaciones cercanas: NO IDENTIFICADA
+kommo_envios | kommo-sync.js:130 | operaciones cercanas: NO IDENTIFICADA
+kommo_pagos_alertas | index.html:7147 | operaciones cercanas: DELETE
+kommo_pagos_alertas | index.html:7201 | operaciones cercanas: NO IDENTIFICADA
+kommo_pagos_alertas | index.html:7214 | operaciones cercanas: ON
+kommo_pagos_alertas | index.html:7215 | operaciones cercanas: ON
+kommo_pagos_alertas | kommo-sync.js:176 | operaciones cercanas: PATCH
+kommo_pagos_alertas | kommo-sync.js:178 | operaciones cercanas: PATCH
+kommo_pagos_alertas | kommo-sync.js:80 | operaciones cercanas: NO IDENTIFICADA
+kommo_reset_envio | index.html:10631 | operaciones cercanas: SET
+kommo_reset_envio | kommo-sync.js:261 | operaciones cercanas: NO IDENTIFICADA
+kommo_reset_envio | kommo-sync.js:277 | operaciones cercanas: PUT
+kommo_reset_pago | index.html:7151 | operaciones cercanas: SET
+kommo_reset_pago | kommo-sync.js:232 | operaciones cercanas: NO IDENTIFICADA
+kommo_reset_pago | kommo-sync.js:248 | operaciones cercanas: PUT
+monday_production | index.html:10340 | operaciones cercanas: NO IDENTIFICADA
+monday_production | monday-sync.js:154 | operaciones cercanas: NO IDENTIFICADA
+monday_production | monday-sync.js:189 | operaciones cercanas: NO IDENTIFICADA
+retiros_wa | index.html:7279 | operaciones cercanas: NO IDENTIFICADA
+retiros_wa | whatsapp-watcher.js:22 | operaciones cercanas: NO IDENTIFICADA

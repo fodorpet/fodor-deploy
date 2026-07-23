@@ -1,0 +1,353 @@
+MAPA PRELIMINAR DE MÓDULOS — INDEX.HTML
+======================================================================
+
+Secciones y encabezados identificados: 348
+
+Línea 409 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+Línea 410 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+Línea 411 | Sección JavaScript | www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js">
+Línea 418 | Encabezado H1 | 📊 Fodor Spa — Panel de Facturación 2025–2026
+Línea 490 | Comentario HTML | ==================== TAB 2026 ====================
+Línea 492 | Comentario HTML | SHARE BAR
+Línea 513 | Comentario HTML | MODAL USUARIO
+Línea 517 | Encabezado H2 | ¿Quién eres?
+Línea 528 | Comentario HTML | ==================== TAB VERIFICAR PAGOS ====================
+Línea 529 | Comentario HTML | ==================== TAB GESTIONES HOY ====================
+Línea 536 | Comentario HTML | KPIs
+Línea 538 | Comentario HTML | Compromisos de hoy
+Línea 543 | Comentario HTML | Gestiones registradas
+Línea 550 | Comentario HTML | ==================== TAB ALERTAS ====================
+Línea 572 | Comentario HTML | ==================== TAB DEUDORES MÚLTIPLES ====================
+Línea 593 | Comentario HTML | ==================== TAB BITÁCORA ====================
+Línea 594 | Comentario HTML | ==================== TAB CRUCE DIARIO ====================
+Línea 596 | Comentario HTML | ALERTAS PAGÓ KOMMO
+Línea 598 | Comentario HTML | Toggle vista
+Línea 604 | Comentario HTML | ── VISTA DIARIA ──
+Línea 634 | Comentario HTML | ── VISTA MENSUAL 2026 ──
+Línea 640 | Comentario HTML | KPIs año
+Línea 642 | Comentario HTML | Tabla mensual
+Línea 664 | Comentario HTML | Detalle del mes seleccionado
+Línea 685 | Encabezado H3 | 📋 Registrar acción de cobranza
+Línea 754 | Comentario HTML | ==================== TAB CONCILIACIÓN BANCARIA ====================
+Línea 763 | Comentario HTML | KPI Detalles desplegables
+Línea 769 | Comentario HTML | ── Importar Facturas Excel ──
+Línea 777 | Comentario HTML | ── Barra de Metas ──
+Línea 780 | Comentario HTML | ── BLOQUE ALARMA +30 DÍAS ──
+Línea 810 | Comentario HTML | ── Panel Consultas Rápidas ──
+Línea 813 | Encabezado H4 | 🔍 Consultas pendientes — ¿A quién preguntar?
+Línea 855 | Comentario HTML | Mini modal para registrar consulta
+Línea 858 | Encabezado H4 | 📋 Registrar consulta
+Línea 907 | Comentario HTML | ==================== TAB METAS ====================
+Línea 911 | Comentario HTML | Encabezado
+Línea 920 | Comentario HTML | Tarjetas de progreso
+Línea 922 | Comentario HTML | Renderizado por JS
+Línea 925 | Comentario HTML | Formulario para fijar metas
+Línea 944 | Comentario HTML | Log de gestiones de hoy
+Línea 953 | Comentario HTML | ==================== TAB RESUMEN 2025 ====================
+Línea 955 | Comentario HTML | ==================== TAB ENE 2026 ====================
+Línea 959 | Encabezado H2 | 📅 Ene 2026
+Línea 984 | Comentario HTML | ==================== TAB FEB 2026 ====================
+Línea 988 | Encabezado H2 | 📅 Feb 2026
+Línea 1013 | Comentario HTML | ==================== TAB MAR 2026 ====================
+Línea 1017 | Encabezado H2 | 📅 Mar 2026
+Línea 1042 | Comentario HTML | ==================== TAB ABR 2026 ====================
+Línea 1046 | Encabezado H2 | 📅 Abr 2026
+Línea 1071 | Comentario HTML | ==================== TAB MAY 2026 ====================
+Línea 1075 | Encabezado H2 | 📅 May 2026
+Línea 1099 | Comentario HTML | ==================== TAB JUN 2026 ====================
+Línea 1103 | Encabezado H2 | 📅 Jun 2026
+Línea 1128 | Comentario HTML | ==================== TAB RESUMEN 2026 ====================
+Línea 1150 | Comentario HTML | ==================== TAB ENERO 2025 ====================
+Línea 1154 | Encabezado H2 | 📅 Enero 2025
+Línea 1179 | Comentario HTML | ==================== TAB FEBRERO 2025 ====================
+Línea 1183 | Encabezado H2 | 📅 Febrero 2025
+Línea 1208 | Comentario HTML | ==================== TAB MARZO 2025 ====================
+Línea 1212 | Encabezado H2 | 📅 Marzo 2025
+Línea 1237 | Comentario HTML | ==================== TAB ABRIL 2025 ====================
+Línea 1241 | Encabezado H2 | 📅 Abril 2025
+Línea 1266 | Comentario HTML | ==================== TAB MAYO 2025 ====================
+Línea 1270 | Encabezado H2 | 📅 Mayo 2025
+Línea 1295 | Comentario HTML | ==================== TAB JUNIO 2025 ====================
+Línea 1299 | Encabezado H2 | 📅 Junio 2025
+Línea 1324 | Comentario HTML | ==================== TAB JULIO 2025 ====================
+Línea 1328 | Encabezado H2 | 📅 Julio 2025
+Línea 1353 | Comentario HTML | ==================== TAB AGOSTO 2025 ====================
+Línea 1357 | Encabezado H2 | 📅 Agosto 2025
+Línea 1382 | Comentario HTML | ==================== TAB SEPTIEMBRE 2025 ====================
+Línea 1386 | Encabezado H2 | 📅 Septiembre 2025
+Línea 1411 | Comentario HTML | ==================== TAB OCTUBRE 2025 ====================
+Línea 1415 | Encabezado H2 | 📅 Octubre 2025
+Línea 1440 | Comentario HTML | ==================== TAB NOVIEMBRE 2025 ====================
+Línea 1444 | Encabezado H2 | 📅 Noviembre 2025
+Línea 1469 | Comentario HTML | ==================== TAB DICIEMBRE 2025 ====================
+Línea 1473 | Encabezado H2 | 📅 Diciembre 2025
+Línea 1498 | Comentario HTML | MODAL
+Línea 1501 | Encabezado H3 | 📝 Registrar seguimiento
+Línea 1810 | Sección JavaScript | ─── USUARIO ACTIVO ──────────────────────────────────────────────────────────
+Línea 1859 | Sección JavaScript | Fodor Fast envíos
+Línea 1862 | Sección JavaScript | Kommo CRM
+Línea 1875 | Sección JavaScript | {rut_norm: {nombre,tel,correo}} — cargado desde Excel Kommo
+Línea 1876 | Sección JavaScript | ítems del board de producción Monday (cargado al abrir tab Gráfica 1)
+Línea 2082 | Sección JavaScript | mapa id interno → obs (para cruzar con EST[folio].pagoId)
+Línea 2095 | Sección JavaScript | TRF obs: por folio en memoria O por pagoId interno guardado en EST
+Línea 2123 | Sección JavaScript | Última gestión de cobranza (historial)
+Línea 2286 | Sección JavaScript | Nota de pago (filtrar boilerplate de banco Fodor)
+Línea 2455 | Sección JavaScript | Capturar ID de transferencia bancaria (ID azul)
+Línea 2465 | Sección JavaScript | Anular pago: limpiar referencia de transferencia
+Línea 2516 | Sección JavaScript | 1. Buscar en EST por pagoId (facturas marcadas con ID de transferencia)
+Línea 2551 | Sección JavaScript | Buscar factura vinculada por 3 vías
+Línea 2562 | Sección JavaScript | Vía 2: EST[folio].pagoId === t.id (link via aplicar pago guardado en EST)
+Línea 2573 | Sección JavaScript | Vía 3: EST[folio].pagoId === q (link guardado con el número de banco directo)
+Línea 2662 | Sección JavaScript | cobranzas-fodor.vercel.app/index_cifrado.html?track='+trackToken;
+Línea 2690 | Sección JavaScript | ==================== TRELLO BULK SYNC ====================
+Línea 2756 | Sección JavaScript | ==================== FIN TRELLO BULK SYNC ====================
+Línea 2758 | Sección JavaScript | ==================== TRELLO AUTO-SYNC ====================
+Línea 2796 | Sección JavaScript | ==================== FIN TRELLO AUTO-SYNC ====================
+Línea 2798 | Sección JavaScript | ==================== TRELLO INTEGRATION ====================
+Línea 2801 | Sección JavaScript | NUEVAS — Gestión de Cobranzas Fodor Spa
+Línea 2884 | Sección JavaScript | ============================================================
+Línea 3244 | Sección JavaScript | Agrupar por RUT facturas no pagadas
+Línea 3252 | Sección JavaScript | Solo los que tienen >1 factura
+Línea 3293 | Sección JavaScript | Pills de días por factura
+Línea 3419 | Sección JavaScript | si tiene folio, agregar al historial de esa factura
+Línea 3474 | Sección JavaScript | CRUCE DIARIO — Pagos vs Facturas
+Línea 3875 | Sección JavaScript | ── Vista inteligente de cruces TRF ↔ Factura ──
+Línea 3928 | Sección JavaScript | ID propio de la candidata: buscar la TRF que tenga el RUT de esta factura
+Línea 3996 | Sección JavaScript | ── Cruce automático TRF ↔ Factura ──
+Línea 4071 | Sección JavaScript | Auto-vincular transferencias sin folio que coincidan por monto exacto con factura pendiente
+Línea 4175 | Encabezado H3 | '+d.nombre+'
+Línea 4201 | Encabezado H3 | ${info.nombre}
+Línea 4264 | Sección JavaScript | ── Top 10 clientes ──────────────────────────────────────────────────
+Línea 4310 | Sección JavaScript | Top 10 clientes
+Línea 4330 | Sección JavaScript | Sumar transferencias del mes que tienen folio vinculado
+Línea 4334 | Sección JavaScript | Sumar WebPay del mes con folio
+Línea 4544 | Sección JavaScript | ==================== BLOQUE URGENTE +30 DÍAS ====================
+Línea 4604 | Sección JavaScript | ==================== SORT VARS (deben estar ANTES del INIT) ====================
+Línea 4619 | Sección JavaScript | FIX-INIT-RECONCILE: reconciliar TRF→EST después de cargarEstado.
+Línea 4621 | Sección JavaScript | si el Firebase listener corrió ANTES del unlock y ya había seteado EST correctamente.
+Línea 4625 | Sección JavaScript | Mostrar usuario activo o pedir identificación
+Línea 4649 | Sección JavaScript | ==================== TRF_DATA (si no declarado) ====================
+Línea 4653 | Sección JavaScript | Repara fechas de WEBPAY_DATA guardadas como serial Excel float (ej: "45690.4831")
+Línea 4673 | Sección JavaScript | ==================== TRANSFERENCIAS ====================
+Línea 4696 | Sección JavaScript | Retorna el ID real de transferencia bancaria
+Línea 4699 | Sección JavaScript | 1. Para registros importados desde Excel: usar el campo trfId (ID bancario real)
+Línea 4787 | Sección JavaScript | Si tenía folio vinculado, desmarcar la factura como pagada
+Línea 4820 | Sección JavaScript | Cruce bidireccional: borrar también de Cartola si coincide fecha+monto
+Línea 4901 | Sección JavaScript | ==================== SORT FUNCIONES ====================
+Línea 4908 | Sección JavaScript | ==================== PAGOS EXCEL ====================
+Línea 5097 | Sección JavaScript | ==================== PAGO MÚLTIPLE ====================
+Línea 5134 | Sección JavaScript | Facturas pendientes (no pagadas, no borradas)
+Línea 5236 | Sección JavaScript | Marcar todas las facturas como pagadas con referencia
+Línea 5261 | Sección JavaScript | Sincronizar EST y BITACORA a Firebase
+Línea 5284 | Sección JavaScript | selected webpay transaction
+Línea 5481 | Sección JavaScript | ==================== APLICAR TRF A FACTURA ====================
+Línea 5742 | Sección JavaScript | ===== KOMMO CRM INTEGRATION =====
+Línea 5754 | Sección JavaScript | Lee los datos desde Firebase DB (escritos por kommo-sync.js corriendo en tu Mac)
+Línea 5756 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/kommo_envios.json');
+Línea 5782 | Sección JavaScript | Cargar también los envíos de Envia.com
+Línea 5784 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_shipments.json');
+Línea 5831 | Sección JavaScript | '+KOMMO_DOMAIN+'/leads/detail/'+lead.id;
+Línea 5910 | Sección JavaScript | ── Envia.com: crear envío ────────────────────────────────────────────────────
+Línea 5927 | Sección JavaScript | Recargar datos de Firebase y renderizar
+Línea 5929 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_shipments.json')
+Línea 5939 | Sección JavaScript | ── enviaCrearEnvio: abre modal con formulario de despacho ───────────────────
+Línea 5986 | Sección JavaScript | Botón cotizar
+Línea 5990 | Sección JavaScript | Resultado cotización (oculto hasta cotizar)
+Línea 6030 | Sección JavaScript | ── Calcular precio cliente ────────────────────────────────────────────────
+Línea 6041 | Sección JavaScript | ── Cotizar precio en Envia.com ────────────────────────────────────────────
+Línea 6056 | Sección JavaScript | Escribir solicitud de rate en Firebase
+Línea 6059 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_rate_pending/'+leadId+'.json',
+Línea 6074 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_rate_result/'+leadId+'.json',
+Línea 6082 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_rate_result/'+leadId+'.json');
+Línea 6138 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_pending/'+leadId+'.json',
+Línea 6163 | Sección JavaScript | Prellena el modal de Fodor Fast con datos del lead de Kommo
+Línea 6218 | Sección JavaScript | ══════════ CHECKLIST DE VERIFICACIÓN PRE-DESPACHO ══════════
+Línea 6220 | Sección JavaScript | Buscar pedido en Monday.com por nombre de empresa o cliente
+Línea 6228 | Sección JavaScript | intentar por nombre del pedido
+Línea 6281 | Sección JavaScript | Toggle diseño
+Línea 6289 | Sección JavaScript | Toggle cliente
+Línea 6313 | Sección JavaScript | default: diseño OK
+Línea 6314 | Sección JavaScript | default: cliente OK
+Línea 6320 | Sección JavaScript | Activar estado visual inicial (diseño y cliente = Sí por defecto)
+Línea 6361 | Sección JavaScript | Bloqueo por diseño o cliente incorrecto
+Línea 6380 | Sección JavaScript | Guardar verificación en Firebase para trazabilidad
+Línea 6392 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/envia_verificaciones/' + String(d.id) + '.json',
+Línea 6707 | Sección JavaScript | ===== FIN KOMMO CRM =====
+Línea 6779 | Sección JavaScript | Ignorar notas de crédito de facturacion.cl
+Línea 6829 | Sección JavaScript | ============ IMPORTAR EXCEL KOMMO (teléfonos) ============
+Línea 6888 | Sección JavaScript | ============ FIREBASE SYNC ============
+Línea 6893 | Sección JavaScript | FIX-FBLOAD: protege Firebase de ser sobreescrito antes de recibir los datos del listener
+Línea 6896 | Sección JavaScript | ===== DETECCIÓN DE LINK DE TRACKING (cliente abre email) =====
+Línea 6904 | Sección JavaScript | Registrar en Firebase via REST (sin auth)
+Línea 6905 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/email_tracking/'+encodeURIComponent(_token)+'.json',{
+Línea 6923 | Sección JavaScript | ===== FIN DETECCIÓN TRACKING =====
+Línea 6930 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com",
+Línea 7003 | Sección JavaScript | FIX-D26: Cargar facturas D26 desde Firebase (incluye 16-30 junio, 1368 items)
+Línea 7013 | Sección JavaScript | FIX-D26EXTRA: Cargar facturas importadas por Excel desde Firebase (antes solo se cargaban de localStorage)
+Línea 7028 | Sección JavaScript | FIX-PROV: Cargar proveedores desde Firebase
+Línea 7030 | Sección JavaScript | FF_DATA: Sincronizar envíos Fodor Fast desde Firebase
+Línea 7040 | Sección JavaScript | FIX-TRF-EST-SYNC: Reconciliar TRF vinculadas con estado pagado en EST
+Línea 7045 | Sección JavaScript | Si el reconciler hizo cambios, persistir a localStorage+Firebase
+Línea 7069 | Sección JavaScript | ===== ALERTAS PAGÓ KOMMO =====
+Línea 7083 | Sección JavaScript | Si el pago tiene timestamp más nuevo → mostrar igual
+Línea 7097 | Sección JavaScript | Línea 1: PAGÓ: Nombre cliente
+Línea 7118 | Sección JavaScript | Factura y hora en la misma línea
+Línea 7145 | Sección JavaScript | Eliminar la alerta de Firebase para que no vuelva a aparecer al recargar
+Línea 7147 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/kommo_pagos_alertas/'+String(alerta.leadId)+'.json',{method:'DELETE'});
+Línea 7149 | Sección JavaScript | Pedir a kommo-sync.js que desmarque PAGÓ en Kommo
+Línea 7156 | Sección JavaScript | Nota inline - Firebase sync (visible para todos, persiste siempre)
+Línea 7173 | Sección JavaScript | nota pegada al nombre del cliente
+Línea 7180 | Sección JavaScript | Notas PAGÓ — sincronizadas en Firebase
+Línea 7193 | Sección JavaScript | Alertas descartadas — sincronizadas en Firebase
+Línea 7201 | Sección JavaScript | Listener Firebase kommo_pagos_alertas
+Línea 7218 | Sección JavaScript | ===== RETIROS WHATSAPP =====
+Línea 7279 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/retiros_wa.json')
+Línea 7290 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/grafica1_msgs.json')
+Línea 7315 | Sección JavaScript | ===== LISTENER TRACKING DE EMAILS =====
+Línea 7338 | Sección JavaScript | Auto-sync Trello: cliente abrió el email
+Línea 7352 | Sección JavaScript | ===== FIN LISTENER TRACKING =====
+Línea 7365 | Sección JavaScript | no bloquear guardarEstado si Firebase falla del todo
+Línea 7371 | Sección JavaScript | Override guardarEstado to also push to Firebase
+Línea 7375 | Sección JavaScript | FIX-FBLOAD: NO escribir a Firebase hasta que el listener haya cargado los datos remotos.
+Línea 7377 | Sección JavaScript | sobre datos reales almacenados en Firebase (bug de corrupción detectado 2026-07-01).
+Línea 7400 | Sección JavaScript | ============ END FIREBASE SYNC ============
+Línea 7403 | Sección JavaScript | ============ WEBPAY ============
+Línea 7665 | Sección JavaScript | ============ GETNET ============
+Línea 7827 | Comentario HTML | ==================== TAB TRANSFERENCIAS ====================
+Línea 7829 | Comentario HTML | KPIs
+Línea 7836 | Comentario HTML | BARRA ACCIONES
+Línea 7847 | Comentario HTML | FORMULARIO (oculto)
+Línea 7864 | Comentario HTML | FILTROS MES
+Línea 7889 | Comentario HTML | BUSCADOR
+Línea 7900 | Comentario HTML | BUSCADOR TRF
+Línea 7908 | Comentario HTML | BUSCADOR INVERSO: ID TRANSFERENCIA → FACTURA
+Línea 7921 | Comentario HTML | TABLA UNIFICADA
+Línea 7943 | Comentario HTML | MODAL APLICAR
+Línea 7960 | Comentario HTML | DROPDOWN GLOBAL ESTADO GESTION
+Línea 7991 | Comentario HTML | ==================== TAB PAGO PROVEEDORES ====================
+Línea 8024 | Comentario HTML | ==================== TAB COTIZACIONES ====================
+Línea 8027 | Comentario HTML | KPIs
+Línea 8035 | Comentario HTML | Toolbar
+Línea 8049 | Comentario HTML | Vista Tabla
+Línea 8070 | Comentario HTML | Vista Pipeline / Kanban
+Línea 8077 | Comentario HTML | Modal Nueva/Editar Cotización
+Línea 8080 | Encabezado H3 | Nueva Cotización
+Línea 8114 | Comentario HTML | Dropdown cambio de estado inline para cotizaciones
+Línea 8128 | Comentario HTML | ==================== TAB ÓRDENES DE TRABAJO ====================
+Línea 8131 | Comentario HTML | KPIs
+Línea 8155 | Comentario HTML | Barra de acciones
+Línea 8175 | Comentario HTML | Tabla OT
+Línea 8197 | Comentario HTML | Modal nueva/editar OT
+Línea 8201 | Encabezado H3 | Nueva Orden de Trabajo
+Línea 8286 | Comentario HTML | ==================== TAB CARTOLA BCI ====================
+Línea 8327 | Comentario HTML | ==================== TAB WEBPAY ====================
+Línea 8355 | Comentario HTML | ==================== TAB GETNET ====================
+Línea 8384 | Comentario HTML | ==================== TAB MERCADOPAGO ====================
+Línea 8410 | Comentario HTML | POPOVER NOTAS COBRANZA
+Línea 8417 | Sección JavaScript | ==================== MERCADOPAGO ====================
+Línea 8620 | Sección JavaScript | ==================== CARTOLA BCI ====================
+Línea 8621 | Sección JavaScript | CARTOLA_DATA declarada en SORT VARS (antes del INIT)
+Línea 8630 | Sección JavaScript | Buscar fila encabezados BCI: debe tener "fecha" y "cheque" o "cargo"
+Línea 8780 | Sección JavaScript | Cruce bidireccional: borrar también de Transferencias si coincide fecha+monto
+Línea 8812 | Sección JavaScript | ==================== FIN CARTOLA BCI ====================
+Línea 8846 | Sección JavaScript | ==================== FACTURACIÓN.CL ====================
+Línea 8888 | Sección JavaScript | solo facturas/boletas
+Línea 8975 | Sección JavaScript | Marcar como pagada si facturacion.cl dice pagada
+Línea 8987 | Sección JavaScript | Agregar como nueva si no está en D26 (pendiente O pagada — para que aparezca en Cobranza)
+Línea 9072 | Sección JavaScript | Buscar fila de encabezados — compatible con BCI (busca hasta fila 40)
+Línea 9106 | Sección JavaScript | IDs reales ya asignados (para evitar re-actualizar en importaciones repetidas)
+Línea 9115 | Sección JavaScript | Ya tiene este trfId real asignado (re-importación)
+Línea 9156 | Sección JavaScript | ✅ Subir a Firebase para que se refleje en todos los usuarios y no se pierda al sincronizar
+Línea 9216 | Comentario HTML | ==================== MODAL PAGO MÚLTIPLE ====================
+Línea 9220 | Encabezado H3 | 💳 Registrar Pago Múltiple
+Línea 9224 | Comentario HTML | Tipo de pago
+Línea 9229 | Comentario HTML | Datos transferencia
+Línea 9244 | Comentario HTML | Panel WebPay
+Línea 9253 | Comentario HTML | Buscar cliente
+Línea 9259 | Comentario HTML | Lista de facturas
+Línea 9262 | Comentario HTML | Resumen y botón
+Línea 9269 | Comentario HTML | ==================== MODAL RESUMEN DIARIO ====================
+Línea 9288 | Sección JavaScript | ==================== PAGO PROVEEDORES ====================
+Línea 9310 | Sección JavaScript | Mapear campos — soporta formato BCI Pago Proveedores y formato genérico
+Línea 9412 | Sección JavaScript | ==================== FIN PAGO PROVEEDORES ====================
+Línea 9504 | Sección JavaScript | ════ MÓDULO COTIZACIONES (inyectado en script principal para acceso a XLSX) ════
+Línea 9506 | Sección JavaScript | MÓDULO COTIZACIONES
+Línea 9849 | Sección JavaScript | ZIP64: si cdOff===0xFFFFFFFF buscar ZIP64 EOCD locator
+Línea 10112 | Sección JavaScript | ══════════ CRUCE: GRÁFICA 1 + KOMMO + MONDAY PRODUCCIÓN ══════════
+Línea 10133 | Sección JavaScript | ── 2. Kommo (sincrono, datos en memoria) ──
+Línea 10140 | Sección JavaScript | ── 3. Monday Producción (async, API) ──
+Línea 10147 | Sección JavaScript | api.monday.com/v2', {
+Línea 10200 | Sección JavaScript | ── Panel Kommo ──
+Línea 10210 | Sección JavaScript | ' + KOMMO_DOMAIN + '/leads/detail/' + lead.id;
+Línea 10219 | Sección JavaScript | ── Panel Monday ──
+Línea 10265 | Sección JavaScript | ══════════ DETECTOR DE INCONSISTENCIAS MONDAY × GRÁFICA 1 ══════════
+Línea 10269 | Sección JavaScript | Texto de búsqueda ampliado: cliente + descripcion + nombre del ítem
+Línea 10274 | Sección JavaScript | Cantidad: desde columna Monday primero, luego del nombre
+Línea 10294 | Sección JavaScript | Palabras clave del cliente — fuente: clienteTxt primero, luego nombre
+Línea 10299 | Sección JavaScript | Priorizar palabras del cliente, luego del nombre
+Línea 10339 | Sección JavaScript | Lee desde Firebase (monday-sync.js escribe aquí cada 10 min)
+Línea 10340 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/monday_production.json';
+Línea 10628 | Sección JavaScript | Si vino de Kommo, señalar reset de ENVÍOS para que kommo-sync.js lo desmarque
+Línea 10853 | Sección JavaScript | Auto-crear OT cuando se aprueba una cotización
+Línea 10887 | Sección JavaScript | ==================== ÓRDENES DE TRABAJO ====================
+Línea 11152 | Sección JavaScript | Si no hay cliente ni descripcion, mostrar qué columnas se detectaron
+Línea 11164 | Sección JavaScript | Si no hay cliente, usar desc como cliente o viceversa
+Línea 11197 | Sección JavaScript | ==================== FIN ÓRDENES DE TRABAJO ====================
+Línea 11199 | Sección JavaScript | ==================== MÓDULO INVENTARIO ====================
+Línea 11839 | Sección JavaScript | Guardar en Firebase para acceso desde otros dispositivos
+Línea 11844 | Sección JavaScript | ==================== FIN MÓDULO INVENTARIO ====================
+Línea 11848 | Comentario HTML | ==================== TAB INVENTARIO ====================
+Línea 11892 | Comentario HTML | Modal mapeo
+Línea 11895 | Encabezado H3 | 🗺️ Mapear productos del informe → bodega
+Línea 11901 | Comentario HTML | ══════════ FODOR FAST ══════════
+Línea 11904 | Comentario HTML | KPIs
+Línea 11928 | Comentario HTML | Toolbar
+Línea 11952 | Comentario HTML | Tabla envíos
+Línea 11976 | Comentario HTML | Tab Tarifas Courier
+Línea 11978 | Comentario HTML | ══════════ RETIROS WHATSAPP ══════════
+Línea 11981 | Comentario HTML | Header
+Línea 11984 | Encabezado H2 | 🛵 Retiros — Grupo WhatsApp
+Línea 11993 | Comentario HTML | KPIs simples
+Línea 12009 | Comentario HTML | Tabla de retiros
+Línea 12030 | Comentario HTML | ══════════ GRÁFICA 1 — FEED DE PRODUCCIÓN ══════════
+Línea 12035 | Encabezado H2 | 🖨️ Gráfica 1 — Feed de Producción
+Línea 12046 | Comentario HTML | ══ DETECTOR DE INCONSISTENCIAS ══
+Línea 12057 | Comentario HTML | ══ FIN MONITOR PRODUCCIÓN ══
+Línea 12089 | Comentario HTML | ══════════ MODAL NUEVO/EDITAR ENVÍO FODOR FAST ══════════
+Línea 12097 | Comentario HTML | Fila: cliente + fecha
+Línea 12109 | Comentario HTML | Fila: teléfono + comuna
+Línea 12121 | Comentario HTML | Fila: peso + dims
+Línea 12141 | Comentario HTML | Fila: courier + estado
+Línea 12165 | Comentario HTML | Fila: costo + precio + ganancia
+Línea 12181 | Comentario HTML | Tracking + notas
+Línea 12191 | Comentario HTML | Botones
+Línea 12200 | Comentario HTML | Tab Cotizador Transporte
+Línea 12211 | Comentario HTML | Formulario cotizador
+Línea 12215 | Comentario HTML | Ciudad destino con búsqueda
+Línea 12229 | Comentario HTML | Peso y servicio
+Línea 12247 | Comentario HTML | Botón calcular
+Línea 12251 | Comentario HTML | Resultado
+Línea 12269 | Comentario HTML | Tabla de zonas referencia
+Línea 12290 | Comentario HTML | fin subCotVarmontt
+Línea 12293 | Comentario HTML | fin tCotizador
+Línea 12296 | Sección JavaScript | ===== COTIZADOR VARMONTT =====
+Línea 12430 | Sección JavaScript | ===== FIN COTIZADOR VARMONTT =====
+Línea 12433 | Comentario HTML | TAB KOMMO CRM
+Línea 12753 | Sección JavaScript | No está en localStorage → buscar en Firebase
+Línea 12767 | Sección JavaScript | ── Acceso usuario nombrado (Marcelo, Rodrigo, etc.) ─────────────────
+Línea 12794 | Sección JavaScript | Registrar nombre del usuario activo
+Línea 12807 | Sección JavaScript | Enter en inputs usuario
+Línea 12815 | Sección JavaScript | ── Gestión de usuarios (admin) ───────────────────────────────────────
+Línea 12845 | Sección JavaScript | Cargar lista de usuarios (independiente del modal)
+Línea 12885 | Sección JavaScript | Cifrar adminPass con contraseña del nuevo usuario
+Línea 12942 | Sección JavaScript | Bodeguero: solo muestra inventario, oculta todo lo demás
+Línea 12962 | Sección JavaScript | Separador Facturación para OT
+Línea 12968 | Sección JavaScript | Mostrar tab inventario primero
+Línea 12978 | Sección JavaScript | FIX-D26-REST: Carga facturas D26 vía REST con auth token anónimo (requiere auth != null en Firebase Rules)
+Línea 12984 | Sección JavaScript | odfor-bae97-default-rtdb.firebaseio.com/estado/D26.json?auth='+tok);
+Línea 13056 | Comentario HTML | ══════════ PANEL COLLAPSE SYSTEM ══════════
+Línea 13226 | Encabezado H2 | ⚖️ Diferencias — Cuadre global SOLO LECTURA
+Línea 13230 | Encabezado H3 | 🚨 Pagos sin factura
+Línea 13231 | Encabezado H3 | ⚠️ Montos que no calzan (pago vinculado ≠ saldo factura)
+Línea 13232 | Encabezado H3 | ✔ Calza con comisión de pasarela (dif. 0,5%–4,5%)
+Línea 13233 | Encabezado H3 | 📄 Facturas sin pago (cobranza)

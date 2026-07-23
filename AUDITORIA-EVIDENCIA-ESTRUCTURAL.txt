@@ -1,0 +1,64 @@
+MAPA DE EVIDENCIA ESTRUCTURAL POR MÓDULO
+========================================================================
+
+Nota: este nivel mide presencia técnica, no calidad, estabilidad ni madurez funcional.
+
+Pagos y conciliación bancaria: ALTA evidencia estructural | puntaje 238
+  Funciones: 47 | IDs interfaz: 41 | Claves localStorage: 2 | Rutas Firebase: 3 | Archivos: 0
+  Ejemplos funciones: _onAlertaPago, abrirEstTrfDrop, abrirPagoMultiple, abrirPagoMultipleTrfEl, agregarTrf, anularPagoFolio, anularTrfAplicado, borrarDuplicadosCartola
+  Ejemplos interfaz: busCartola, busConciliacion, busTrf, cartolaBody, cartolaTabla, cartolaXlsInput, cntTrf, ctlAbonos
+
+Integraciones externas: ALTA evidencia estructural | puntaje 232
+  Funciones: 30 | IDs interfaz: 10 | Claves localStorage: 3 | Rutas Firebase: 3 | Archivos: 26
+  Ejemplos funciones: _leerKommoToken, _parsearItemMonday, _trelloSincronizarBitacora, fetchMondayItems, forzarSincronizacion, guardarEnFirebase, httpsPatchFirebase, httpsPatchKommo
+  Ejemplos interfaz: fbSyncInd, kommo-alertas-pago, kommoBadge, kommoChecklistModal, kommoCotizModal, kommoTabBtn, kommoTelBadge, kommoTelBtn
+
+Reportes, KPI y dashboard: ALTA evidencia estructural | puntaje 112
+  Funciones: 8 | IDs interfaz: 44 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: _g1KpiChip, actualizarResumenPM, buildResumen, buildResumen26, cerrarResumenDiario, mostrarResumenDiario, renderKpiDetalle, toggleKpiDetalle
+  Ejemplos interfaz: cotKpiApro, cotKpiAproMonto, cotKpiPend, cotKpiPendMonto, cotKpiRow, cotKpiTotal, cotKpiVenc, cruceAnioKpis
+
+Despacho y logística: ALTA evidencia estructural | puntaje 110
+  Funciones: 17 | IDs interfaz: 22 | Claves localStorage: 1 | Rutas Firebase: 0 | Archivos: 3
+  Ejemplos funciones: _registrarEmailEnviado, crearGuia, enviaCrearEnvio, enviaRate, enviarATrello, enviarEmailCobranza, enviarTodasATrello, extraerDatosEnvia
+  Ejemplos interfaz: enviaModalOverlay, envia_alto, envia_ancho, envia_cancelar, envia_cerrar, envia_ciudad, envia_confirmar, envia_cotizar
+
+Importación y exportación: ALTA evidencia estructural | puntaje 67
+  Funciones: 21 | IDs interfaz: 2 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: _parseCsvCot, exportarCotizXls, exportarCruceDiario, exportarCruceMensual, exportarEstado, exportarXlsPagos, ffExportarExcel, importarCartolaBanco
+  Ejemplos interfaz: importFacturasFile, importFile
+
+Clientes y ventas: ALTA evidencia estructural | puntaje 61
+  Funciones: 9 | IDs interfaz: 17 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: _calcularPrecioCliente, _exRUT, _nRUT, calcularContactosHoy, extraerRUT, invCargarVentas, normRUT, renderClientes
+  Ejemplos interfaz: cotCliente, cotContacto, cotRut, envia_precio_cliente, fVendedor, ffMCliente, invVentasFile, invVentasMsg
+
+Cotizaciones y pedidos: ALTA evidencia estructural | puntaje 48
+  Funciones: 10 | IDs interfaz: 9 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: cotizar, desvincularCotizWP, exportarCotizXls, importarCotizXls, kommoAbrirCotizador, kommoCotizarAPI, openCotizador, renderCotiz
+  Ejemplos interfaz: btn-cotizar, envia_cotizar, fw-btn-cotizar, kommoCotizModal, otCotizRef, panelPedidos, tCotiz, tCotizador
+
+Facturación y documentos: ALTA evidencia estructural | puntaje 39
+  Funciones: 7 | IDs interfaz: 9 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: anularPagoFolio, asignarFolioDirecto, buscarFacturasAplicar, editarFolioTrf, importarFacturacionCL, importarFacturasExcel, initBitFolioList
+  Ejemplos interfaz: bitFolio, cqFolio, ed_${r.folio}, ew_${r.folio}, fFactura, folio-inp-, folioList, importFacturasFile
+
+Inventario y productos: MEDIA evidencia estructural | puntaje 32
+  Funciones: 6 | IDs interfaz: 7 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: invCargarStockExcel, invEditarProducto, invGuardarNuevoProducto, invModalNuevoProducto, otCargarSelectProductos, renderInventario
+  Ejemplos interfaz: fProducto, invAlertaStock, invKpiSinStock, invStockFile, panelInventario, tInventario, tablaInventario
+
+Producción, diseño y calidad: MEDIA evidencia estructural | puntaje 23
+  Funciones: 5 | IDs interfaz: 4 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: _pollGrafica1, cargarAnalisisProduccion, esGrafica1, guardarMensajeGrafica1, renderGrafica1
+  Ejemplos interfaz: grafica1Badge, grafica1Body, grafica1TabBtn, tGrafica1
+
+Usuarios, roles y seguridad: MEDIA evidencia estructural | puntaje 19
+  Funciones: 3 | IDs interfaz: 2 | Claves localStorage: 0 | Rutas Firebase: 2 | Archivos: 0
+  Ejemplos funciones: gestionarUsuarios, mostrarModalUsuario, seleccionarUsuario
+  Ejemplos interfaz: _modalUsuarios, modalUsuario
+
+Cobranza y cuentas por cobrar: MEDIA evidencia estructural | puntaje 15
+  Funciones: 5 | IDs interfaz: 0 | Claves localStorage: 0 | Rutas Firebase: 0 | Archivos: 0
+  Ejemplos funciones: _cotVencida, autoMarcarVencidas, enviarEmailCobranza, gestionarUsuarios, getGestionesHoy
+

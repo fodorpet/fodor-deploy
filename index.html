@@ -1874,7 +1874,7 @@ var KOMMO_ULTIMO_CHECK=null;
 var KOMMO_IDS_VISTOS=new Set();
 var KOMMO_TEL = {}; // {rut_norm: {nombre,tel,correo}} — cargado desde Excel Kommo
 var MONDAY_DATA = []; // ítems del board de producción Monday (cargado al abrir tab Gráfica 1)
-try{if(!localStorage.getItem('fodorspa_kommo_token'))localStorage.setItem('fodorspa_kommo_token','eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImJjNzAxZjRiMWVlYmI1ZGU4Yzg1ODI5YWIxYzkwOWUwMGI1Y2YwN2JiMjQ5MmU0MjUzNDVmMjM1ZTc2ZTRmNzQ0M2I4Njk5ZWNjYjAwZjIzIn0.eyJhdWQiOiI2OWYzNGRmYi02N2ExLTQ2MTgtODIwNy1hNWQzODI0YjQ0NTEiLCJqdGkiOiJiYzcwMWY0YjFlZWJiNWRlOGM4NTgyOWFiMWM5MDllMDBiNWNmMDdiYjI0OTJlNDI1MzQ1ZjIzNWU3NmU0Zjc0NDNiODY5OWVjY2IwMGYyMyIsImlhdCI6MTc4Mzk0OTU5NSwibmJmIjoxNzgzOTQ5NTk1LCJleHAiOjE3ODU0NTYwMDAsInN1YiI6IjExNTQ4MjMxIiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMzMTI5MjU5LCJiYXNlX2RvbWFpbiI6ImtvbW1vLmNvbSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiLCJ1c2Vyc19hY3RpdmF0ZSIsInVzZXJzX2FkZCIsInVzZXJzX2RlYWN0aXZhdGUiXSwiaGFzaF91dWlkIjoiYWYxMjZjNzgtZTU3MS00ZGZhLTg4YzEtNTA1NTdkYTA2OGVkIiwiYXBpX2RvbWFpbiI6ImFwaS1nLmtvbW1vLmNvbSJ9.g1eQ4B1lnU6Ax2CeVaOaWOKf_i55X8hNKZ1zRMNB_vGT8vi9b35ptSVgHo-7EatdFJhuVURCtHxQS78g8ha7Sf13OBtaNzYvF9nh9yAwr3B5owXLwLNZye-CSts7eldja6Uv0upaHzmDYVa7z4F_UU7FpiBdaGlSJ76OkMu_8iI50tMc_hRECTe6W6mwT3JxTV0XzrBOnS49GMwYh-jWX3V-b4jGXYlS32NyLzId4BlbQRemM0Ey2jm_2pwGN2KrZQas5kvjdOY6mwbgzCe2PEDSn1m7i7jWpj9AbRgDbYEfNmorSRADukXw5syml77xpOED6sQd7iQ0K4zNCTSE_Q');}catch(e){}
+try{localStorage.removeItem('fodorspa_kommo_token');}catch(e){}
 var BORRADAS25 = [];
 var WEBPAY_DATA = [];
 var GETNET_DATA = [];
@@ -2796,8 +2796,8 @@ function _trelloSincronizarBitacora(folio){
 // ==================== FIN TRELLO AUTO-SYNC ====================
 
 // ==================== TRELLO INTEGRATION ====================
-var _TRELLO_KEY = '663db86a924b383d17ad5338a48c6914';
-var _TRELLO_TOKEN = 'ATTAc4602e35d7374f6631a31a5d7ee9af0bbd2ccd0d558eec4444780a83e5f0aa7dB3871495';
+var _TRELLO_KEY = ''; // Integración deshabilitada hasta migrarla al backend
+var _TRELLO_TOKEN = ''; // Token revocado y retirado del frontend
 var _TRELLO_LIST_HOY = '6a468b2519593e27cb9015bb'; // NUEVAS — Gestión de Cobranzas Fodor Spa
 var _TRELLO_LISTS = {
   'PENDIENTE':     '6a468b2519593e27cb9015bb',
@@ -5740,7 +5740,7 @@ window._appInit2 = function(){
 };  // fin window._appInit2
 
 // ===== KOMMO CRM INTEGRATION =====
-function kommoGetToken(){ return localStorage.getItem('fodorspa_kommo_token')||''; }
+function kommoGetToken(){ return ''; }
 
 function kommoGetField(lead, fieldId){
   if(!lead.custom_fields_values) return '';
@@ -5807,7 +5807,7 @@ function renderKommo(){
   var token=kommoGetToken();
   var html='<div style="padding:14px 16px;">';
   if(!token){
-    html+='<div style="text-align:center;padding:30px;"><p style="color:#666;font-size:14px;margin-bottom:16px;">⚠️ No hay token de Kommo configurado.</p><button onclick="kommoActualizarToken()" style="background:#7c3aed;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;">🔑 Configurar Token</button></div>';
+    html+='<div style="text-align:center;padding:30px;"><p style="color:#666;font-size:14px;">🔒 Integración con Kommo temporalmente deshabilitada mientras se migra la credencial al backend seguro.</p></div>';
     html+='</div>';
     el.innerHTML=html;
     return;
@@ -5873,20 +5873,18 @@ function renderKommo(){
   }
   html+='<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;">';
   html+='<span>Campo: ENVÍOS (ID '+KOMMO_FIELD_ENVIOS+')</span>';
-  html+='<button onclick="kommoActualizarToken()" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;font-size:11px;color:#94a3b8;cursor:pointer;">🔑 Actualizar token</button>';
+  html+='<span style="font-size:11px;color:#64748b;">🔒 Credencial administrada fuera del navegador</span>';
   html+='</div>';
   html+='</div>';
   el.innerHTML=html;
 }
 
 function kommoActualizarToken(){
-  var t=prompt('Pega aquí el nuevo Token de Kommo (larga duración):');
-  if(t&&t.trim()){
-    localStorage.setItem('fodorspa_kommo_token',t.trim());
-    KOMMO_IDS_VISTOS=new Set();
-    iniciarKommoPolling();
-    renderKommo();
-  }
+  alert(
+    'La credencial de Kommo ya no se configura en el navegador. ' +
+    'La integración está temporalmente deshabilitada hasta completar ' +
+    'la migración segura.'
+  );
 }
 
 document.addEventListener('click',function(e){

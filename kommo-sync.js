@@ -1,12 +1,38 @@
 #!/usr/bin/env node
-// Fodor Spa — Kommo Sync (token incluido)
+// Fodor Spa — Kommo Sync (credencial protegida en Llavero de macOS)
 // Uso: node kommo-sync.js
 // Deja corriendo en terminal mientras usas Fodor
 
 const https = require('https');
+const { execFileSync } = require('child_process');
 
-const TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjU3NjQzYjE1ZDliYjc0YjFkNTY5YzM5NDJlMjYyN2IxYTg3NmZiNmRkNDMwOTMwZTNhZGRmY2QzMmJkMjJkOTM5YmRmNTFjY2VjNGYzM2EyIn0.eyJhdWQiOiI2OWYzNGRmYi02N2ExLTQ2MTgtODIwNy1hNWQzODI0YjQ0NTEiLCJqdGkiOiI1NzY0M2IxNWQ5YmI3NGIxZDU2OWMzOTQyZTI2MjdiMWE4NzZmYjZkZDQzMDkzMGUzYWRkZmNkMzJiZDIyZDkzOWJkZjUxY2NlYzRmMzNhMiIsImlhdCI6MTc4NDMxODc3NywibmJmIjoxNzg0MzE4Nzc3LCJleHAiOjE3ODU0NTYwMDAsInN1YiI6IjExNTQ4MjMxIiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMzMTI5MjU5LCJiYXNlX2RvbWFpbiI6ImtvbW1vLmNvbSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiLCJ1c2Vyc19hY3RpdmF0ZSIsInVzZXJzX2FkZCIsInVzZXJzX2RlYWN0aXZhdGUiXSwiaGFzaF91dWlkIjoiZDJkMTYyYzQtYzliMC00YjRmLTk3ZjEtNTFiZWJiNDk5MWJhIiwiYXBpX2RvbWFpbiI6ImFwaS1nLmtvbW1vLmNvbSJ9.BWDJCwMneQqsUnlpMgc3fvYgctxqBRrnQ6-tw5dE1K2-QDtJmwISb4PalhJfIplrJcAwQM2iqSg-R_VgKIuQN3Gg7lijcXqWRDS5wP8qWTryLr9W_JybWfuU6GQUYEIsJtkMLqipS3FC4kAMcxBonR7HmlFiaZr3ZY2hYK2OP12cpMZMx2jaOgePNBhYZYSk5wRIoRJlxhuPm0CHW_SEX9f3seBOVOTEUUgtg1f5QdW24q3Fr78iyyYsoqrmVpZkyxArqQuUtT77vWxvmZ3wSrzlP1GjHVRSshnJyzIVYhYQNA1GJxdy1SAPiEKrcKn6-S9ssBtEP-liDEorWZUcEA';
+function cargarKommoToken() {
+  const tokenEntorno = (process.env.KOMMO_TOKEN || '').trim();
+  if (tokenEntorno) return tokenEntorno;
 
+  try {
+    return execFileSync(
+      '/usr/bin/security',
+      [
+        'find-generic-password',
+        '-a', process.env.USER || '',
+        '-s', 'fodor-kommo-token',
+        '-w'
+      ],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }
+    ).trim();
+  } catch (error) {
+    console.error(
+      '[SEGURIDAD] No se encontró la credencial de Kommo en el Llavero de macOS.'
+    );
+    process.exit(1);
+  }
+}
+
+const TOKEN = cargarKommoToken();
 const KOMMO_DOMAIN  = 'marcelofodorcl.kommo.com';
 const FIELD_ENVIOS  = 1109935;   // toggle ENVÍOS
 const FIELD_PAGO    = 1109811;   // toggle PAGÓ

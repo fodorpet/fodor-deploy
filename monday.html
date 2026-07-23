@@ -283,13 +283,13 @@ var COL = {
 };
 
 // Guardar token
-var savedToken = localStorage.getItem('monday_token_fodor') || 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjY3OTY0Mjc3MiwiYWFpIjoxMSwidWlkIjo3MjEzODMzMywiaWFkIjoiMjAyNi0wNy0wN1QxMzozMjo0NC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6Mjc5OTI5MjUsInJnbiI6InVzZTEifQ.lXR5yL9F53qT71VOQhUS4-dBeHUGvXSat8xMiDIT4LQ';
+try { localStorage.removeItem('monday_token_fodor'); } catch (e) {}
+var savedToken = ''; // Token revocado y retirado del navegador
 if(savedToken) document.getElementById('tokenInput').value = savedToken;
 
 function getToken(){
-  var t = document.getElementById('tokenInput').value.trim();
-  if(t) localStorage.setItem('monday_token_fodor', t);
-  return t;
+  console.warn('[SEGURIDAD] Integración directa con Monday deshabilitada.');
+  return '';
 }
 
 function switchTab(tab, el){

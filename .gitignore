@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Dependencias
+node_modules/
+
+# Firebase temporal
+.firebase/
+
+# Sesiones y autenticación
+.watcher_auth/
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Credenciales y secretos
+monday-token.txt
+.env
+.env.*
+*.key
+*.pem
+
+# Respaldos
+backups/
+
+# Archivos temporales
+.fuse_hidden*
+.Rhistory
+*.log
+
+# Archivos comprimidos y copias de prueba
+*.zip
+
+# Copias locales duplicadas verificadas
+fodor-kommo-extension 2/
+fodor-kommo-extension 3/
+kommo-widget-fodor 2/
+
+# Archivo vacío accidental
+....

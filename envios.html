@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fodor Fast — Cotizador Envíos</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1e36;min-height:100vh;color:#e2e8f0}
+  .header{background:#0a1628;border-bottom:2px solid #2563eb;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+  .header-logo{font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.5px}
+  .header-logo span{color:#3b82f6}
+  .header-sub{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase}
+  .container{max-width:700px;margin:0 auto;padding:20px 16px}
+  .card{background:#1e3a5f;border-radius:12px;padding:16px;margin-bottom:14px}
+  .card-title{font-size:11px;font-weight:800;color:#3b82f6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+  /* Catálogo */
+  .cat-label{font-size:10px;font-weight:800;color:#0369a1;text-transform:uppercase;margin:10px 0 4px;padding-top:8px;border-top:1px solid #1e3a5f}
+  .cat-label:first-child{margin-top:0;border-top:none}
+  .prod-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:7px;margin-bottom:2px;background:#152d4a;transition:background 0.15s}
+  .prod-row.active{background:#1a4a7a}
+  .prod-name{font-size:11px;color:#cbd5e1;flex:1;line-height:1.3}
+  .qty-ctrl{display:flex;align-items:center;gap:5px;flex-shrink:0}
+  .btn-qty{width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;font-size:15px;font-weight:900;line-height:1;padding:0;transition:transform 0.1s}
+  .btn-minus{background:#334155;color:#94a3b8}
+  .btn-plus{background:#2563eb;color:#fff}
+  .btn-qty:hover{transform:scale(1.1)}
+  .qty-num{font-size:13px;font-weight:900;color:#60a5fa;min-width:20px;text-align:center}
+  /* Totales */
+  .total-bar{display:flex;justify-content:space-between;align-items:center;background:#0a1628;border-radius:8px;padding:10px 14px}
+  .total-val{font-size:13px;font-weight:900;color:#7dd3fc}
+  /* Inputs */
+  .form-group{margin-bottom:10px}
+  .form-label{font-size:10px;font-weight:700;color:#94a3b8;display:block;margin-bottom:4px;text-transform:uppercase}
+  .form-input{width:100%;border:1.5px solid #334155;border-radius:7px;padding:9px 12px;font-size:12px;font-weight:600;background:#0f1e36;color:#e2e8f0;outline:none;transition:border-color 0.2s}
+  .form-input:focus{border-color:#2563eb}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  /* % Ganancia */
+  .pct-bar{display:flex;align-items:center;gap:10px;background:#052e16;border:1.5px solid #16a34a;border-radius:8px;padding:10px 14px}
+  .pct-label{font-size:11px;font-weight:700;color:#4ade80}
+  .pct-input{width:60px;border:1.5px solid #16a34a;border-radius:5px;padding:4px 8px;font-size:14px;font-weight:900;color:#4ade80;text-align:center;background:#0f1e36;outline:none}
+  .pct-hint{font-size:10px;color:#22c55e}
+  /* Botón cotizar */
+  .btn-main{width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:9px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:0.3px;transition:opacity 0.2s}
+  .btn-main:hover{opacity:0.9}
+  .btn-main:disabled{opacity:0.5;cursor:not-allowed}
+  /* Tarifas */
+  .rate-card{background:#152d4a;border:2px solid #334155;border-radius:9px;padding:12px;margin-bottom:7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.2s}
+  .rate-card:hover{border-color:#2563eb;background:#1a3a6e}
+  .rate-card.selected{border-color:#0ea5e9;background:#0c3460}
+  .rate-carrier{font-size:13px;font-weight:800;color:#e2e8f0}
+  .rate-dias{font-size:10px;color:#64748b;margin-top:2px}
+  .rate-prices{text-align:right}
+  .price-cost{font-size:10px;color:#64748b;font-weight:600}
+  .price-cost-val{font-size:11px;color:#94a3b8;font-weight:700}
+  .price-client{font-size:10px;color:#16a34a;font-weight:700;margin-top:3px}
+  .price-client-val{font-size:16px;font-weight:900;color:#4ade80}
+  /* Formulario envío */
+  .envio-form{border-top:2px solid #2563eb;padding-top:12px;margin-top:8px}
+  .btn-generar{width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:9px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;margin-top:10px;transition:opacity 0.2s}
+  .btn-generar:hover{opacity:0.9}
+  .btn-generar:disabled{opacity:0.5;cursor:not-allowed}
+  .result-box{padding:10px 12px;border-radius:7px;font-size:12px;font-weight:700;margin-top:8px}
+  .result-success{background:#052e16;color:#4ade80;border:1px solid #16a34a}
+  .result-error{background:#1a0000;color:#f87171;border:1px solid #dc2626}
+  .result-warning{background:#1c1500;color:#fbbf24;border:1px solid #d97706}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid #334155;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .chip{display:inline-block;background:#1e3a5f;border:1px solid #334155;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;color:#94a3b8;margin:2px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">FODOR <span>FAST</span></div>
+    <div class="header-sub">Cotizador de Envíos · Envia.com</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══ CHECKLIST DE VERIFICACIÓN (solo visible si viene de Kommo) ══ -->
+  <div id="ckl-panel" style="background:#1e293b;border:2px solid #dc2626;border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:800;color:#ef4444;margin-bottom:12px;">🔍 Verificación antes de despachar</div>
+
+    <!-- Unidades -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px;">¿Cuántas unidades recibes de producción?</div>
+      <input id="ckl-cant" type="number" min="0" step="1" placeholder="0"
+        style="width:100%;box-sizing:border-box;background:#0f172a;border:2px solid #334155;border-radius:8px;padding:10px;font-size:20px;font-weight:800;color:#e2e8f0;outline:none;text-align:center;"
+        oninput="cklActualizar()">
+      <div id="ckl-cant-alerta" style="display:none;margin-top:5px;background:#7f1d1d;border:1px solid #ef4444;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;color:#fca5a5;">⚠️ Cantidad diferente a lo esperado — verifica con producción</div>
+    </div>
+
+    <!-- Diseño -->
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#0f172a;border-radius:8px;padding:10px 14px;margin-bottom:8px;">
+      <div style="font-size:12px;color:#e2e8f0;font-weight:600;">¿El diseño está correcto?</div>
+      <div style="display:flex;gap:6px;">
+        <button id="ckl-dis-si" onclick="cklToggle('dis',true)"  style="background:#166534;color:#4ade80;border:1.5px solid #16a34a;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✓ Sí</button>
+        <button id="ckl-dis-no" onclick="cklToggle('dis',false)" style="background:#0f172a;color:#64748b;border:1.5px solid #334155;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✗ No</button>
+      </div>
+    </div>
+
+    <!-- Cliente -->
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#0f172a;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:12px;color:#e2e8f0;font-weight:600;">¿El cliente en el paquete es correcto?</div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px;">
+        <button id="ckl-cli-si" onclick="cklToggle('cli',true)"  style="background:#166534;color:#4ade80;border:1.5px solid #16a34a;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✓ Sí</button>
+        <button id="ckl-cli-no" onclick="cklToggle('cli',false)" style="background:#0f172a;color:#64748b;border:1.5px solid #334155;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✗ No</button>
+      </div>
+    </div>
+
+    <!-- Error bloqueante -->
+    <div id="ckl-bloqueo" style="display:none;background:#7f1d1d;border:1px solid #ef4444;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;font-weight:700;color:#fca5a5;text-align:center;">
+      🚫 No puedes despachar con errores. Devuelve a producción.
+    </div>
+
+    <!-- Badge verificado -->
+    <div id="ckl-ok" style="display:none;background:#052e16;border:1px solid #16a34a;border-radius:8px;padding:10px;font-size:12px;font-weight:800;color:#4ade80;text-align:center;">
+      ✅ Verificado — puedes continuar con la cotización
+    </div>
+  </div>
+
+  <!-- CATÁLOGO -->
+  <div class="card">
+    <div class="card-title">📦 Selecciona productos</div>
+    <div id="catalog"></div>
+  </div>
+
+  <!-- TOTAL -->
+  <div class="card" style="padding:12px 16px">
+    <div class="total-bar">
+      <span style="font-size:11px;color:#94a3b8;font-weight:600;">TOTAL PEDIDO</span>
+      <span id="total-txt" class="total-val">0 cajas · 0.0 kg</span>
+    </div>
+  </div>
+
+  <!-- CIUDAD + % GANANCIA -->
+  <div class="card">
+    <div class="form-group">
+      <label class="form-label">Ciudad de destino</label>
+      <input id="ciudad" class="form-input" placeholder="ej: Concepción, Temuco, Valparaíso...">
+    </div>
+    <div class="pct-bar">
+      <span class="pct-label">📊 % Ganancia:</span>
+      <input id="pct" type="number" class="pct-input" value="20" min="0" max="999">
+      <span class="pct-label">%</span>
+      <span class="pct-hint">→ 🟢 precio cliente</span>
+    </div>
+  </div>
+
+  <!-- BOTÓN COTIZAR -->
+  <button id="btn-cotizar" class="btn-main">🔍 Buscar Tarifas Envia.com</button>
+
+  <!-- TARIFAS -->
+  <div id="rates-area"></div>
+
+</div>
+
+<script>
+// ── CONSTANTES ──────────────────────────────────────────────────────────────
+var FB_DB   = 'https://odfor-bae97-default-rtdb.firebaseio.com';
+var ENVIA_T = 'c4b4d0ebd237ece6747226316f00fb380ca7d32fdedc7ab912359864643c50d5';
+var USD_CLP = 930;
+
+// ── CATÁLOGO ────────────────────────────────────────────────────────────────
+var CATALOG = [
+  {sku:'FSP-001',nombre:'Vaso 500cc Natural Liso',    cat:'🥤 Vasos',    kg:23,l:69,a:42,h:50},
+  {sku:'FSP-002',nombre:'Vaso 500cc Natural Rugoso',  cat:'🥤 Vasos',    kg:23,l:69,a:42,h:50},
+  {sku:'FSP-003',nombre:'Vaso 500cc PP Color',        cat:'🥤 Vasos',    kg:23,l:69,a:42,h:50},
+  {sku:'FSP-004',nombre:'Vaso 380cc Natural',         cat:'🥤 Vasos',    kg:15,l:61,a:27,h:38},
+  {sku:'FSP-005',nombre:'Vaso Poli 380cc',            cat:'🥤 Vasos',    kg:15,l:61,a:27,h:38},
+  {sku:'FSP-006',nombre:'Vaso 280cc',                 cat:'🥤 Vasos',    kg:12,l:53,a:35,h:40},
+  {sku:'FSP-007',nombre:'Vaso 800cc WPC',             cat:'🥤 Vasos',    kg:11,l:58,a:35,h:54},
+  {sku:'FSP-016',nombre:'Vaso 80cc',                  cat:'🥤 Vasos',    kg:12,l:53,a:45,h:27},
+  {sku:'FSP-018',nombre:'Vaso 500cc Metalizado',      cat:'🥤 Vasos',    kg:23,l:69,a:42,h:50},
+  {sku:'FSP-019',nombre:'Vaso 380cc Color',           cat:'🥤 Vasos',    kg:15,l:61,a:27,h:38},
+  {sku:'FSP-008',nombre:'Copa Tanker 500cc',          cat:'🍷 Copas',    kg:8, l:57,a:32,h:27},
+  {sku:'FSP-009',nombre:'Copa Aperitivo',             cat:'🍷 Copas',    kg:9, l:57,a:32,h:57},
+  {sku:'FSP-010',nombre:'Copa Cracker',               cat:'🍷 Copas',    kg:9, l:57,a:32,h:57},
+  {sku:'FSP-011',nombre:'Copa 600cc',                 cat:'🍷 Copas',    kg:8, l:57,a:32,h:27},
+  {sku:'FSP-012',nombre:'Copa/Vaso 415cc',            cat:'🍷 Copas',    kg:9, l:57,a:32,h:57},
+  {sku:'FSP-017',nombre:'Copa 200cc',                 cat:'🍷 Copas',    kg:8, l:45,a:30,h:50},
+  {sku:'FSP-013',nombre:'Hielera',                    cat:'🧊 Accesorios',kg:3, l:61,a:27,h:38},
+  {sku:'FSP-014',nombre:'Pulseras',                   cat:'🎁 Promo',    kg:1.5,l:29,a:21.5,h:5},
+  {sku:'FSP-015',nombre:'Lanyard',                    cat:'🎁 Promo',    kg:2, l:35,a:25,h:20},
+  {sku:'FSP-020',nombre:'Pack Mixto (cliente)',       cat:'📦 Mixto',    kg:1, l:30,a:30,h:30}
+];
+
+var ESTADOS = {
+  'SANTIAGO':'RM','PROVIDENCIA':'RM','LAS CONDES':'RM','NUNOA':'RM','MAIPU':'RM',
+  'LA FLORIDA':'RM','PUENTE ALTO':'RM','SAN BERNARDO':'RM','QUILICURA':'RM',
+  'PUDAHUEL':'RM','VITACURA':'RM','COLINA':'RM','BUIN':'RM','MELIPILLA':'RM',
+  'VALPARAISO':'VS','VALPARAÍSO':'VS','VIÑA DEL MAR':'VS','VINA DEL MAR':'VS',
+  'QUILPUE':'VS','VILLA ALEMANA':'VS','SAN ANTONIO':'VS','QUILLOTA':'VS',
+  'LA CALERA':'VS','LOS ANDES':'VS','SAN FELIPE':'VS',
+  'CONCEPCION':'BI','CONCEPCIÓN':'BI','TALCAHUANO':'BI','CORONEL':'BI',
+  'LOS ANGELES':'BI','LOS ÁNGELES':'BI','LOTA':'BI',
+  'TEMUCO':'AR','VILLARRICA':'AR','PUCON':'AR','PUCÓN':'AR',
+  'LA SERENA':'CO','COQUIMBO':'CO','OVALLE':'CO',
+  'ANTOFAGASTA':'AN','CALAMA':'AN','TOCOPILLA':'AN',
+  'IQUIQUE':'TA','ALTO HOSPICIO':'TA','ARICA':'AP',
+  'RANCAGUA':'LI','SAN FERNANDO':'LI',
+  'TALCA':'ML','CURICO':'ML','CURICÓ':'ML','LINARES':'ML',
+  'CHILLAN':'NB','CHILLÁN':'NB',
+  'VALDIVIA':'LR','OSORNO':'LL','PUERTO MONTT':'LL',
+  'CASTRO':'LL','ANCUD':'LL','PUERTO VARAS':'LL',
+  'COPIAPO':'AT','COPIAPÓ':'AT',
+  'COYHAIQUE':'AY','PUNTA ARENAS':'MA'
+};
+
+var ORIGEN = {
+  name:'Fodor Fast',company:'Fodor SpA',
+  email:'comercial@fodorfast.cl',phone:'56986298699',
+  street:'Av. Providencia',number:'1234',
+  district:'Providencia',city:'Santiago',
+  state:'RM',country:'CL',postalCode:'7500000'
+};
+
+// ── URL PARAMS (desde extensión Chrome/Kommo) ─────────────────────────────────
+var _URL_PARAMS = (function() {
+  try { return new URLSearchParams(location.search); } catch(e) { return { get: function() { return null; } }; }
+})();
+var _KOMMO_LEAD_ID = _URL_PARAMS.get('lead') ? ('kommo-' + _URL_PARAMS.get('lead')) : null;
+
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+var _qtys  = {};
+var _rates = [];
+var _selIdx = -1;
+
+// Pre-llenar ciudad desde URL param
+(function() {
+  var c = _URL_PARAMS.get('ciudad');
+  if (c) { var el = document.getElementById('ciudad'); if (el) el.value = decodeURIComponent(c); }
+})();
+
+// ── CHECKLIST (solo si viene de Kommo) ──────────────────────────────────────
+var _cklDis = true, _cklCli = true, _cklVerificado = false;
+
+(function() {
+  // Bloquear botón cotizar hasta que se complete la verificación
+  var btn = document.getElementById('btn-cotizar');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.title = 'Completa la verificación primero'; }
+  cklActualizar();
+})();
+
+function cklToggle(campo, valor) {
+  if (campo === 'dis') {
+    _cklDis = valor;
+    document.getElementById('ckl-dis-si').style.cssText += ';background:' + (valor ? '#166534' : '#0f172a') + ';color:' + (valor ? '#4ade80' : '#64748b') + ';border-color:' + (valor ? '#16a34a' : '#334155');
+    document.getElementById('ckl-dis-no').style.cssText += ';background:' + (!valor ? '#7f1d1d' : '#0f172a') + ';color:' + (!valor ? '#fca5a5' : '#64748b') + ';border-color:' + (!valor ? '#ef4444' : '#334155');
+  } else {
+    _cklCli = valor;
+    document.getElementById('ckl-cli-si').style.cssText += ';background:' + (valor ? '#166534' : '#0f172a') + ';color:' + (valor ? '#4ade80' : '#64748b') + ';border-color:' + (valor ? '#16a34a' : '#334155');
+    document.getElementById('ckl-cli-no').style.cssText += ';background:' + (!valor ? '#7f1d1d' : '#0f172a') + ';color:' + (!valor ? '#fca5a5' : '#64748b') + ';border-color:' + (!valor ? '#ef4444' : '#334155');
+  }
+  cklActualizar();
+}
+
+function cklActualizar() {
+  if (!document.getElementById('ckl-panel')) return;
+  var hayError = !_cklDis || !_cklCli;
+  var cant = parseInt((document.getElementById('ckl-cant') || {}).value) || 0;
+  // Alerta cantidad (warning, no bloqueante)
+  var alCant = document.getElementById('ckl-cant-alerta');
+  if (alCant) alCant.style.display = (cant > 0 && cant < 10) ? 'none' : 'none'; // placeholder, sin Monday data aquí
+  // Bloqueo
+  document.getElementById('ckl-bloqueo').style.display = hayError ? 'block' : 'none';
+  document.getElementById('ckl-ok').style.display = (!hayError && cant > 0) ? 'block' : 'none';
+  _cklVerificado = !hayError && cant > 0;
+  var btn = document.getElementById('btn-cotizar');
+  if (btn) {
+    btn.disabled = !_cklVerificado;
+    btn.style.opacity = _cklVerificado ? '1' : '0.4';
+    btn.title = _cklVerificado ? '' : 'Completa la verificación primero';
+  }
+}
+
+// ── CATÁLOGO DOM ─────────────────────────────────────────────────────────────
+(function buildCatalog() {
+  var cats = {}, order = [];
+  CATALOG.forEach(function(p) {
+    if (!cats[p.cat]) { cats[p.cat] = []; order.push(p.cat); }
+    cats[p.cat].push(p);
+  });
+  var html = '';
+  order.forEach(function(cat) {
+    html += '<div class="cat-label">' + cat + '</div>';
+    cats[cat].forEach(function(p) {
+      html += '<div class="prod-row" id="row-' + p.sku + '">'
+        + '<span class="prod-name">' + p.nombre + '</span>'
+        + '<div class="qty-ctrl">'
+        + '<button class="btn-qty btn-minus" data-sku="' + p.sku + '">−</button>'
+        + '<span class="qty-num" id="qty-' + p.sku + '">0</span>'
+        + '<button class="btn-qty btn-plus" data-sku="' + p.sku + '">+</button>'
+        + '</div></div>';
+    });
+  });
+  document.getElementById('catalog').innerHTML = html;
+
+  document.getElementById('catalog').addEventListener('click', function(e) {
+    var btn = e.target.closest('.btn-qty');
+    if (!btn) return;
+    var sku = btn.dataset.sku;
+    var d = btn.classList.contains('btn-plus') ? 1 : -1;
+    _qtys[sku] = Math.max(0, (_qtys[sku] || 0) + d);
+    document.getElementById('qty-' + sku).textContent = _qtys[sku];
+    document.getElementById('row-' + sku).classList.toggle('active', _qtys[sku] > 0);
+    recalcTotal();
+  });
+})();
+
+function recalcTotal() {
+  var cajas = 0, kg = 0;
+  CATALOG.forEach(function(p) {
+    var q = _qtys[p.sku] || 0;
+    cajas += q; kg += q * p.kg;
+  });
+  document.getElementById('total-txt').textContent =
+    cajas + ' caja' + (cajas !== 1 ? 's' : '') + ' · ' + kg.toFixed(1) + ' kg';
+  return { cajas: cajas, kg: kg };
+}
+
+function getPct() { return parseFloat(document.getElementById('pct').value) || 0; }
+
+function recalcPrecios() {
+  var pct = getPct();
+  document.querySelectorAll('[data-base]').forEach(function(el) {
+    var base = parseInt(el.dataset.base);
+    var cliente = Math.round(base * (1 + pct / 100));
+    el.textContent = '$' + cliente.toLocaleString('es-CL') + ' CLP';
+  });
+}
+document.getElementById('pct').addEventListener('input', recalcPrecios);
+
+// ── ENVIA API ────────────────────────────────────────────────────────────────
+function buildPackages() {
+  var pkgs = [];
+  CATALOG.forEach(function(p) {
+    var q = _qtys[p.sku] || 0;
+    if (q > 0 && p.l > 0) {
+      pkgs.push({
+        content: p.nombre, amount: q, type: 'box',
+        weight: p.kg, insurance: 0, declaredValue: 0,
+        weightUnit: 'KG', lengthUnit: 'CM',
+        dimensions: { length: p.l, width: p.a, height: p.h }
+      });
+    }
+  });
+  if (!pkgs.length) pkgs = [{
+    content:'Mercaderia Fodor', amount:1, type:'box',
+    weight:1, insurance:0, declaredValue:0,
+    weightUnit:'KG', lengthUnit:'CM',
+    dimensions:{ length:30, width:30, height:30 }
+  }];
+  return pkgs;
+}
+
+document.getElementById('btn-cotizar').addEventListener('click', function() {
+  var ciudad = document.getElementById('ciudad').value.trim();
+  var $rates = document.getElementById('rates-area');
+  if (!ciudad) {
+    $rates.innerHTML = '<div class="result-box result-warning">⚠️ Ingresa la ciudad de destino</div>';
+    return;
+  }
+  var tot = recalcTotal();
+  if (tot.cajas === 0) {
+    $rates.innerHTML = '<div class="result-box result-warning">⚠️ Selecciona al menos un producto</div>';
+    return;
+  }
+  $rates.innerHTML = '<div class="result-box result-warning"><span class="spinner"></span>Consultando tarifas para ' + ciudad + '...</div>';
+  document.getElementById('btn-cotizar').disabled = true;
+
+  var ciudadUpper = ciudad.toUpperCase();
+  var estado = ESTADOS[ciudadUpper] || 'RM';
+  var pkgs = buildPackages();
+  var dest = {
+    name: 'Cliente', company: 'Cliente', email: 'cliente@fodorfast.cl', phone: '56900000000',
+    street: 'Calle destino', number: '123',
+    district: ciudad, city: ciudad,
+    state: estado, country: 'CL', postalCode: ''
+  };
+
+  // Llamar carriers en paralelo — Envia.com requiere carrier especificado
+  var CARRIERS = ['chilexpress','starken','correoschile','blueexpress','shippify','urbaner'];
+  var llamadas = CARRIERS.map(function(carrier) {
+    var payload = {
+      origin: ORIGEN,
+      destination: dest,
+      packages: pkgs,
+      shipment: { carrier: carrier, type: 1 }
+    };
+    return fetch('https://api.envia.com/ship/rate/', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + ENVIA_T, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r){ return r.json(); })
+    .catch(function(){ return {data:[]}; })
+    .then(function(result){ return (result && result.data) ? result.data : []; });
+  });
+
+  Promise.all(llamadas).then(function(resultados) {
+    document.getElementById('btn-cotizar').disabled = false;
+    var rates = [];
+    resultados.forEach(function(arr){ rates = rates.concat(arr); });
+    // Deduplicar por carrier+service
+    var seen = {};
+    rates = rates.filter(function(r){
+      var key = (r.carrier||'')+'_'+(r.service||'');
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+    rates.sort(function(a,b){ return (a.totalPrice||0)-(b.totalPrice||0); });
+    _rates = rates;
+    _selIdx = -1;
+    renderRates();
+  });
+});
+
+function renderRates() {
+  if (!_rates.length) {
+    document.getElementById('rates-area').innerHTML =
+      '<div class="result-box result-warning">⚠️ Sin tarifas disponibles para esa ciudad</div>';
+    return;
+  }
+  var pct = getPct();
+  var html = '<div class="card"><div class="card-title">🚚 Elige courier</div>';
+  _rates.forEach(function(r, i) {
+    var raw   = r.totalPrice || r.price || 0;
+    var clp   = (r.currency === 'USD') ? Math.round(raw * USD_CLP) : Math.round(raw);
+    var cli   = Math.round(clp * (1 + pct / 100));
+    var carrier = r.carrier || r.service || 'Courier';
+    var dias    = r.deliveryEstimate || r.days || '';
+    html += '<div class="rate-card' + (_selIdx === i ? ' selected' : '') + '" data-idx="' + i + '">'
+      + '<div><div class="rate-carrier">' + carrier + '</div>'
+      + (dias ? '<div class="rate-dias">⏱ ' + dias + ' días hábiles</div>' : '')
+      + '</div>'
+      + '<div class="rate-prices">'
+      + '<div class="price-cost">Costo Envia</div>'
+      + '<div class="price-cost-val">$' + clp.toLocaleString('es-CL') + ' CLP</div>'
+      + '<div class="price-client">Precio cliente (+' + pct + '%)</div>'
+      + '<div class="price-client-val" data-base="' + clp + '">'
+        + '$' + cli.toLocaleString('es-CL') + ' CLP</div>'
+      + '</div></div>';
+  });
+  html += '<div id="envio-form"></div></div>';
+  document.getElementById('rates-area').innerHTML = html;
+
+  document.getElementById('rates-area').addEventListener('click', function(e) {
+    var card = e.target.closest('.rate-card');
+    if (card) selectRate(parseInt(card.dataset.idx));
+  });
+}
+
+function selectRate(idx) {
+  _selIdx = idx;
+  document.querySelectorAll('.rate-card').forEach(function(c) {
+    c.classList.toggle('selected', parseInt(c.dataset.idx) === idx);
+  });
+  renderEnvioForm(idx);
+}
+
+function renderEnvioForm(idx) {
+  var r    = _rates[idx];
+  var pct  = getPct();
+  var raw  = r.totalPrice || r.price || 0;
+  var clp  = (r.currency === 'USD') ? Math.round(raw * USD_CLP) : Math.round(raw);
+  var cli  = Math.round(clp * (1 + pct / 100));
+  var carrier = r.carrier || r.service || 'Courier';
+  var ciudad = document.getElementById('ciudad').value.trim();
+
+  var html = '<div class="envio-form">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">'
+    + '<div style="background:#0f1e36;border-radius:7px;padding:9px 10px;">'
+    + '<div class="price-cost">Costo Envia</div>'
+    + '<div class="price-cost-val" style="font-size:14px;font-weight:800;">$' + clp.toLocaleString('es-CL') + '</div></div>'
+    + '<div style="background:#052e16;border-radius:7px;padding:9px 10px;">'
+    + '<div class="price-client">Precio cliente (+' + pct + '%)</div>'
+    + '<div style="font-size:16px;font-weight:900;color:#4ade80;">$' + cli.toLocaleString('es-CL') + '</div></div>'
+    + '</div>'
+    + fld('dest-nombre', 'Nombre destinatario', '')
+    + fld('dest-tel', 'Teléfono (56XXXXXXXXX)', '')
+    + fld('dest-email', 'Email', '')
+    + fld('dest-calle', 'Calle', '')
+    + '<div class="form-row">' + fld('dest-numero', 'Número', '') + fld('dest-comuna', 'Ciudad / Comuna', ciudad) + '</div>'
+    + '<button class="btn-generar" id="btn-generar">🚀 Generar Guía en Envia.com</button>'
+    + '<div id="gen-result"></div>'
+    + '</div>';
+
+  document.getElementById('envio-form').innerHTML = html;
+  document.getElementById('btn-generar').addEventListener('click', function() {
+    generarEnvio(idx, r);
+  });
+  setTimeout(function() {
+    var el = document.getElementById('envio-form');
+    if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 100);
+}
+
+function fld(id, placeholder, val) {
+  return '<div class="form-group"><input id="' + id + '" class="form-input" placeholder="' + placeholder + '" value="' + val + '"></div>';
+}
+
+// ── FIREBASE RELAY ───────────────────────────────────────────────────────────
+function fbGet(path) {
+  return fetch(FB_DB + path + '.json').then(function(r) { return r.json(); }).catch(function() { return null; });
+}
+function fbPut(path, data) {
+  return fetch(FB_DB + path + '.json', {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+  }).then(function(r) { return r.json(); }).catch(function() { return null; });
+}
+function fbDel(path) {
+  return fetch(FB_DB + path + '.json', { method:'DELETE' }).catch(function(){});
+}
+
+function generarEnvio(idx, rate) {
+  var nombre = document.getElementById('dest-nombre').value.trim();
+  var tel    = document.getElementById('dest-tel').value.trim().replace(/\D/g,'');
+  var email  = document.getElementById('dest-email').value.trim();
+  var calle  = document.getElementById('dest-calle').value.trim();
+  var numero = document.getElementById('dest-numero').value.trim();
+  var comuna = document.getElementById('dest-comuna').value.trim();
+  var $res   = document.getElementById('gen-result');
+  var $btn   = document.getElementById('btn-generar');
+
+  if (!tel || tel.length < 8) {
+    $res.innerHTML = '<div class="result-box result-warning">⚠️ Teléfono requerido — formato 56912345678</div>'; return;
+  }
+  if (!calle) {
+    $res.innerHTML = '<div class="result-box result-warning">⚠️ Ingresa la calle de entrega</div>'; return;
+  }
+
+  $res.innerHTML = '<div class="result-box result-warning"><span class="spinner"></span>Generando guía...</div>';
+  $btn.disabled = true;
+
+  var leadId = _KOMMO_LEAD_ID || ('web-' + Date.now());
+  var estadoCom = ESTADOS[(comuna||'').toUpperCase()] || 'RM';
+  var pendiente = {
+    ts: new Date().toISOString(), nombre: nombre || 'Cliente',
+    correo: email, telefono: tel,
+    ciudad: comuna, carrier: rate.carrier || rate.service || '',
+    service: rate.service || rate.carrier || '',
+    calle: calle, numero: numero, estado: estadoCom,
+    packages: buildPackages(), source: 'web-cotizador', leadId: leadId
+  };
+
+  fbDel('/envia_shipments/' + leadId)
+    .then(function() { return fbPut('/envia_pending/' + leadId, pendiente); })
+    .then(function() {
+      var polls = 0;
+      var timer = setInterval(function() {
+        polls++;
+        fbGet('/envia_shipments/' + leadId).then(function(s) {
+          if (s && s.trackingNumber) {
+            clearInterval(timer);
+            $btn.disabled = false;
+            $res.innerHTML = '<div class="result-box result-success">✅ Guía generada — Tracking: <strong>' + s.trackingNumber + '</strong></div>';
+          } else if (s && s.error) {
+            clearInterval(timer);
+            $btn.disabled = false;
+            $res.innerHTML = '<div class="result-box result-error">❌ ' + s.error + '</div>';
+          } else if (polls >= 30) {
+            clearInterval(timer);
+            $btn.disabled = false;
+            $res.innerHTML = '<div class="result-box result-warning">⏱ Timeout — verifica que envia-sync.js esté activo en tu Mac</div>';
+          }
+        });
+      }, 2000);
+    }).catch(function() {
+      $btn.disabled = false;
+      $res.innerHTML = '<div class="result-box result-error">❌ Error conectando con Firebase</div>';
+    });
+}
+</script>
+</body>
+</html>

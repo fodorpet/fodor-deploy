@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Monday — Fodor Spa</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;font-size:13px;}
+/* HEADER */
+header{background:#0d1421;color:white;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #1e293b;}
+.header-brand{display:flex;align-items:center;gap:12px;}
+.header-logo{width:36px;height:36px;background:#3b82f6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:white;flex-shrink:0;}
+.header-title{font-size:16px;font-weight:700;color:white;letter-spacing:0.2px;}
+header .sub{font-size:11px;color:#64748b;margin-top:2px;}
+.token-bar{display:flex;align-items:center;gap:8px;}
+.token-bar input{border:1px solid #334155;border-radius:8px;padding:7px 12px;font-size:11px;width:260px;background:#1e293b;color:#e2e8f0;outline:none;}
+.token-bar input::placeholder{color:#475569;}
+.btn{background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;}
+.btn:hover{background:#334155;color:white;}
+.btn-green{background:#16a34a;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;}
+/* TABS */
+.tabs{display:flex;gap:4px;background:#0d1421;border-bottom:1px solid #1e293b;padding:8px 20px;}
+.tab{padding:8px 16px;cursor:pointer;font-weight:700;font-size:12px;color:#64748b;border-radius:6px;transition:all 0.15s;}
+.tab.active{background:#3b82f6;color:white;}
+.tab:hover:not(.active){background:#1e293b;color:#94a3b8;}
+/* FILTROS */
+.filters{background:#0d1421;padding:10px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid #1e293b;}
+.filters select,.filters input{border:1px solid #334155;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;background:#1e293b;color:#e2e8f0;outline:none;}
+.filters select:focus,.filters input:focus{border-color:#3b82f6;}
+.filters label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.4px;}
+.filter-group{display:flex;flex-direction:column;gap:3px;}
+/* CONTENIDO */
+.content{padding:16px 20px;background:#0f172a;}
+.panel{display:none;}
+.panel.active{display:block;}
+/* TABLA */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #1e293b;}
+table{width:100%;border-collapse:collapse;background:#1e293b;}
+thead{background:#0f172a;}
+th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #334155;white-space:nowrap;}
+td{padding:9px 12px;border-bottom:1px solid #243044;vertical-align:top;color:#cbd5e1;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#243044;}
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+.badge-region{background:#1e3a5f;color:#60a5fa;}
+.badge-santiago{background:#14532d;color:#4ade80;}
+.badge-sin-cot{background:#422006;color:#fbbf24;}
+.badge-con-cot{background:#14532d;color:#4ade80;}
+.status-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#1e3a5f;color:#60a5fa;}
+/* SUMMARY CARDS */
+.summary-bar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.sum-card{background:#1e293b;border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:2px;border:1px solid #334155;min-width:120px;}
+.sum-val{font-size:22px;font-weight:900;color:#3b82f6;}
+.sum-lbl{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;}
+/* INVENTARIO */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px;}
+.inv-card{background:#1e293b;border-radius:12px;padding:14px;border:1px solid #334155;}
+.inv-card .prod{font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;}
+.inv-card .total{font-size:28px;font-weight:900;color:#3b82f6;}
+.inv-card .sub2{font-size:10px;color:#475569;}
+.day-section{margin-bottom:16px;}
+.day-header{background:#3b82f6;color:white;padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:800;}
+.day-table{background:#1e293b;border-radius:0 0 8px 8px;overflow:hidden;border:1px solid #334155;border-top:none;}
+.day-row{display:flex;gap:0;border-bottom:1px solid #334155;}
+.day-row:last-child{border-bottom:none;}
+.day-row .prod-name{flex:1;padding:8px 12px;font-weight:600;color:#cbd5e1;}
+.day-row .qty{padding:8px 14px;font-weight:900;color:#3b82f6;min-width:70px;text-align:right;font-size:14px;}
+.day-row .vendor{padding:8px 12px;color:#475569;font-size:11px;flex:1;}
+.day-row.total-row{background:#0f172a;}
+.day-row.total-row .prod-name{font-weight:800;color:#3b82f6;}
+/* CLIENTES */
+.client-card{background:#1e293b;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #334155;}
+.client-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.client-name{font-size:14px;font-weight:800;color:#e2e8f0;}
+.client-meta{font-size:11px;color:#64748b;margin-top:2px;}
+.client-orders{display:flex;flex-direction:column;gap:4px;}
+.client-order-row{display:flex;gap:8px;font-size:11px;padding:5px 8px;background:#0f172a;border-radius:6px;align-items:center;}
+/* MISC */
+.loading{text-align:center;padding:60px;color:#475569;font-size:14px;font-weight:700;}
+.error{text-align:center;padding:40px;color:#f87171;font-size:13px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="header-logo">F</div>
+    <div>
+      <div class="header-title">Fodor Spa — Panel Comercial</div>
+      <div class="sub">Pedidos · Inventario · Clientes en tiempo real</div>
+    </div>
+  </div>
+  <div class="token-bar">
+    <input type="password" id="tokenInput" placeholder="API Token Monday.com" />
+    <button class="btn" onclick="cargar()">🔄 Cargar</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pedidos',this)">📋 Pedidos</div>
+  <div class="tab" onclick="switchTab('inventario',this)">📦 Inventario Diario</div>
+  <div class="tab" onclick="switchTab('clientes',this)">👤 Por Cliente</div>
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Fecha desde</label>
+    <input type="date" id="fDesde" onchange="renderAll()">
+  </div>
+  <div class="filter-group">
+    <label>Fecha hasta</label>
+    <input type="date" id="fHasta" onchange="renderAll()">
+  </div>
+  <div class="filter-group">
+    <label>Vendedor</label>
+    <select id="fVendedor" onchange="renderAll()">
+      <option value="">Todos</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Producto</label>
+    <select id="fProducto" onchange="renderAll()">
+      <option value="">Todos</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Ciudad</label>
+    <select id="fCiudad" onchange="renderAll()">
+      <option value="">Todas</option>
+      <option value="santiago">Solo Santiago</option>
+      <option value="region">Solo Región</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Facturación</label>
+    <select id="fFactura" onchange="renderAll()">
+      <option value="">Todas</option>
+      <option value="con">Con N°Cot</option>
+      <option value="sin">Sin N°Cot</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Tablero</label>
+    <select id="fTipo" onchange="renderAll()">
+      <option value="">Todos</option>
+      <option value="Vasos">🥤 Vasos</option>
+      <option value="Producción">⚙️ Producción</option>
+      <option value="Lanyard">🎗️ Lanyard</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Agrupar inventario</label>
+    <select id="fAgrupar" onchange="renderAll()">
+      <option value="dia">Por Día</option>
+      <option value="mes">Por Mes</option>
+    </select>
+  </div>
+</div>
+<div id="mesesBar" style="background:#0d1421;padding:8px 20px;border-bottom:1px solid #1e293b;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+  <span style="font-size:11px;font-weight:700;color:#475569;">Mes rápido:</span>
+  <div id="botonesmes" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+  <span id="ultimaCarga" style="margin-left:auto;font-size:10px;color:#94a3b8;"></span>
+</div>
+
+<div class="content">
+  <div id="panelPedidos" class="panel active">
+    <div class="loading" id="loadMsg">Ingresa tu token y presiona Cargar 🔄</div>
+    <div id="tablaPedidos"></div>
+  </div>
+  <div id="panelInventario" class="panel">
+    <div id="tablaInventario"></div>
+  </div>
+  <div id="panelClientes" class="panel">
+    <div id="tablaClientes"></div>
+  </div>
+</div>
+
+<script>
+var allItems = [];
+
+// ── PERSISTENCIA ──────────────────────────────────
+function guardarCache(){
+  try{
+    localStorage.setItem('mf_items', JSON.stringify(allItems));
+    localStorage.setItem('mf_ts', new Date().toLocaleString('es-CL'));
+  }catch(e){}
+}
+function cargarCache(){
+  try{
+    var raw = localStorage.getItem('mf_items');
+    var ts  = localStorage.getItem('mf_ts');
+    if(raw){ allItems = JSON.parse(raw); }
+    if(ts){ document.getElementById('ultimaCarga').textContent = '⏱ Cargado: '+ts; }
+    return !!raw;
+  }catch(e){ return false; }
+}
+
+// ── MES RÁPIDO ────────────────────────────────────
+function selMes(yr, m, btn){
+  document.querySelectorAll('.btn-mes').forEach(function(b){ b.style.background='#1e293b'; b.style.color='#64748b'; b.style.border='1px solid #334155'; });
+  if(btn){ btn.style.background='#3b82f6'; btn.style.color='white'; btn.style.border='1px solid #3b82f6'; }
+  if(m===0){
+    var fechas = allItems.map(function(i){ return i.emision||i.entrega||''; }).filter(Boolean).sort();
+    if(fechas.length){
+      document.getElementById('fDesde').value = fechas[0];
+      document.getElementById('fHasta').value = fechas[fechas.length-1];
+    }
+  } else {
+    var pad = function(n){return String(n).padStart(2,'0');};
+    var ultimo = new Date(yr, m, 0).getDate();
+    document.getElementById('fDesde').value = yr+'-'+pad(m)+'-01';
+    document.getElementById('fHasta').value = yr+'-'+pad(m)+'-'+ultimo;
+  }
+  renderAll();
+}
+
+function actualizarBotonesMes(){
+  var MESES_N = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  // Contar items por año-mes
+  var conteo = {};
+  allItems.forEach(function(i){
+    var f = i.emision||i.entrega||'';
+    if(f.length>=7){
+      var key = f.substring(0,7); // "2025-07"
+      conteo[key] = (conteo[key]||0) + 1;
+    }
+  });
+  // Agrupar por año
+  var porAnio = {};
+  Object.keys(conteo).sort().forEach(function(k){
+    var yr = k.substring(0,4);
+    if(!porAnio[yr]) porAnio[yr]=[];
+    porAnio[yr].push({key:k, m:parseInt(k.substring(5,7)), count:conteo[k]});
+  });
+  var cont = document.getElementById('botonesmes');
+  cont.innerHTML = '';
+  // Botón "Todo"
+  var btnTodo = document.createElement('button');
+  btnTodo.className='btn-mes';
+  btnTodo.textContent='Todo';
+  btnTodo.style.cssText='background:#16a34a;color:white;border:1.5px solid #16a34a;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;';
+  btnTodo.onclick=function(){ selMes(0,0,btnTodo); };
+  cont.appendChild(btnTodo);
+  // Botones por año
+  Object.keys(porAnio).sort().forEach(function(yr){
+    var lbl = document.createElement('span');
+    lbl.style.cssText='font-size:10px;font-weight:800;color:#3b82f6;padding:0 4px;align-self:center;';
+    lbl.textContent=yr+':';
+    cont.appendChild(lbl);
+    porAnio[yr].forEach(function(d){
+      var btn = document.createElement('button');
+      btn.className='btn-mes';
+      var nombre = MESES_N[d.m-1];
+      btn.innerHTML=nombre+'<span style="font-size:9px;background:rgba(0,0,0,0.12);border-radius:4px;padding:0 4px;margin-left:3px;">'+d.count+'</span>';
+      btn.style.cssText='background:#1e293b;color:#64748b;border:1px solid #334155;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;';
+      btn.onclick=(function(y,m,b){ return function(){ selMes(y,m,b); }; })(parseInt(yr),d.m,btn);
+      cont.appendChild(btn);
+    });
+  });
+}
+var BOARDS = {
+  vasos:      {id:'9513726563',  tipo:'Vasos'},
+  produccion: {id:'8456772703',  tipo:'Producción'},
+  lanyard:    {id:'18022185964', tipo:'Lanyard'}
+};
+var COL = {
+  emision:      'date',
+  vendedor:     'dropdown_mks9b8cr',
+  kommo:        'texto_mkn2xj3e',
+  producto:     'dropdown_mks9vswm',
+  cantidad:     'n_meros_mkn2385r',
+  cliente:      'dup__of_kommo_mkn2q4d',
+  entrega:      'dup__of_fecha_emisi_n_mkn29vyx',
+  entrega_prod: 'date_mm0ebcyh',        // Producción: Fecha de Entrega real al cliente
+  cotizacion:   'dup__of_n_cotizaci_n_mkn2nec0',
+  estado_v:     'label_mkn2xk8b',       // Vasos y Producción
+  estado_l:     'color_mkw5mp1g',       // Lanyard (PROCESO)
+  maquina:      'label_mkn33zej',       // Producción: máquina/operario
+  ciudad:       'texto_1_mkn2jesr',
+  descripcion:  'long_text_mks9gkcq'
+};
+
+// Guardar token
+var savedToken = localStorage.getItem('monday_token_fodor') || 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjY3OTY0Mjc3MiwiYWFpIjoxMSwidWlkIjo3MjEzODMzMywiaWFkIjoiMjAyNi0wNy0wN1QxMzozMjo0NC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6Mjc5OTI5MjUsInJnbiI6InVzZTEifQ.lXR5yL9F53qT71VOQhUS4-dBeHUGvXSat8xMiDIT4LQ';
+if(savedToken) document.getElementById('tokenInput').value = savedToken;
+
+function getToken(){
+  var t = document.getElementById('tokenInput').value.trim();
+  if(t) localStorage.setItem('monday_token_fodor', t);
+  return t;
+}
+
+function switchTab(tab, el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('panel'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+  renderAll();
+}
+
+async function fetchBoard(token, boardId, tipo){
+  var items = [];
+  var cursor = null;
+  var first = true;
+  while(true){
+    var query;
+    if(first){
+      query = '{ boards(ids:['+boardId+']) { items_page(limit:500) { cursor items { id name column_values { id text } } } } }';
+      first = false;
+    } else {
+      if(!cursor) break;
+      query = '{ next_items_page(limit:500, cursor:"'+cursor+'") { cursor items { id name column_values { id text } } } }';
+    }
+    var res = await fetch('https://api.monday.com/v2', {
+      method:'POST',
+      headers:{'Authorization':token,'Content-Type':'application/json'},
+      body: JSON.stringify({query:query})
+    });
+    var data = await res.json();
+    var page = data.data && (data.data.boards ? data.data.boards[0].items_page : data.data.next_items_page);
+    if(!page || !page.items) break;
+    page.items.forEach(function(item){
+      var cv = {};
+      item.column_values.forEach(function(c){ cv[c.id] = c.text || ''; });
+      var esProd = tipo === 'Producción';
+      var esLany = tipo === 'Lanyard';
+      items.push({
+        id: item.id,
+        tipo: tipo,
+        emision:    cv[COL.emision]    || '',
+        vendedor:   cv[COL.vendedor]   || '',
+        kommo:      cv[COL.kommo]      || '',
+        // BUG#2 FIX: en Producción el producto está en item.name, no en el dropdown
+        producto:   esProd ? (item.name || '') : (cv[COL.producto] || ''),
+        cantidad:   parseInt(cv[COL.cantidad])||0,
+        // BUG#4 FIX: en Producción, cliente = kommo (mismo dato, evita duplicar campo)
+        cliente:    esProd ? (cv[COL.kommo] || '') : (cv[COL.cliente] || ''),
+        // BUG#3 FIX: en Producción, entrega real = date_mm0ebcyh (no fecha de producción)
+        entrega:    esProd ? (cv[COL.entrega_prod] || cv[COL.entrega] || '') : (cv[COL.entrega] || ''),
+        cotizacion: cv[COL.cotizacion] || '',
+        // BUG#1 FIX: Vasos y Producción usan label_mkn2xk8b; solo Lanyard usa color_mkw5mp1g
+        estado:     esLany ? (cv[COL.estado_l] || '') : (cv[COL.estado_v] || ''),
+        ciudad:     cv[COL.ciudad]     || '',
+        descripcion:cv[COL.descripcion]|| '',
+        // BUG#5 FIX: máquina/operario (solo Producción lo usa)
+        maquina:    cv[COL.maquina]    || ''
+      });
+    });
+    cursor = page.cursor;
+    if(!cursor) break;
+  }
+  return items;
+}
+
+async function cargar(){
+  var token = getToken();
+  if(!token){ alert('Ingresa tu token de Monday.com'); return; }
+  document.getElementById('loadMsg').style.display='block';
+  document.getElementById('loadMsg').textContent='⏳ Cargando pedidos...';
+  document.getElementById('tablaPedidos').innerHTML='';
+  document.getElementById('tablaInventario').innerHTML='';
+  document.getElementById('tablaClientes').innerHTML='';
+  try {
+    var [vasos, produccion, lanyard] = await Promise.all([
+      fetchBoard(token, BOARDS.vasos.id, 'Vasos'),
+      fetchBoard(token, BOARDS.produccion.id, 'Producción'),
+      fetchBoard(token, BOARDS.lanyard.id, 'Lanyard')
+    ]);
+    allItems = vasos.concat(produccion).concat(lanyard).filter(function(i){ return i.emision || i.cantidad > 0; });
+    // Ordenar por fecha emisión desc
+    allItems.sort(function(a,b){ return (b.emision||'').localeCompare(a.emision||''); });
+    guardarCache();
+    var ts = new Date().toLocaleString('es-CL');
+    document.getElementById('ultimaCarga').textContent = '⏱ Cargado: '+ts;
+    // Auto-ajustar fechas al rango real de los datos
+    var fechas = allItems.map(function(i){ return i.emision||i.entrega||''; }).filter(Boolean).sort();
+    if(fechas.length){
+      document.getElementById('fDesde').value = fechas[0];
+      document.getElementById('fHasta').value = fechas[fechas.length-1];
+    }
+    // Poblar filtros
+    poblarFiltros();
+    document.getElementById('loadMsg').style.display='none';
+    renderAll();
+  } catch(e){
+    document.getElementById('loadMsg').textContent='❌ Error: '+e.message;
+  }
+}
+
+function poblarFiltros(){
+  var vendedores = [...new Set(allItems.map(function(i){return i.vendedor;}).filter(Boolean))].sort();
+  var productos  = [...new Set(allItems.map(function(i){return i.producto;}).filter(Boolean))].sort();
+  var selV = document.getElementById('fVendedor');
+  var selP = document.getElementById('fProducto');
+  selV.innerHTML = '<option value="">Todos</option>';
+  selP.innerHTML = '<option value="">Todos</option>';
+  vendedores.forEach(function(v){ selV.innerHTML += '<option>'+v+'</option>'; });
+  productos.forEach(function(p){  selP.innerHTML += '<option>'+p+'</option>'; });
+}
+
+function getFiltered(){
+  var desde   = document.getElementById('fDesde').value;
+  var hasta   = document.getElementById('fHasta').value;
+  var vend    = document.getElementById('fVendedor').value;
+  var prod    = document.getElementById('fProducto').value;
+  var ciudad  = document.getElementById('fCiudad').value;
+  var factura = document.getElementById('fFactura').value;
+  var tipo    = document.getElementById('fTipo').value;
+  return allItems.filter(function(i){
+    var fechaRef = i.emision || i.entrega || '';
+    if(desde   && fechaRef && fechaRef < desde) return false;
+    if(hasta   && fechaRef && fechaRef > hasta) return false;
+    if(vend    && i.vendedor !== vend) return false;
+    if(prod    && i.producto !== prod) return false;
+    if(ciudad === 'santiago' && (i.ciudad||'').toUpperCase() !== 'SANTIAGO') return false;
+    if(ciudad === 'region'   && (i.ciudad||'').toUpperCase() === 'SANTIAGO') return false;
+    if(factura === 'con' && !i.cotizacion) return false;
+    if(factura === 'sin' && i.cotizacion)  return false;
+    if(tipo    && i.tipo !== tipo) return false;
+    return true;
+  });
+}
+
+function renderAll(){
+  if(!allItems.length) return;
+  var items = getFiltered();
+  renderPedidos(items);
+  renderInventario(items);
+  renderClientes(items);
+}
+
+function renderPedidos(items){
+  var totalUnid = items.reduce(function(s,i){return s+i.cantidad;},0);
+  var sinCot = items.filter(function(i){return !i.cotizacion;}).length;
+  var enRegion = items.filter(function(i){return (i.ciudad||'').toUpperCase() !== 'SANTIAGO' && i.ciudad;}).length;
+  var html = '<div class="summary-bar">'
+    + '<div class="sum-card"><div class="sum-val">'+items.length+'</div><div class="sum-lbl">Pedidos</div></div>'
+    + '<div class="sum-card"><div class="sum-val">'+totalUnid.toLocaleString('es-CL')+'</div><div class="sum-lbl">Unidades</div></div>'
+    + '<div class="sum-card"><div class="sum-val" style="color:#f59e0b">'+sinCot+'</div><div class="sum-lbl">Sin N°Cot</div></div>'
+    + '<div class="sum-card"><div class="sum-val" style="color:#60a5fa">'+enRegion+'</div><div class="sum-lbl">A Región</div></div>'
+    + '</div>';
+  html += '<div class="table-wrap"><table><thead><tr>'
+    + '<th>Emisión</th><th>Entrega</th><th>Cliente</th><th>N°Cot</th>'
+    + '<th>Vendedor</th><th>Tipo</th><th>Producto</th><th>Cant.</th>'
+    + '<th>Estado</th><th>Máquina</th><th>Ciudad</th>'
+    + '</tr></thead><tbody>';
+  items.forEach(function(i){
+    var esSantiago = (i.ciudad||'').toUpperCase() === 'SANTIAGO';
+    var ciudadBadge = i.ciudad
+      ? (esSantiago
+          ? '<span class="badge badge-santiago">🏙 Santiago</span>'
+          : '<span class="badge badge-region">✈️ Región</span>')
+      : '';
+    var cotBadge = i.cotizacion
+      ? '<span class="badge badge-con-cot">✅ '+i.cotizacion+'</span>'
+      : '<span class="badge badge-sin-cot">⚠️ Sin cot.</span>';
+    var tipoBg  = i.tipo==='Vasos' ? '#dbeafe' : i.tipo==='Producción' ? '#d1fae5' : '#ede9fe';
+    var tipoClr = i.tipo==='Vasos' ? '#1d4ed8' : i.tipo==='Producción' ? '#065f46' : '#6d28d9';
+    html += '<tr>'
+      + '<td>'+fmt(i.emision)+'</td>'
+      + '<td>'+fmt(i.entrega)+'</td>'
+      + '<td style="font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(i.cliente||i.kommo||'—')+'</td>'
+      + '<td>'+cotBadge+'</td>'
+      + '<td>'+esc(i.vendedor||'—')+'</td>'
+      + '<td><span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tipoBg+';color:'+tipoClr+';font-weight:700;">'+i.tipo+'</span></td>'
+      + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">'+esc(i.producto||'—')+'</td>'
+      + '<td style="font-weight:900;color:#3b82f6;text-align:right;">'+i.cantidad.toLocaleString('es-CL')+'</td>'
+      + '<td><span class="status-badge">'+esc(i.estado||'—')+'</span></td>'
+      + '<td style="font-size:10px;color:#64748b;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(i.maquina||'')+'</td>'
+      + '<td>'+ciudadBadge+'<br><span style="font-size:10px;color:#94a3b8;">'+esc(i.ciudad||'')+'</span></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('tablaPedidos').innerHTML = html;
+}
+
+function renderInventario(items){
+  var agrupar = document.getElementById('fAgrupar').value;
+  // Agrupar por fecha de ENTREGA (o mes) → producto → cantidad
+  var byDate = {};
+  var prodTotals = {};
+  var MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  items.forEach(function(i){
+    var raw = i.entrega || i.emision || 'Sin fecha';
+    var fecha;
+    if(agrupar === 'mes' && raw.length >= 7){
+      var parts = raw.split('-');
+      fecha = MESES[parseInt(parts[1])||0] + ' ' + parts[0];
+    } else {
+      fecha = raw;
+    }
+    if(!byDate[fecha]) byDate[fecha] = {};
+    var p = i.producto || 'Otro';
+    byDate[fecha][p] = (byDate[fecha][p]||0) + i.cantidad;
+    prodTotals[p] = (prodTotals[p]||0) + i.cantidad;
+  });
+
+  // Cards totales por producto
+  var html = '<div style="font-size:12px;font-weight:800;color:#3b82f6;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">📊 Total período por producto</div>';
+  html += '<div class="inv-grid">';
+  Object.keys(prodTotals).sort().forEach(function(p){
+    html += '<div class="inv-card"><div class="prod">'+esc(p)+'</div><div class="total">'+prodTotals[p].toLocaleString('es-CL')+'</div><div class="sub2">unidades</div></div>';
+  });
+  html += '</div>';
+
+  // Por día
+  html += '<div style="font-size:12px;font-weight:800;color:#3b82f6;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">📅 Detalle por fecha de entrega</div>';
+  var dates = Object.keys(byDate).sort().reverse();
+  dates.forEach(function(fecha){
+    var prods = byDate[fecha];
+    var totalDia = Object.values(prods).reduce(function(s,v){return s+v;},0);
+    html += '<div class="day-section"><div class="day-header">📅 '+fmt(fecha)+' — '+totalDia.toLocaleString('es-CL')+' unidades</div><div class="day-table">';
+    Object.keys(prods).sort().forEach(function(p){
+      html += '<div class="day-row"><div class="prod-name">'+esc(p)+'</div><div class="qty">'+prods[p].toLocaleString('es-CL')+'</div></div>';
+    });
+    html += '<div class="day-row total-row"><div class="prod-name">TOTAL</div><div class="qty" style="color:#16a34a;">'+totalDia.toLocaleString('es-CL')+'</div></div>';
+    html += '</div></div>';
+  });
+  document.getElementById('tablaInventario').innerHTML = html;
+}
+
+function renderClientes(items){
+  // Agrupar por cliente
+  var byClient = {};
+  items.forEach(function(i){
+    var key = (i.cliente||i.kommo||'Sin cliente').trim();
+    if(!byClient[key]) byClient[key] = {pedidos:[], totalUnid:0, cotizaciones:new Set()};
+    byClient[key].pedidos.push(i);
+    byClient[key].totalUnid += i.cantidad;
+    if(i.cotizacion) byClient[key].cotizaciones.add(i.cotizacion);
+  });
+
+  var clientes = Object.keys(byClient).sort();
+  var html = '<div class="summary-bar">'
+    + '<div class="sum-card"><div class="sum-val">'+clientes.length+'</div><div class="sum-lbl">Clientes</div></div>'
+    + '<div class="sum-card"><div class="sum-val" style="color:#f59e0b">'+clientes.filter(function(c){return byClient[c].cotizaciones.size===0;}).length+'</div><div class="sum-lbl">Sin facturar</div></div>'
+    + '</div>';
+
+  clientes.forEach(function(cliente){
+    var data = byClient[cliente];
+    var facturado = data.cotizaciones.size > 0;
+    var esSantiago = data.pedidos.every(function(p){return (p.ciudad||'').toUpperCase()==='SANTIAGO';});
+    var hayRegion  = data.pedidos.some(function(p){ return (p.ciudad||'').toUpperCase()!=='SANTIAGO' && p.ciudad; });
+    html += '<div class="client-card">';
+    html += '<div class="client-header">';
+    html += '<div><div class="client-name">'+esc(cliente)+'</div>';
+    html += '<div class="client-meta">'+data.pedidos.length+' pedido(s) · '+data.totalUnid.toLocaleString('es-CL')+' unidades';
+    if(hayRegion) html += ' · <span style="color:#60a5fa;font-weight:700;">✈️ Envío región</span>';
+    html += '</div></div>';
+    html += '<div style="text-align:right;">';
+    if(facturado){
+      html += '<span class="badge badge-con-cot">✅ Cotiz: '+[...data.cotizaciones].join(', ')+'</span>';
+    } else {
+      html += '<span class="badge badge-sin-cot">⚠️ Sin N°Cotización</span>';
+    }
+    html += '</div></div>';
+    html += '<div class="client-orders">';
+    data.pedidos.forEach(function(p){
+      html += '<div class="client-order-row">';
+      html += '<span style="color:#3b82f6;font-weight:700;min-width:80px;">'+fmt(p.entrega||p.emision)+'</span>';
+      html += '<span style="background:'+(p.tipo==='Vasos'?'#dbeafe':'#ede9fe')+';color:'+(p.tipo==='Vasos'?'#1d4ed8':'#6d28d9')+';padding:1px 6px;border-radius:4px;font-weight:700;font-size:10px;">'+p.tipo+'</span>';
+      html += '<span style="flex:1;font-weight:600;">'+esc(p.producto)+'</span>';
+      html += '<span style="font-weight:900;color:#3b82f6;">'+p.cantidad.toLocaleString('es-CL')+' u.</span>';
+      html += '<span style="color:#64748b;">'+esc(p.vendedor)+'</span>';
+      html += '<span class="status-badge" style="font-size:9px;">'+esc(p.estado)+'</span>';
+      if(p.ciudad) html += '<span class="badge '+(((p.ciudad||'').toUpperCase()==='SANTIAGO')?'badge-santiago':'badge-region')+'">'+esc(p.ciudad)+'</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('tablaClientes').innerHTML = html;
+}
+
+function fmt(d){
+  if(!d) return '—';
+  var parts = d.split('-');
+  if(parts.length===3) return parts[2]+'/'+parts[1]+'/'+parts[0];
+  return d;
+}
+function esc(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Fijar fechas por defecto: 1 enero del año actual → hoy
+(function(){
+  var hoy = new Date();
+  var desde = new Date(hoy.getFullYear() - 1, 0, 1); // 1 enero año anterior
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  var dDesde = document.getElementById('fDesde');
+  var dHasta = document.getElementById('fHasta');
+  if(!dDesde.value) dDesde.value = toISO(desde);
+  if(!dHasta.value) dHasta.value = toISO(hoy);
+})();
+// Cargar desde caché si existe
+if(cargarCache() && allItems.length){
+  poblarFiltros();
+  actualizarBotonesMes();
+  var fechas = allItems.map(function(i){ return i.emision||i.entrega||''; }).filter(Boolean).sort();
+  if(fechas.length){
+    document.getElementById('fDesde').value = fechas[0];
+    document.getElementById('fHasta').value = fechas[fechas.length-1];
+  }
+  renderAll();
+}
+// Auto-cargar desde API si hay token guardado
+if(savedToken){ cargar(); }
+</script>
+</body>
+</html>

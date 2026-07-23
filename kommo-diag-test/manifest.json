@@ -1,0 +1,14 @@
+{
+  "widget": {
+    "name": "Fodor Envios",
+    "description": "Cotizador de despachos con Envia.com",
+    "short_description": "Cotiza y genera guias",
+    "interface_version": 2,
+    "locale": ["es"],
+    "installation": false
+  },
+  "locations": ["lcard-1"],
+  "tour": {
+    "is_tour": true
+  }
+}

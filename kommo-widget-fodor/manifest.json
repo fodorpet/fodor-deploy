@@ -1,0 +1,17 @@
+{
+  "manifest_version": 1,
+  "code": "fodor_envios",
+  "name": "Fodor — Cotizador Envíos",
+  "short_description": "Cotiza y genera guías de despacho desde el lead",
+  "description": "Cotizador integrado con Envia.com. Consulta tarifas de Chilexpress, Starken y Correos de Chile con porcentaje de ganancia configurable. Genera guías directamente desde el lead sin salir de Kommo.",
+  "version": "1.0.0",
+  "author": "Fodor SpA",
+  "client_uuid": "fodor-envios-widget-2026-v1",
+  "locations": {
+    "lcard_2": {
+      "caption": "🚚 Envíos",
+      "once": false,
+      "show": "always"
+    }
+  }
+}

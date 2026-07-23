@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Fodor Envíos",
+  "version": "1.0",
+  "description": "Cotizador de envíos integrado para vendedores Fodor SpA en Kommo",
+  "host_permissions": [
+    "https://*.kommo.com/*",
+    "https://*.amocrm.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.kommo.com/*",
+        "https://*.amocrm.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16":  "icon16.png",
+    "48":  "icon48.png",
+    "128": "icon128.png"
+  }
+}

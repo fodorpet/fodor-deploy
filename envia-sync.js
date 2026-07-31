@@ -14,21 +14,48 @@ const fs    = require('fs');
 const path  = require('path');
 
 // ─── CREDENCIALES ─────────────────────────────────────────────────────────────
+// FIX 2026-07-31 — Las credenciales se leen de variable de entorno o del Llavero
+// de macOS. Nunca quedan escritas en el código.
+//
+// Antes este archivo sacaba el token de Kommo PARSEANDO el texto de kommo-sync.js
+// con una expresión regular que buscaba `const TOKEN = 'literal'`. Cuando
+// kommo-sync.js se endureció para leer del Llavero, ese literal desapareció, la
+// regex dejó de encontrar nada y el proceso moría al arrancar con
+// "No se pudo leer TOKEN desde kommo-sync.js". Dos archivos, dos criterios
+// distintos para lo mismo. Ahora ambos usan el mismo mecanismo.
+//
+// Para guardar las credenciales (una sola vez, doble clic):
+//   guardar-token-kommo.command  → 'fodor-kommo-token'
+//   guardar-token-envia.command  → 'fodor-envia-token'
 
-const ENVIA_TOKEN  = 'c4b4d0ebd237ece6747226316f00fb380ca7d32fdedc7ab912359864643c50d5';
-
-// Token de Kommo leído directo desde kommo-sync.js (fuente única de verdad).
-// Así nunca hay que actualizarlo en dos lugares.
-function _leerKommoToken() {
+function _leerDelLlavero(servicio) {
   try {
-    const src = fs.readFileSync(path.join(__dirname, 'kommo-sync.js'), 'utf8');
-    const m   = src.match(/const TOKEN\s*=\s*['"`]([^'"`]+)['"`]/);
-    if (m && m[1]) return m[1];
-  } catch(e) { /* sigue */ }
-  console.error('❌ No se pudo leer TOKEN desde kommo-sync.js');
+    return require('child_process').execFileSync(
+      '/usr/bin/security',
+      ['find-generic-password', '-a', process.env.USER || '', '-s', servicio, '-w'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    ).trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+function _leerCredencial(nombreVarEntorno, servicioLlavero, comandoAyuda) {
+  const desdeEntorno = (process.env[nombreVarEntorno] || '').trim();
+  if (desdeEntorno) return desdeEntorno;
+
+  const desdeLlavero = _leerDelLlavero(servicioLlavero);
+  if (desdeLlavero) return desdeLlavero;
+
+  console.error('');
+  console.error('❌ No se encontró la credencial "' + servicioLlavero + '" en el Llavero de macOS.');
+  console.error('   Solución: haz doble clic en ' + comandoAyuda);
+  console.error('');
   process.exit(1);
 }
-const KOMMO_TOKEN = _leerKommoToken();
+
+const KOMMO_TOKEN = _leerCredencial('KOMMO_TOKEN', 'fodor-kommo-token', 'guardar-token-kommo.command');
+const ENVIA_TOKEN = _leerCredencial('ENVIA_TOKEN', 'fodor-envia-token', 'guardar-token-envia.command');
 
 const KOMMO_DOMAIN = 'marcelofodorcl.kommo.com';
 const FIREBASE_DB  = 'odfor-bae97-default-rtdb.firebaseio.com';
@@ -317,6 +344,26 @@ async function crearGuia(lead, telefono, opcionesExtras) {
   const calleNombre = calleMatch ? calleMatch[1].trim() : calle.trim();
   const calleNum    = calleMatch ? calleMatch[2]        : 's/n';
 
+  // Paquetes reales del cotizador si vienen; si no, el bulto por defecto.
+  const packages = (opc._packages && opc._packages.length > 0)
+    ? opc._packages
+    : [{
+        content:       getCampo(lead, FIELD_DETALLE) || 'Productos impresos',
+        amount:        1,
+        type:          'box',
+        weight:        peso,
+        insurance:     0,
+        declaredValue: 0,
+        weightUnit:    'KG',
+        lengthUnit:    'CM',
+        dimensions:    { length: largo, width: ancho, height: alto }
+      }];
+
+  // Courier elegido en pantalla; CARRIER queda solo como valor por defecto.
+  const carrier = opc._carrier || CARRIER;
+  const service = opc._service || 'normal';
+  const estado  = opc.estado   || 'Región Metropolitana';
+
   const payload = {
     origin: { ...ORIGEN },
     destination: {
@@ -328,30 +375,20 @@ async function crearGuia(lead, telefono, opcionesExtras) {
       number:   calleNum,
       district: ciudad,
       city:     ciudad,
-      state:    'Región Metropolitana',
+      state:    estado,
       country:  'CL',
       zipCode:  ''
     },
-    packages: [{
-      content:       getCampo(lead, FIELD_DETALLE) || 'Productos impresos',
-      amount:        1,
-      type:          'box',
-      weight:        peso,
-      insurance:     0,
-      declaredValue: 0,
-      weightUnit:    'KG',
-      lengthUnit:    'CM',
-      dimensions:    { length: largo, width: ancho, height: alto }
-    }],
+    packages: packages,
     shipment: {
-      carrier: CARRIER,
+      carrier: carrier,
       type:    1,
-      service: 'normal'
+      service: service
     },
     settings: {
       printFormat: 'PDF',
       printSize:   'CARTA',
-      comments:    'Pedido Fodor SpA — Lead #' + lead.id,
+      comments:    'Pedido Fodor SpA — Lead #' + (lead.id || 'web'),
       currency:    'CLP'
     }
   };
@@ -425,17 +462,52 @@ async function procesarPendientes() {
         processing_at: new Date().toISOString()
       });
 
-      // Obtener lead actualizado desde Kommo
-      console.log('   → Lead #' + leadId + ': obteniendo datos de Kommo...');
-      const lead = await fetchLead(leadId);
+      // ── FIX 2026-07-31 (1 de 3): de dónde salen los datos ────────────────
+      // El cotizador web escribe el pendiente con TODO lo necesario (nombre,
+      // correo, teléfono, ciudad, calle, número, carrier y packages). Ir a
+      // buscarlo a Kommo era un viaje al pedo: los campos FIELD_DIRECCION,
+      // FIELD_PESO, FIELD_ALTO, FIELD_ANCHO y FIELD_LARGO están en null —
+      // nunca se configuraron— así que la respuesta de Kommo no aportaba nada
+      // que el pendiente no tuviera ya.
+      const tieneDataCompleta = pendiente.packages && pendiente.calle && pendiente.ciudad;
+      let lead, telefono, opcExtras;
 
-      // Obtener teléfono del contacto principal
-      const contacts = (lead._embedded && lead._embedded.contacts) || [];
-      const contactId = contacts.length > 0 ? contacts[0].id : null;
-      const telefono  = contactId ? await fetchContactPhone(contactId) : '';
+      if (tieneDataCompleta) {
+        console.log('   → Lead #' + leadId + ': datos completos en el pendiente (sin consultar Kommo)');
+        lead = {
+          id:   leadId,
+          name: pendiente.nombre || 'Cliente',
+          custom_fields_values: []   // vacío a propósito: todo viaja en opcExtras
+        };
+        telefono  = pendiente.telefono || '';
+        opcExtras = {
+          ciudad:    pendiente.ciudad || 'Santiago',
+          correo:    pendiente.correo || '',
+          direccion: (pendiente.calle || '') + ' ' + (pendiente.numero || 's/n'),
+          estado:    pendiente.estado || 'Región Metropolitana'
+        };
+      } else {
+        // ── FIX 2026-07-31 (2 de 3): el prefijo 'kommo-' ────────────────────
+        // envios.html arma la clave como 'kommo-' + número de lead. Ese string
+        // se pasaba tal cual a /api/v4/leads/{id}, y Kommo devolvía 404 porque
+        // espera solo el número. Se limpia antes de consultar.
+        const kommoId = String(leadId).replace(/^kommo-/, '');
+        console.log('   → Lead #' + leadId + ': consultando Kommo (ID ' + kommoId + ')...');
+        lead = await fetchLead(kommoId);
 
-      // Extraer opciones extras enviadas desde el panel (si las hay)
-      const opcExtras = pendiente.opciones || {};
+        const contacts  = (lead._embedded && lead._embedded.contacts) || [];
+        const contactId = contacts.length > 0 ? contacts[0].id : null;
+        telefono  = contactId ? await fetchContactPhone(contactId) : '';
+        opcExtras = pendiente.opciones || {};
+      }
+
+      // ── FIX 2026-07-31 (3 de 3): respetar lo que eligió el usuario ────────
+      // Los paquetes reales del cotizador (con medidas y peso por producto) y
+      // el courier elegido en pantalla se estaban descartando: la guía salía
+      // con un bulto genérico y el carrier fijo de la constante CARRIER.
+      if (pendiente.packages && pendiente.packages.length > 0) opcExtras._packages = pendiente.packages;
+      if (pendiente.carrier) opcExtras._carrier = pendiente.carrier;
+      if (pendiente.service) opcExtras._service = pendiente.service;
 
       // Crear guía en Envia.com
       const empresa = getCampo(lead, FIELD_EMPRESA) || lead.name || 'Lead #' + leadId;
@@ -461,7 +533,7 @@ async function procesarPendientes() {
         leadId:       leadId,
         cliente:      empresa,
         tracking:     tracking,
-        carrier:      CARRIER,
+        carrier:      opcExtras._carrier || CARRIER,
         status:       'created',
         status_label: 'Guía creada',
         label_url:    label_url,
@@ -473,10 +545,13 @@ async function procesarPendientes() {
       // Limpiar pendiente (PUT null = eliminar nodo)
       await httpsPutFirebase('/envia_pending/' + leadId + '.json', null);
 
-      // Escribir tracking en campo Kommo (solo si FIELD_TRACKING está configurado)
-      if (FIELD_TRACKING && tracking) {
+      // Escribir tracking en campo Kommo. Solo si hay campo configurado, hay
+      // tracking, y el pedido efectivamente viene de Kommo: los que nacen en el
+      // cotizador web usan claves 'web-<timestamp>' que no son leads de Kommo.
+      const kommoNumId = parseInt(String(leadId).replace(/^kommo-/, ''));
+      if (FIELD_TRACKING && tracking && !isNaN(kommoNumId) && !String(leadId).startsWith('web-')) {
         const kommoResp = await httpsPatchKommo('/api/v4/leads', [{
-          id: parseInt(leadId),
+          id: kommoNumId,
           custom_fields_values: [{
             field_id: FIELD_TRACKING,
             values: [{ value: tracking }]

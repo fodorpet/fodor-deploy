@@ -1,6 +1,7 @@
 # ESTADO ACTUAL — Fodor SpA Panel de Cobranzas y Envíos
-**Última actualización:** 2026-07-29 (18:30 aprox.)
+**Última actualización:** 2026-07-31
 **Carpeta de trabajo:** ~/fodor-deploy
+**Último commit:** `e82089f` — Fix generación de guías + persistencia de descartes
 
 ---
 
@@ -64,6 +65,9 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 | `envios.html` (raíz) | Cotizador raíz | 32 KB | ✅ Operativo |
 | `public/envios.html` | Copia publicada | 32 KB | ⚠️ Puede estar desincronizada |
 | `fodor-envios.js` | Catálogo + Varmontt tariffs | 18 KB | ✅ Operativo |
+| `fodor-envios.user.js` | Botón de Kommo (userscript, auto-actualiza) | 6 KB | ✅ Reemplaza la extensión |
+| `empresa.config.json` | Datos de despacho — NO hardcodear en código | 1 KB | ✅ Catedral 2515 |
+| `guardar-token-envia.command` | Guarda el token de Envia en el Llavero | 3 KB | ✅ Usado |
 | `envia-sync.js` | Proceso Node para crear guías | 37 KB | ⚠️ Corre código viejo en Mac |
 | `firebase-rules.json` | Reglas de seguridad Firebase | — | ✅ Configurado |
 | `deploy-panel.command` | Script deploy | — | ✅ Valida + publica |
@@ -102,19 +106,67 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 6. Estado exacto de la tarea actual
 
-### Guía generation (`envia-sync.js`)
-- **Completado:** Análisis causa raíz + código escrito
-- **Incompleto:** Validación oficial, deploy, reinicio Mac
-- **Fallando en producción:** HTTP 404 `Kommo lead kommo-31169399` (código viejo)
+### Guías de envío — CÓDIGO TERMINADO (03-08). Falta saldo en Envia.com.
 
-### Descartes Cruce Diario
-- **Completado:** Análisis + código + validación parcial
-- **Incompleto:** Deploy oficial
-- **Fallando en usuario:** Descartes reaparecen al recargar (sin fix en producción)
+**Se corrigieron SEIS errores encadenados.** Cada uno solo se veía después de
+arreglar el anterior, porque Envia valida campo por campo y corta en el primero
+que falla. En orden de aparición:
+
+1. `envia-sync.js` leía el token parseando `kommo-sync.js` con una regex que
+   buscaba un literal que el commit de seguridad `90820c6` (23-07) había borrado.
+   El proceso moría al arrancar. → Ahora lee del Llavero de macOS.
+2. El `leadId` iba con prefijo `kommo-` a la API de Kommo, que espera solo el
+   número → HTTP 404. Además se consultaba Kommo aunque el pendiente ya trajera
+   todos los datos.
+3. La dirección de origen nunca se completó: tenía `EDITAR_NOMBRE_CALLE` y
+   número `000`. Solo avisaba en amarillo y seguía igual. → `empresa.config.json`,
+   y ahora el proceso NO ARRANCA si falta un campo.
+4. **`zipCode` vs `postalCode`** — el campo se mandaba con el nombre equivocado.
+   Envia respondía "Required property missing: postalCode" mostrando el dato
+   presente bajo el otro nombre. La función que cotiza tarifas SÍ usaba el
+   nombre correcto: por eso las tarifas siempre funcionaron y las guías nunca.
+5. `state: "Región Metropolitana"` → Envia exige código de 2 letras: `"RM"`.
+6. `printSize: "CARTA"` → no está en el enum. El válido es `"PAPER_LETTER"`.
+7. `destination.postalCode` iba vacío y Envia lo exige (mínimo 3 caracteres).
+   El cotizador nunca lo capturaba. → `envia-geo.js` lo resuelve contra
+   `geocodes.envia.com`, que además devuelve la región de 2 letras.
+
+**Bug encontrado de paso:** la tabla `ESTADOS` de `envios.html` tiene ~50 comunas
+y para cualquier otra caía a `'RM'` en silencio — un envío a Puerto Montt salía
+marcado como Región Metropolitana. Ahora la región sale del servicio de Envia.
+
+**Estado actual:** el payload pasa la validación completa. La llamada llega hasta
+el cobro y devuelve `code 1170 "Not Enough money"`. **Confirmado con la usuaria
+el 03-08: la cuenta de Envia no tiene saldo.** Al cargarlo, la guía sale.
+
+**Para probar:** doble clic en `probar-guia.command` — herramienta de un solo
+tiro que toma el pedido más viejo de la cola, muestra el payload y la respuesta
+completos, y si sale bien guarda la guía y limpia la cola. No modifica nada si
+falla. Reemplaza el ciclo de 2 minutos de `envia-sync` para diagnosticar.
+
+### (histórico) Guía generation — notas previas
+- **Completado y commiteado (`e82089f`):**
+  - Credenciales desde variable de entorno o Llavero de macOS (ya no parsea `kommo-sync.js`)
+  - Prefijo `kommo-` limpiado antes de consultar la API de Kommo
+  - Usa los datos del pendiente cuando están completos (sin viaje inútil a Kommo)
+  - Respeta los packages reales del cotizador y el courier elegido
+  - Compila OK (`node -c`)
+- **Bloqueado por:** falta guardar el token de Envia.com en el Llavero.
+  Ejecutar `guardar-token-envia.command` (doble clic).
+- **Historia del bug:** el commit `90820c6` (23-07, "Retira credenciales expuestas")
+  endureció `kommo-sync.js` para leer del Llavero pero **no tocó `envia-sync.js`**,
+  que seguía buscando el token literal recién borrado. Quedó roto de forma latente
+  ese día; se manifestó el 31-07 al intentar arrancarlo.
+
+### Descartes Cruce Diario — CÓDIGO LISTO, FALTA PUBLICAR
+- **Completado y commiteado (`e82089f`):** los 4 fixes en `index.html` y `public/index.html`
+- **Validado:** `validar-deploy.js` dice OK
+- **Incompleto:** falta ejecutar `deploy-panel.command` **desde el Mac** (el sandbox
+  de Claude no tiene las credenciales de Firebase; `firebase login` es interactivo)
 
 ### Sincronización raíz ↔ public/
-- **Completado:** Ambas copias sincronizadas para index.html + envios.html
-- **Nota:** El validador avisa si divergen; deploy-panel NO las copia automáticamente
+- **Completado:** ambas copias sincronizadas para `index.html` y `envios.html`
+- **Nota:** el validador avisa si divergen; `deploy-panel.command` NO las copia automáticamente
 
 ---
 
@@ -127,6 +179,13 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 5. **Firebase = lectura + escritura en listener:** Cada campo nuevo en `_fbSetEstado()` DEBE agregarse al listener
 6. **NUNCA editar Firebase Console:** Solo via `firebase-rules.json` + deploy
 7. **Deploy NO copia raíz → public/:** Si editas raíz sin copiar, cambio no sube
+8. **El botón de Kommo se distribuye como userscript, no como extensión** (01-08).
+   La extensión descomprimida exigía Modo Desarrollador y que la carpeta no se
+   moviera nunca; actualizar obligaba a reinstalar en cada equipo. El userscript
+   se aloja en Firebase y se actualiza solo vía `@updateURL`.
+   **Al publicar un cambio hay que SUBIR el `@version`** o nadie lo recibe.
+9. **Credenciales y datos de empresa nunca en el código:** tokens en el Llavero
+   de macOS, dirección de despacho en `empresa.config.json`.
 
 ---
 
@@ -152,9 +211,100 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 ## 9. Problemas pendientes
 
 ### 🔴 BLOQUEADORES
-1. **`fodor-deploy-sanitizado` en Git pisó el deploy:** La versión publicada NO tiene los fixes de hoy
-2. **`envia-sync.js` en Mac corre código viejo:** HTTP 404 persiste, proceso no reiniciado
-3. **localStorage lleno:** TRF_DATA de 4MB ya causó un fallo real (descartes perdidos)
+1. **Saldo en Envia.com** — único pendiente para que salgan las guías. No es técnico.
+2. **localStorage lleno:** TRF_DATA de 4MB ya causó un fallo real (descartes perdidos).
+   Mitigado, no resuelto de fondo. La alerta "⚠️ NO SE GUARDÓ" ya avisa en vez de
+   fallar en silencio, pero el rediseño de la persistencia sigue pendiente.
+3. **Commit pendiente:** todo el trabajo del 01 y 03-08 está en disco sin commitear —
+   quedó un `.git/HEAD.lock` que el sandbox no puede borrar.
+   Desde el Mac: `cd ~/fodor-deploy && rm -f .git/HEAD.lock .git/index.lock && git add -A && git commit -m "envios: seis fixes + config empresa + userscript"`
+4. **Userscript sin instalar:** está publicado y vivo en
+   `https://odfor-bae97.web.app/fodor-envios.user.js` pero nadie lo instaló todavía.
+
+### 🩺 PANTALLA DE SALUD — mirar acá ANTES de reportar un problema
+
+```
+https://odfor-bae97.web.app/salud.html
+```
+
+Responde en una pantalla: ¿se está guardando? ¿cuánto falta para el techo?
+¿coinciden nube y navegador? ¿está corriendo `envia-sync`? ¿qué versión está
+publicada? Cada tarjeta dice **qué hacer** si algo está mal.
+
+Nació el 04-08 porque diagnosticar exigía pedirle capturas a la usuaria y que
+abriera la consola del navegador. Cada vuelta costaba minutos y varias
+terminaron en diagnósticos equivocados por datos incompletos.
+
+### 🏷 SELLO DE VERSIÓN AUTOMÁTICO (04-08-2026)
+
+`deploy-panel.command` ahora escribe el sello `vAAAA-MM-DD_HH:MM` en el HTML al
+publicar. Antes estaba a mano y no se tocaba desde el 29-07: se publicaban
+arreglos sin poder confirmar si el navegador corría el código nuevo o una copia
+en caché. **Si el panel muestra un sello distinto al de `salud.html`, hay que
+recargar con Cmd+Shift+R.**
+
+El deploy también avisa si hay cambios sin commitear y ofrece guardarlos: el
+31-07 se perdieron los arreglos de `envia-sync.js` justamente por eso.
+
+### 🔴 DEUDA TÉCNICA MAYOR — persistencia local (04-08-2026)
+
+**Es la deuda más grave del proyecto. Antes que cualquier función nueva.**
+
+**Qué pasó:** el panel dejó de guardar en el navegador durante más de una semana,
+sin avisar. Se perdían las importaciones de WebPay, las de GetNet y los borrados
+de facturas. Cada vez que se cerraba la pestaña volvía al estado del 27 de julio.
+
+**Causa raíz medida:** todo el estado se serializa en UN bloque cifrado
+(`fodorspa_crypt_v1`). Ese bloque llegó a **5594 KB** y `localStorage` tiene un
+límite duro de **~5 MB**. No entraba ni con la memoria vacía. El error real era:
+
+```
+QuotaExceededError: Setting the value of 'fodorspa_crypt_v1' exceeded the quota
+```
+
+Estaba oculto tras un `.catch` que lo reportaba como "Error cifrando" en la
+consola — cuando el cifrado funcionaba perfecto; lo que fallaba era guardarlo.
+
+**Mitigación aplicada (v2026-08-04A) — NO ES LA SOLUCIÓN:**
+- `D26_EXTRA` (10.579 facturas ≈ 2900 KB cifrados) sale del bloque. Queda en
+  ~2800 KB. Mismo precedente que `TRF_DATA`, que ya estaba excluido por lo mismo.
+- El guardado avisa en pantalla cuando falla, con el error crudo, en vez de
+  fallar callado.
+- El tamaño del bloque queda a la vista, en ámbar si supera 4000 KB.
+- El respaldo `_fsp_d26bk` (3,5 MB) dejó de escribirse: llenaba la memoria.
+
+**Por qué la mitigación no alcanza:** el bloque vuelve a crecer con el uso. El
+siguiente candidato a sacar sería `EST` — una entrada por cada una de las 11.465
+facturas — y **ese no se puede sacar**, es el estado de cobranza en sí.
+
+**Diseño correcto pendiente: migrar la persistencia local a IndexedDB.**
+`localStorage` topa en ~5 MB por diseño y no se amplía. IndexedDB da cientos de
+MB. La aplicación creció más allá de la tecnología que está usando.
+
+**Va junto con el bloque de 4 MB de `TRF_DATA`** (abierto desde el 27-07): son el
+mismo problema — datos que crecen sin límite contra un almacenamiento que no.
+
+Requiere análisis previo, plan de migración de los datos existentes y reversión.
+**No se hace de contrabando dentro de otro pedido.**
+
+### 🟠 DEUDA TÉCNICA ANOTADA (auditoría del 03-08)
+- **El token de Envia está expuesto en el frontend** de `envios.html` (línea ~401).
+  Va contra la regla de CLAUDE.md de no poner secretos en el frontend. La cotización
+  debería pasar por el backend que ya tiene el token en el Llavero.
+- `envios.html` pide tarifas a `'correoschile'` (s minúscula); el identificador real
+  es `correosChile`. Ese courier probablemente nunca devolvió tarifas.
+- `envios.html` hace `carrier: rate.carrier || rate.service` — si falta uno manda el
+  otro en su lugar. Debería fallar en vez de degradar.
+- `crearGuia` usa `'normal'` como servicio por defecto: solo vale para Starken, y el
+  `carrierPorDefecto` del config es chilexpress. Combinación inexistente.
+- El comentario de `formatoEtiqueta` en `empresa.config.json` lista tres valores que
+  NO están en el enum de Envia (`PAPER_8.5X11`, `STOCK_4X4`, `STOCK_4X8`). Los únicos
+  válidos: `PAPER_4X6`, `PAPER_7X4.75`, `STOCK_4X6`, `PAPER_LETTER`.
+
+### ✅ RESUELTO EL 31-07
+- `fodor-deploy-sanitizado` **no existe en el disco** — solo en Git. No puede pisar deploys.
+- Los cambios ahora están **commiteados** (`e82089f`), así que un `restore` los recupera
+  en vez de borrarlos. Antes se perdieron justamente por estar sin commitear.
 
 ### 🟡 RIESGOS ABIERTOS
 1. **TRF_DATA blob 4MB:** Guardado futuro puede fallar sin aviso (mitigado, no resuelto)
@@ -172,13 +322,26 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 10. Próximo paso
 
-**Inmediato (orden estricto):**
-1. Confirmar que `fodor-deploy` es la fuente de verdad oficial
-2. Archivar o eliminar `fodor-deploy-sanitizado` para evitar más conflictos
-3. Ejecutar `validar-deploy.js` desde `fodor-deploy` (valida mis cambios)
-4. Ejecutar `deploy-panel.command` desde `fodor-deploy` (publica fixes)
-5. Reiniciar `envia-sync.js` en Mac (carga código nuevo)
-6. Probar guía generation + descartes Cruce Diario
+**1. Cargar saldo en Envia.com** — es lo único que separa al sistema de funcionar.
+
+**2. Probar:** doble clic en `probar-guia.command`. Hay pedidos esperando en la
+cola. Si el saldo alcanza, sale el tracking y el PDF, y la guía queda guardada
+en el panel sola.
+
+**3. Instalar el userscript** en Chrome: entrar a
+`https://odfor-bae97.web.app/fodor-envios.user.js` y aceptar en Tampermonkey.
+Después apagar la extensión vieja "Fodor Envíos" en `chrome://extensions` y el
+userscript "Atlas Envíos" (maqueta con la dirección escrita a mano), para no
+tener tres botones encima.
+
+**4. Commitear** (ver bloqueador 3).
+
+**5. Repartir** `INSTRUCTIVO-Cotizador-Envios.md` a los vendedores.
+
+**Después (diferido):**
+- Rediseñar la persistencia de TRF_DATA (el bloque de 4 MB)
+- Sacar el token de Envia del frontend de `envios.html`
+- LaunchAgent para que `envia-sync` se levante solo y no dependa de una ventana abierta
 
 **Después (diferido):**
 - Resolver TRF_DATA 4MB (rediseño de persistencia — trabajo grande)

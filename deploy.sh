@@ -30,5 +30,5 @@ echo "  npx firebase-tools deploy --only hosting"
 echo "══════════════════════════════════════"Cmd+Vcp "/Users/deborahfodor/Library/Application Support/Claude/local-agent-mode-sessions/410c4ddc-4726-4448-9afa-ae7e768f6f70/6e0e1da9-9120-4958-bd4a-29d77b3c581c/local_d30383b9-3331-4fca-b218-83a1b4a9fcc2/outputs/index.html" ~/fodor-deploy/index.html && cd ~/fodor-deploy && npx firebase-tools deploy --only hosting
 
 cd ~/fodor-deploy && npx firebase-tools deploy --only hosting
-
+cd ~/fodor-deploy && node envia-sync.js
 

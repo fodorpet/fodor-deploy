@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fodor Spa — Salud del sistema</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background:#0f172a;color:#e2e8f0;margin:0;padding:24px;line-height:1.55}
+  h1{font-size:21px;margin:0 0 2px}
+  .sub{color:#94a3b8;font-size:13px;margin-bottom:22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;max-width:1180px}
+  .card{background:#1e293b;border-radius:14px;padding:18px;border-left:4px solid #475569}
+  .card.ok{border-left-color:#22c55e}
+  .card.avi{border-left-color:#f59e0b}
+  .card.mal{border-left-color:#ef4444}
+  .card h2{font-size:12px;margin:0 0 12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px}
+  .estado{font-size:19px;font-weight:800;margin-bottom:8px}
+  .ok .estado{color:#4ade80}.avi .estado{color:#fbbf24}.mal .estado{color:#f87171}
+  .det{font-size:13px;color:#cbd5e1}
+  .det div{padding:3px 0;display:flex;justify-content:space-between;gap:12px}
+  .det b{font-variant-numeric:tabular-nums;font-weight:700}
+  .barra{height:7px;background:#334155;border-radius:4px;overflow:hidden;margin:9px 0 4px}
+  .barra i{display:block;height:100%;border-radius:4px}
+  .acc{margin-top:11px;padding:9px 11px;background:#0f172a;border-radius:8px;font-size:12px;color:#fbbf24}
+  .cargando{color:#64748b;font-style:italic}
+  #resumen{max-width:1180px;margin-bottom:16px;padding:16px 18px;border-radius:14px;
+           background:#1e293b;border-left:4px solid #475569;font-size:15px;font-weight:700}
+  .pie{max-width:1180px;margin-top:20px;color:#64748b;font-size:12px}
+  button{background:#2563eb;color:#fff;border:none;border-radius:9px;padding:9px 17px;
+         font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<h1>🩺 Salud del sistema — Fodor Spa</h1>
+<div class="sub">Esta página <b>solo lee</b>. No modifica, no borra y no guarda nada.
+  <button onclick="location.reload()" style="margin-left:12px">↻ Actualizar</button></div>
+
+<div id="resumen" class="cargando">Revisando…</div>
+<div class="grid" id="grid"></div>
+
+<div class="pie">
+  Guardá esta página en favoritos. Si algo no anda, mirá acá antes de preguntar:
+  te dice qué está fallando y qué hacer.
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  var TOPE_LS = 5 * 1024 * 1024;   // límite real de localStorage: ~5 MB
+  var grid = document.getElementById('grid');
+  var tarjetas = {};
+  var problemas = [];
+
+  function card(id, titulo){
+    var d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = '<h2>'+titulo+'</h2><div class="estado cargando">Revisando…</div><div class="det"></div>';
+    grid.appendChild(d);
+    tarjetas[id] = d;
+    return d;
+  }
+  function set(id, nivel, estado, filas, accion){
+    var d = tarjetas[id];
+    d.className = 'card ' + nivel;
+    d.querySelector('.estado').className = 'estado';
+    d.querySelector('.estado').textContent = estado;
+    var det = d.querySelector('.det');
+    det.innerHTML = (filas||[]).map(function(f){
+      return f.barra
+        ? '<div style="display:block"><div class="barra"><i style="width:'+f.pct+'%;background:'+f.color+'"></i></div>'+
+          '<div style="display:flex;justify-content:space-between"><span>'+f[0]+'</span><b>'+f[1]+'</b></div></div>'
+        : '<div><span>'+f[0]+'</span><b>'+f[1]+'</b></div>';
+    }).join('');
+    if(accion) det.insertAdjacentHTML('beforeend','<div class="acc">→ '+accion+'</div>');
+    if(nivel === 'mal') problemas.push(estado);
+  }
+  function kb(n){ return Math.round(n/1024).toLocaleString('es-CL')+' KB'; }
+
+  card('guardado','1 · Guardado local');
+  card('nube','2 · Nube (Firebase)');
+  card('cruce','3 · ¿Coinciden nube y navegador?');
+  card('procesos','4 · Procesos del Mac');
+  card('version','5 · Versión publicada');
+
+  // ── 1. Guardado local ───────────────────────────────────────────────────
+  var usado = 0, claves = [], cryptKB = 0;
+  try{
+    for(var k in localStorage){
+      if(!Object.prototype.hasOwnProperty.call(localStorage,k)) continue;
+      var s = (localStorage[k]||'').length;
+      usado += s; claves.push([k,s]);
+      if(k === 'fodorspa_crypt_v1') cryptKB = s;
+    }
+  }catch(e){}
+  claves.sort(function(a,b){return b[1]-a[1];});
+  var pct = Math.min(100, Math.round(usado/TOPE_LS*100));
+  var wpLocal = 0;
+  try{ var w = localStorage.getItem('fodorspa_wp_v1'); wpLocal = w ? JSON.parse(w).length : 0; }catch(e){}
+
+  var filasLS = [
+    {0:'Espacio usado', 1:kb(usado)+' de '+kb(TOPE_LS)+' ('+pct+'%)', barra:true, pct:pct,
+     color: pct>90 ? '#ef4444' : (pct>75 ? '#f59e0b' : '#22c55e')},
+    {0:'Estado guardado (cifrado)', 1: cryptKB ? kb(cryptKB) : 'NO EXISTE'},
+    {0:'WebPay guardado acá', 1: wpLocal + ' transacciones'}
+  ];
+  claves.slice(0,3).forEach(function(p){ filasLS.push({0:'   '+p[0], 1:kb(p[1])}); });
+
+  if(!cryptKB){
+    set('guardado','mal','El estado NO está guardado', filasLS,
+        'El panel no guardó nada en este navegador. Abrilo, hacé cualquier cambio y mirá el mensaje de arriba: te va a decir el motivo exacto.');
+  }else if(pct > 90){
+    set('guardado','mal','Sin espacio', filasLS,
+        'La memoria está al límite. El panel va a dejar de guardar. Avisá.');
+  }else if(pct > 75 || cryptKB > 4*1024*1024){
+    set('guardado','avi','Cerca del límite', filasLS,
+        'Queda poco margen. Conviene resolver la migración a IndexedDB antes de que tope.');
+  }else{
+    set('guardado','ok','Guardando bien', filasLS);
+  }
+
+  // ── 5. Versión ──────────────────────────────────────────────────────────
+  fetch('/index.html', {cache:'no-store'}).then(function(r){ return r.text(); }).then(function(t){
+    var m = t.match(/id="chipVersion"[^>]*>([^<]*)</);
+    var v = m ? m[1] : '?';
+    set('version','ok','Publicada: '+v, [
+      {0:'Sello del panel en línea', 1: v}
+    ], 'Si el panel abierto muestra otra versión, recargá con Cmd+Shift+R: estás viendo una copia guardada.');
+  }).catch(function(){
+    set('version','avi','No se pudo leer', [], 'Revisá la conexión.');
+  });
+
+  // ── 2, 3 y 4. Nube ──────────────────────────────────────────────────────
+  var cfg = {
+    apiKey:"AIzaSyCQ87DLsSBWBr0ckqMZK45RyFmOvGdwaQQ",
+    authDomain:"odfor-bae97.firebaseapp.com",
+    databaseURL:"https://odfor-bae97-default-rtdb.firebaseio.com",
+    projectId:"odfor-bae97", storageBucket:"odfor-bae97.firebasestorage.app",
+    messagingSenderId:"104622263175", appId:"1:104622263175:web:c5f55c22a5c9d79a70a122"
+  };
+
+  function nRegs(v){ try{ var a=JSON.parse(v); return Array.isArray(a)?a.length:null; }catch(e){ return null; } }
+
+  try{
+    firebase.initializeApp(cfg);
+    firebase.auth().signInAnonymously().then(function(){
+      var db = firebase.database();
+      return Promise.all([
+        db.ref('estado').once('value'),
+        db.ref('envia_pending').once('value'),
+        db.ref('envia_shipments').once('value')
+      ]);
+    }).then(function(r){
+      var d = r[0].val() || {};
+      var pend = r[1].val() || {};
+      var ship = r[2].val() || {};
+
+      // 2 · Nube
+      var peso = 0;
+      Object.keys(d).forEach(function(k){ if(typeof d[k]==='string') peso += d[k].length; });
+      var wpNube = nRegs(d.WEBPAY_DATA), trfNube = nRegs(d.TRF_DATA);
+      var hs = d.updatedAt ? Math.round((Date.now()-new Date(d.updatedAt))/3600000) : null;
+
+      var filasN = [
+        {0:'WebPay', 1:(wpNube===null?'—':wpNube+' transacciones')},
+        {0:'Transferencias', 1:(trfNube===null?'—':trfNube.toLocaleString('es-CL')+' registros')},
+        {0:'Facturas importadas', 1:(nRegs(d.D26_EXTRA)===null?'—':nRegs(d.D26_EXTRA).toLocaleString('es-CL'))},
+        {0:'Última escritura', 1:(d.updatedAt? new Date(d.updatedAt).toLocaleString('es-CL') : '—')},
+        {0:'Peso del nodo', 1:kb(peso)}
+      ];
+      if(hs !== null && hs > 24){
+        set('nube','avi','Sin escrituras hace '+hs+' h', filasN,
+            'Nadie guardó nada en la nube en más de un día. Si estuviste trabajando, algo no está subiendo.');
+      }else{
+        set('nube','ok','Conectada', filasN);
+      }
+
+      // 3 · Cruce
+      var filasC = [
+        {0:'WebPay en la nube', 1:(wpNube===null?'—':wpNube)},
+        {0:'WebPay en este navegador', 1:wpLocal}
+      ];
+      if(wpNube === null){
+        set('cruce','mal','La nube no tiene WebPay', filasC, 'Las importaciones no están llegando a la nube.');
+      }else if(wpLocal === 0){
+        set('cruce','avi','Este navegador no tiene copia', filasC,
+            'Los datos están seguros en la nube, pero si te quedás sin internet no vas a verlos.');
+      }else if(wpNube === wpLocal){
+        set('cruce','ok','Coinciden', filasC);
+      }else{
+        var quien = wpNube > wpLocal ? 'la nube va adelante' : 'este navegador va adelante';
+        set('cruce', wpNube > wpLocal ? 'avi' : 'mal', 'Difieren — '+quien, filasC,
+            wpNube > wpLocal
+              ? 'Recargá el panel: debería traerse lo que falta de la nube.'
+              : 'Este navegador tiene datos que la nube no. Apretá Sincronizar en el panel ANTES de cerrarlo.');
+      }
+
+      // 4 · Procesos del Mac
+      var nPend = Object.keys(pend).length;
+      var conTracking = Object.keys(ship).filter(function(k){ return ship[k].tracking; }).length;
+      var masVieja = null;
+      Object.keys(pend).forEach(function(k){
+        var t = pend[k].ts; if(t && (!masVieja || t < masVieja)) masVieja = t;
+      });
+      var minEspera = masVieja ? Math.round((Date.now()-new Date(masVieja))/60000) : 0;
+
+      var filasP = [
+        {0:'Envíos esperando', 1:nPend},
+        {0:'Guías emitidas', 1:conTracking+' de '+Object.keys(ship).length},
+        {0:'Espera del más viejo', 1:(masVieja? minEspera+' min' : '—')}
+      ];
+      if(nPend > 0 && minEspera > 10){
+        set('procesos','mal','envia-sync no está corriendo', filasP,
+            'Hay envíos en cola hace más de 10 minutos. Abrí iniciar-envia-sync.command en el Mac y dejá esa ventana abierta.');
+      }else if(nPend > 0){
+        set('procesos','avi','Procesando', filasP, 'Hay '+nPend+' envío(s) en cola. Se resuelven en un par de minutos.');
+      }else{
+        set('procesos','ok','Sin pendientes', filasP);
+      }
+
+      resumir();
+    }).catch(function(e){
+      set('nube','mal','Sin conexión', [{0:'Error',1:e.message}], 'Revisá internet.');
+      set('cruce','mal','No se pudo comparar', []);
+      set('procesos','mal','No se pudo consultar', []);
+      resumir();
+    });
+  }catch(e){
+    set('nube','mal','No se pudo iniciar Firebase', [{0:'Error',1:e.message}]);
+    resumir();
+  }
+
+  function resumir(){
+    var r = document.getElementById('resumen');
+    r.className = '';
+    if(problemas.length === 0){
+      r.style.borderLeftColor = '#22c55e';
+      r.innerHTML = '<span style="color:#4ade80">✅ El sistema está sano.</span> ' +
+                    '<span style="font-weight:400;color:#94a3b8">Podés trabajar tranquila.</span>';
+    }else{
+      r.style.borderLeftColor = '#ef4444';
+      r.innerHTML = '<span style="color:#f87171">⚠️ '+problemas.length+' problema(s):</span> ' +
+                    '<span style="font-weight:400">'+problemas.join(' · ')+'</span>' +
+                    '<div style="font-weight:400;color:#94a3b8;font-size:13px;margin-top:6px">' +
+                    'Mirá las tarjetas de abajo: cada una dice qué hacer.</div>';
+    }
+  }
+})();
+</script>
+</body>
+</html>

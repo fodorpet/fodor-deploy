@@ -8,34 +8,39 @@ echo "  🔐 Fodor SpA — Guardar token de Envia.com"
 echo "═══════════════════════════════════════════════"
 echo ""
 
-# El token de Envia.com es una cadena larga tipo hash (el anterior tenia 64
-# caracteres hexadecimales). Se valida por largo, no por prefijo, porque
-# Envia.com no usa un prefijo fijo como el 'eyJ' de Kommo.
-validar() { [[ ${#1} -ge 30 ]]; }
+# El unico filtro por largo es para descartar un pegado vacio o accidental.
+# Quien decide si el token sirve es Envia.com, mas abajo: adivinar el formato
+# desde aca solo sirve para rechazar tokens buenos.
+validar() { [[ ${#1} -ge 8 ]]; }
 
 TOKEN=$(pbpaste | tr -d '[:space:]')
 
 if validar "$TOKEN"; then
-  echo "📋 Token encontrado en el portapapeles (${#TOKEN} caracteres)"
+  echo "📋 Token tomado del portapapeles (${#TOKEN} caracteres)"
   echo ""
 else
-  echo "El portapapeles no trae un token válido."
+  echo "El portapapeles está vacío o trae muy poco texto."
   echo ""
   echo "  Dónde encontrarlo:"
   echo "  Envia.com → inicia sesión → Configuración / Settings"
   echo "  → API / Integraciones → Token de producción"
   echo ""
-  echo "  Cópialo y PÉGALO aquí abajo con Cmd+V, luego presiona Enter."
-  echo "  (no se va a ver mientras lo pegas, es normal — es por seguridad)"
+  echo "  Ojo: copia el TOKEN completo, no el nombre de la cuenta ni el ID."
+  echo "  Suele ser una cadena larga de letras y números sin espacios."
+  echo ""
+  echo "  Pégalo aquí abajo con Cmd+V y presiona Enter."
+  echo "  (no se ve mientras lo pegas — es por seguridad, es normal)"
   echo ""
   read -s -p "  Pega el token: " TOKEN_IN
   echo ""
   echo ""
   TOKEN=$(echo "$TOKEN_IN" | tr -d '[:space:]')
   if ! validar "$TOKEN"; then
-    echo "❌ Eso no parece un token de Envia.com."
-    echo "   Debe ser una cadena larga (30 caracteres o más)."
-    echo "   Recibí ${#TOKEN} caracteres."
+    echo "❌ No recibí casi nada (${#TOKEN} caracteres)."
+    echo ""
+    echo "   Si pegaste con Cmd+V y no pasó nada, probá así:"
+    echo "   copiá el token, cerrá esta ventana y volvé a abrir el .command."
+    echo "   El script lee el portapapeles solo, sin que tengas que pegar."
     echo ""
     read -p "Presiona Enter para cerrar..."
     exit 1
@@ -55,10 +60,13 @@ CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -d '{"origin":{"name":"test","street":"test","number":"1","district":"Santiago","city":"Santiago","state":"Region Metropolitana","country":"CL","postalCode":"","phone":"999999999"},"destination":{"name":"test","street":"test","number":"1","district":"Santiago","city":"Santiago","state":"Region Metropolitana","country":"CL","postalCode":"","phone":"999999999"},"packages":[{"content":"test","amount":1,"type":"box","weight":1,"weightUnit":"KG","lengthUnit":"CM","dimensions":{"length":10,"width":10,"height":10}}],"shipment":{"carrier":"chilexpress"}}')
 
 if [ "$CODE" = "401" ] || [ "$CODE" = "403" ]; then
-  echo "❌ Envia.com respondió HTTP $CODE — el token no sirve."
+  echo "❌ Envia.com respondió HTTP $CODE — ese token no sirve."
   echo ""
-  echo "   $CODE significa que el token está vencido o revocado."
-  echo "   Genera uno nuevo en Envia.com y vuelve a intentar."
+  echo "   $CODE significa que está vencido, revocado, o que lo que copiaste"
+  echo "   no es el token (a veces se copia el ID de cuenta por error)."
+  echo ""
+  echo "   Recibí ${#TOKEN} caracteres. El token anterior de Fodor tenía 64,"
+  echo "   así que si copiaste mucho menos, probablemente sea otro campo."
   echo ""
   echo "   NO se guardó nada en el Llavero (para no dejar una credencial mala)."
   echo ""

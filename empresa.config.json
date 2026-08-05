@@ -1,0 +1,33 @@
+{
+  "_comentario": "Datos de la empresa que usa el panel. Al instalarlo en otra empresa se cambia SOLO este archivo: nada de esto debe estar escrito dentro del codigo.",
+
+  "empresa": {
+    "nombre": "Fodor SpA",
+    "rut": "76.515.816-8"
+  },
+
+  "despacho": {
+    "_comentario": "Direccion desde donde el courier retira los paquetes. Va como remitente en cada guia de Envia.com.",
+    "nombre": "Fodor SpA",
+    "empresa": "Fodor SpA",
+    "email": "ventas@fodor.cl",
+    "telefono": "56986298699",
+    "calle": "Catedral",
+    "numero": "2515",
+    "comuna": "Santiago Centro",
+    "ciudad": "Santiago",
+    "_comentarioRegion": "CODIGO DE 2 LETRAS, no el nombre. Envia.com responde 'String is too long' si va el nombre completo. RM=Metropolitana AP=Arica y Parinacota TA=Tarapaca AN=Antofagasta AT=Atacama CO=Coquimbo VS=Valparaiso LI=O'Higgins ML=Maule NB=Nuble BI=Biobio AR=Araucania LR=Los Rios LL=Los Lagos AI=Aysen MA=Magallanes",
+    "region": "RM",
+    "pais": "CL",
+    "_comentarioCodigoPostal": "OBLIGATORIO. Envia.com rechaza la guia sin este dato: responde 400 'Required postalCode' y devuelve la guia sin numero de seguimiento. 8320000 es el codigo de Santiago Centro; verificar si la bodega esta en otra comuna.",
+    "codigoPostal": "8320000"
+  },
+
+  "envios": {
+    "_comentario": "carrierPorDefecto se usa solo cuando el pedido no trae courier elegido desde el cotizador.",
+    "carrierPorDefecto": "chilexpress",
+
+    "_comentarioFormato": "Tamano de la etiqueta que devuelve Envia.com. Debe ser uno de los valores que acepta la API, no un nombre libre: 'CARTA' era invalido y hacia fallar la guia. PAPER_LETTER = hoja carta en impresora normal. STOCK_4X6 = etiqueta adhesiva 4x6 pulgadas, el estandar de las impresoras termicas de despacho. Otros: PAPER_8.5X11, PAPER_4X6, STOCK_4X4, STOCK_4X8.",
+    "formatoEtiqueta": "PAPER_LETTER"
+  }
+}

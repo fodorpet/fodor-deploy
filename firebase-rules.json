@@ -1,6 +1,78 @@
 {
   "rules": {
     ".read": false,
-    ".write": false
+    ".write": false,
+    "estado": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "usuarios": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "bode_pass": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "_avisos_login": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "email_tracking": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "kommo_notas_pago": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "kommo_pagos_descartadas": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "kommo_pagos_alertas": {
+      ".read": true,
+      ".write": true
+    },
+    "kommo_envios": {
+      ".read": true,
+      ".write": true
+    },
+    "kommo_reset_pago": {
+      ".read": true,
+      ".write": true
+    },
+    "kommo_reset_envio": {
+      ".read": true,
+      ".write": true
+    },
+    "kommo_auto_replied": {
+      ".read": true,
+      ".write": true
+    },
+    "envia_pending": {
+      ".read": true,
+      ".write": true
+    },
+    "envia_shipments": {
+      ".read": true,
+      ".write": true
+    },
+    "envia_rate_pending": {
+      ".read": true,
+      ".write": true
+    },
+    "envia_rate_result": {
+      ".read": true,
+      ".write": true
+    },
+    "monday_production": {
+      ".read": true,
+      ".write": true
+    },
+    "kommo_sync_estado": {
+      ".read": true,
+      ".write": true
+    }
   }
 }

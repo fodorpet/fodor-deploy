@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-07-29B</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-04A</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -498,7 +498,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-07-29B</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-04A</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8162,7 +8162,9 @@ function importarFacturasExcel(event){
         if(completadas){
           // Persistir lo completado aunque no haya facturas nuevas
           guardarEstado();
-          try{localStorage.setItem('_fsp_d26bk',JSON.stringify(D26_EXTRA));}catch(e){}
+          // Respaldo '_fsp_d26bk' retirado 04-08-2026 (ver nota en beforeunload):
+          // llenaba la memoria del navegador e impedía guardar el estado completo.
+          // La línea de abajo ya lo manda a Firebase, que es de donde se recupera.
           try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA)});}catch(e){}
           try{f26();}catch(e){}
           try{buildResumen();}catch(e){}
@@ -8176,7 +8178,7 @@ function importarFacturasExcel(event){
       nuevas.forEach(function(r){D26.unshift(r);}); // unshift para que queden al inicio
       nuevas.forEach(function(r){if(!D26_EXTRA.find(function(x){return String(x.folio)===String(r.folio);}))D26_EXTRA.unshift(r);});
       guardarEstado();
-      try{localStorage.setItem('_fsp_d26bk',JSON.stringify(D26_EXTRA));}catch(e){}
+      // Respaldo '_fsp_d26bk' retirado 04-08-2026 (ver nota en beforeunload).
       try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA)});}catch(e){}
       try{f26();}catch(e){}
       try{fmes26('2026-01','13');}catch(e){}
@@ -8433,8 +8435,36 @@ function _fbSetEstado(campos, opciones){
         var _trf=JSON.parse(data.TRF_DATA);
         if(_trf&&_trf.length>0){
           var _trfF=_trf.filter(function(t){return (t.monto||0)>=100;});
-          var _localTrfIds=new Set(TRF_DATA.map(function(t){return t.id;}));
-          _trfF.forEach(function(t){if(!_localTrfIds.has(t.id))TRF_DATA.push(t);});
+          // ── FIX 04-08-2026: los folios asignados no volvían de la nube ──────
+          // Antes esto SOLO agregaba las transferencias cuyo ID no existía
+          // localmente. Como las 11.233 transferencias están escritas dentro
+          // del HTML (sin folio), cualquier transferencia ya presente hacía que
+          // se descartara la versión de la nube — y con ella el folio que el
+          // usuario había asignado.
+          //
+          // Efecto medido: se asignaba un folio, se guardaba bien en Firebase,
+          // y al recargar volvía a "Pendiente". El trabajo llegaba a la nube;
+          // el panel nunca se lo traía de vuelta.
+          //
+          // WEBPAY_DATA ya resolvía esto bien unas líneas más abajo
+          // ('if(r.folio&&!_loc.folio)'). Acá se aplica el mismo criterio: la
+          // nube completa lo que falta, pero NUNCA borra un dato local. Si los
+          // dos tienen folio y son distintos, gana el local — quien lo acaba de
+          // escribir es quien está mirando la pantalla.
+          var _trfIdx={};
+          TRF_DATA.forEach(function(t,i){ _trfIdx[t.id]=i; });
+          var _trfNuevas=0, _trfCompletadas=0;
+          _trfF.forEach(function(t){
+            var i=_trfIdx[t.id];
+            if(i===undefined){ TRF_DATA.push(t); _trfIdx[t.id]=TRF_DATA.length-1; _trfNuevas++; return; }
+            var loc=TRF_DATA[i];
+            if(t.folio && !loc.folio){ loc.folio=t.folio; _trfCompletadas++; }
+            if(t.descartada && loc.descartada===undefined) loc.descartada=t.descartada;
+            if(t.obs && !loc.obs) loc.obs=t.obs;
+          });
+          if(_trfNuevas||_trfCompletadas){
+            console.log('[FODOR] TRF desde Firebase: '+_trfNuevas+' nuevas, '+_trfCompletadas+' folios recuperados');
+          }
           TRF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
         }
       }catch(e){} }
@@ -10639,7 +10669,7 @@ function repararFechasFacturas(){
     });
     var reparadas=Object.keys(mut).length;
     try{ guardarEstado(); }catch(e){ console.error('[FECHAS] guardarEstado:',e); }
-    try{ localStorage.setItem('_fsp_d26bk',JSON.stringify(D26_EXTRA)); }catch(e){}
+    // Respaldo '_fsp_d26bk' retirado 04-08-2026 (ver nota en beforeunload).
     if(typeof BITACORA!=='undefined'){
       BITACORA.unshift({ts:new Date().toISOString(),tipo:'🔧',autor:CURRENT_USER||'Sistema',folio:'',empresa:'',
         nota:'Reparación de fechas: '+reparadas+' facturas corregidas'+(irrecuperables.length?', '+irrecuperables.length+' sin recuperar':''),compromisoFecha:''});
@@ -15038,9 +15068,30 @@ guardarEstado = function(){
   // FIX-TRF-CRYPT 2026-07-24: guardar TRF_DATA en su clave dedicada también en modo cifrado
   try{if(TRF_DATA&&TRF_DATA.length)localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e){try{localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}}
   // ── TRF_DATA NO se incluye en cifrado (está hardcodeado en HTML = 2MB innecesarios) ──
+  //
+  // ── D26_EXTRA TAMPOCO, DESDE EL 04-08-2026 ─────────────────────────────────
+  // MEDICIÓN QUE MOTIVÓ EL CAMBIO: el bloque cifrado pesaba 5594 KB y el
+  // navegador da ~5 MB de localStorage. No entraba ni con la memoria vacía:
+  // el error era "QuotaExceededError ... 'fodorspa_crypt_v1' exceeded the quota"
+  // incluso después de liberar 3,5 MB. Consecuencia: el estado NO se guardaba
+  // localmente desde hacía más de una semana, y con él se perdían las
+  // importaciones de WebPay, las de GetNet y los borrados de facturas.
+  //
+  // D26_EXTRA son 10.579 facturas ≈ 2170 KB crudos ≈ 2900 KB ya cifrado y en
+  // base64. Sacarlo deja el bloque en ~2800 KB, que entra con margen.
+  //
+  // ES SEGURO POR LO MISMO QUE TRF_DATA: se escribe en Firebase en 4 lugares y
+  // el listener lo restaura al abrir (ver 'if(data.D26_EXTRA)'). Verificado el
+  // 04-08-2026: 10.579 facturas presentes en la nube.
+  //
+  // ⚠️ ESTO ES UNA MITIGACIÓN, NO LA SOLUCIÓN. La causa real es que todo el
+  // estado se guarda en UN bloque que debe caber en un límite fijo de ~5 MB.
+  // Con el crecimiento actual se vuelve a chocar contra ese techo, y el
+  // siguiente candidato a sacar sería EST — que es el estado de cobranza en sí
+  // y NO se puede sacar. El diseño correcto es migrar la persistencia local a
+  // IndexedDB, que da cientos de MB en vez de 5. Anotado en ESTADO-ACTUAL.md.
   var data={
     EST:EST,BITACORA:BITACORA,BORRADAS:BORRADAS,BORRADAS25:BORRADAS25,
-    D26_EXTRA:D26_EXTRA,
     WEBPAY_DATA:WEBPAY_DATA,GETNET_DATA:GETNET_DATA,GETNET_ELIMINADO:GETNET_ELIMINADO,
     CARTOLA_DATA:CARTOLA_DATA,METAS:METAS,PROV_DATA:PROV_DATA,
     OT_DATA:OT_DATA,
@@ -15050,13 +15101,104 @@ guardarEstado = function(){
   _DECRYPTED_CACHE=data;
   console.log('[FODOR] guardarEstado: COT_DATA a guardar:', data.COT_DATA ? data.COT_DATA.length : 0);
   _encrypt(_CRYPT_KEY,JSON.stringify(data)).then(function(cipher){
-    localStorage.setItem(_CRYPT_DATA_KEY,cipher);
+    // ── FIX 2026-08-04 — ESTE GUARDADO FALLABA EN SILENCIO ──────────────────
+    // localStorage.setItem() estaba sin protección propia. Con la memoria del
+    // navegador llena tiraba QuotaExceededError, la ejecución saltaba al .catch
+    // de más abajo —que lo reportaba como "Error cifrando", cuando el cifrado
+    // había funcionado perfecto— y NADA de lo que sigue se ejecutaba: ni el
+    // "🔒 Guardado cifrado" ni el toast.
+    //
+    // Consecuencia real (04-08-2026): TODO el estado se perdía sin aviso. En
+    // este bloque viajan EST, BORRADAS, WEBPAY_DATA, GETNET_DATA, D26_EXTRA y
+    // el resto. Por eso las importaciones de WebPay, las de GetNet y los
+    // borrados de facturas desaparecían al cerrar la pestaña: no eran tres
+    // fallas distintas, era ésta.
+    //
+    // Acá NO se cambia qué se guarda ni cómo. Solo se comprueba si entró y se
+    // avisa cuando no.
+    var _guardoOk = false, _motivo = '', _libero = false;
+    try{
+      localStorage.setItem(_CRYPT_DATA_KEY, cipher);
+      _guardoOk = true;
+    }catch(e_ls){
+      // FIX 04-08-2026 (2da vuelta): antes acá se INTERPRETABA el error y se
+      // mostraba "la memoria está llena" siempre que el texto se pareciera a
+      // eso. Con el espacio ya liberado el fallo seguía, y el mensaje seguía
+      // culpando a la memoria — mandando el diagnóstico por el camino
+      // equivocado. Ahora se guarda el error crudo y se muestra tal cual.
+      var _nombreErr = (e_ls && e_ls.name) || 'Error';
+      var _msgErr    = (e_ls && e_ls.message) || 'sin detalle';
+      var _txt = _nombreErr + ' ' + _msgErr;
+      var _esCuota = /quota|exceeded|storage/i.test(_txt);
+      var _crudo = _nombreErr + ': ' + _msgErr;
+
+      // ── PRIORIDAD: el estado vale más que el respaldo (04-08-2026) ────────
+      // '_fsp_d26bk' es una copia de D26_EXTRA que se escribe al cerrar el
+      // navegador, por si el cifrado —que es asíncrono— no alcanza a terminar.
+      // Creció a 3,5 MB de los ~5 disponibles y terminó impidiendo que se
+      // guardara el estado completo: la red de seguridad causando la pérdida
+      // que venía a evitar.
+      //
+      // Es recuperable: D26_EXTRA vive en Firebase y el listener lo restaura al
+      // abrir. Así que ante falta de espacio, el respaldo cede y el estado pasa.
+      if(_esCuota){
+        try{
+          localStorage.removeItem('_fsp_d26bk');
+          localStorage.setItem(_CRYPT_DATA_KEY, cipher);
+          _guardoOk = true;
+          _libero = true;
+          console.warn('[FODOR] Sin espacio: se liberó el respaldo _fsp_d26bk para poder guardar el estado. Se recupera de Firebase.');
+        }catch(e_ls2){
+          _motivo = ((e_ls2 && e_ls2.name) || 'Error') + ': ' + ((e_ls2 && e_ls2.message) || 'sin detalle')
+                    + '  ·  (ya se había liberado el respaldo y aun así falló)';
+          console.error('[FODOR] NO SE PUDO GUARDAR NI LIBERANDO EL RESPALDO:', e_ls2);
+        }
+      }else{
+        _motivo = _crudo;
+        console.error('[FODOR] NO SE PUDO GUARDAR EL ESTADO CIFRADO:', e_ls);
+      }
+      // Tamaño de lo que se intentó guardar: si el error no es de espacio,
+      // este número igual sirve para descartar que sea un problema de volumen.
+      try{ _motivo += '  ·  intentaba guardar ' + Math.round(cipher.length/1024) + ' KB'; }catch(e){}
+    }
+
     try{if(data.COT_DATA&&data.COT_DATA.length)localStorage.setItem('fodorspa_cot_v1',JSON.stringify(data.COT_DATA));}catch(e){}
+
     var el=document.getElementById('lastSave');
-    if(el) el.textContent='🔒 Guardado cifrado: '+new Date().toLocaleTimeString('es-CL');
-    var toast=document.getElementById('saveToast');
-    if(toast){toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');}
-  }).catch(function(e){console.error('Error cifrando:',e);});
+    if(_guardoOk){
+      if(el){
+        // El tamaño va a la vista a propósito: el límite de localStorage es de
+        // ~5 MB y este bloque ya lo superó una vez (5594 KB el 04-08-2026),
+        // dejando al panel sin guardar durante más de una semana sin que nadie
+        // lo notara. Teniéndolo a la vista se ve venir el próximo techo.
+        var _kb = Math.round(cipher.length/1024);
+        el.textContent = '🔒 Guardado cifrado: '+new Date().toLocaleTimeString('es-CL')+
+                         '  ·  '+_kb+' KB' +
+                         (_libero ? '  (se liberó espacio)' : '');
+        el.style.color = _kb > 4000 ? '#d97706' : '';
+        el.style.fontWeight = _kb > 4000 ? '800' : '';
+        el.title = _kb > 4000
+          ? 'ATENCIÓN: el límite del navegador es ~5000 KB. Al superarlo el panel deja de guardar. Avisar.'
+          : 'Tamaño del estado guardado. El límite del navegador es ~5000 KB.';
+      }
+      var toast=document.getElementById('saveToast');
+      if(toast){toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');}
+    }else{
+      if(el){ el.textContent='⚠️ NO SE GUARDÓ EN ESTE NAVEGADOR — '+_motivo; el.style.color='#dc2626'; el.style.fontWeight='800'; }
+      if(!window._avisoCryptQuota){
+        window._avisoCryptQuota = true;
+        try{ alert('⚠️ NO SE PUDO GUARDAR EN ESTE NAVEGADOR\n\n'+
+                   'Motivo: '+_motivo+'\n\n'+
+                   'Tus cambios están solo en pantalla. Si cerrás la pestaña, se pierden.\n\n'+
+                   'Avisá antes de cerrar.'); }catch(e){}
+      }
+    }
+  }).catch(function(e){
+    // Acá sí es un fallo del cifrado propiamente dicho, no del guardado.
+    console.error('[FODOR] Error al CIFRAR el estado:', e);
+    var el=document.getElementById('lastSave');
+    if(el){ el.textContent='⚠️ ERROR AL CIFRAR — no se guardó'; el.style.color='#dc2626'; el.style.fontWeight='800'; }
+  });
   // FIX-TRF-CRYPT 2026-07-24: sincronizar a Firebase también en modo cifrado
   try{_fbPushEstado();}catch(e){console.error('_fbPushEstado:',e);}
 };
@@ -15440,15 +15582,29 @@ function _unlockApp(){
   }catch(e){console.error('Error restaurando backup D26:',e);}
   localStorage.removeItem(_LEGACY_KEY);
   console.log('%c🔒 Datos cifrados con AES-256-GCM + PBKDF2','color:#16a34a;font-weight:bold;font-size:14px;');
-  // Guardar D26_EXTRA al cerrar el browser (sincrónico, garantizado)
-  window.addEventListener('beforeunload', function(){
-    try{
-      if(D26_EXTRA && D26_EXTRA.length>0){
-        localStorage.setItem('_fsp_d26bk', JSON.stringify(D26_EXTRA));
-        console.log('[FODOR] beforeunload: guardadas',D26_EXTRA.length,'facturas en backup');
-      }
-    }catch(e){}
-  });
+  // ── RESPALDO _fsp_d26bk RETIRADO (04-08-2026) ───────────────────────────
+  // Acá se escribía una copia completa de D26_EXTRA al cerrar el navegador,
+  // por si el cifrado —asíncrono— no alcanzaba a terminar.
+  //
+  // POR QUÉ SE SACA: esa copia llegó a 3,5 MB de los ~5 MB que da el navegador.
+  // Al llenarse el espacio, el guardado del ESTADO CIFRADO dejó de entrar. Y en
+  // ese bloque viajan EST, BORRADAS, WEBPAY_DATA, GETNET_DATA y todo lo demás.
+  // Resultado medido el 04-08-2026: las importaciones de WebPay, las de GetNet
+  // y los borrados de facturas desaparecían al cerrar la pestaña. El respaldo
+  // terminó provocando exactamente la pérdida de datos que venía a prevenir,
+  // y sobre un conjunto de datos mucho más grande que el que protegía.
+  //
+  // POR QUÉ ES SEGURO SACARLO: D26_EXTRA se escribe en Firebase y el listener
+  // lo restaura al abrir (ver 'if(data.D26_EXTRA)' en el listener de estado).
+  // Verificado el 04-08-2026: 10.579 facturas presentes en la nube.
+  //
+  // El código que RESTAURA desde '_fsp_d26bk' se conserva más arriba, para que
+  // los respaldos que ya existan en los navegadores sigan sirviendo hasta que
+  // se liberen solos.
+  //
+  // Si alguna vez hace falta volver a tener un respaldo local de emergencia,
+  // NO debe guardar el arreglo completo: tiene que caber sin competirle el
+  // espacio al estado, que es lo que de verdad no se puede perder.
   // ── Listener de avisos de ingreso (solo admin) ──────────────────────
   if(!_ROL_BODEGUERO && !localStorage.getItem('fodorspa_user')){
     try{

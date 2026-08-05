@@ -12,6 +12,7 @@
 const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
+const { resolverCiudad } = require('./envia-geo.js');
 
 // ─── CREDENCIALES ─────────────────────────────────────────────────────────────
 // FIX 2026-07-31 — Las credenciales se leen de variable de entorno o del Llavero
@@ -78,20 +79,74 @@ var FIELD_ANCHO     = null;   // Campo "Ancho" (cm)
 var FIELD_LARGO     = null;   // Campo "Largo" o "Profundidad" (cm)
 var FIELD_TRACKING  = null;   // Campo donde escribir el tracking (opcional)
 
-// ─── ORIGEN — DIRECCIÓN DE FODOR SPA ─────────────────────────────────────────
-// ⚠️  EDITAR con tus datos reales antes de usar
+// ─── ORIGEN — DIRECCIÓN DE DESPACHO ──────────────────────────────────────────
+// FIX 2026-07-31: la dirección salía de constantes escritas acá, con textos de
+// ejemplo ('EDITAR_NOMBRE_CALLE', número '000') que nunca se completaron. Envia.com
+// aceptaba el pedido pero devolvía la guía SIN número de seguimiento, porque no
+// sabía de dónde retirar — y nada avisaba del problema.
+//
+// Ahora sale de empresa.config.json. Instalar el panel en otra empresa es cambiar
+// ese archivo: la dirección de un cliente no vive dentro de la lógica.
+
+function _leerConfigEmpresa() {
+  const ruta = path.join(__dirname, 'empresa.config.json');
+  let cfg;
+  try {
+    cfg = JSON.parse(fs.readFileSync(ruta, 'utf8'));
+  } catch (e) {
+    console.error('\n❌ No se pudo leer empresa.config.json');
+    console.error('   Ruta esperada: ' + ruta);
+    console.error('   Detalle: ' + e.message + '\n');
+    process.exit(1);
+  }
+
+  const d = cfg.despacho || {};
+  // Sin estos campos Envia.com no puede emitir una etiqueta real.
+  // 'codigoPostal' va en la lista porque Envia.com responde 400 "Required
+  // postalCode" si falta, y devuelve la guía sin número de seguimiento.
+  const obligatorios = ['calle', 'numero', 'comuna', 'ciudad', 'region', 'telefono', 'codigoPostal'];
+  const faltan = obligatorios.filter(k => !String(d[k] || '').trim());
+
+  if (faltan.length) {
+    console.error('\n❌ empresa.config.json está incompleto.');
+    console.error('   Faltan estos datos de despacho: ' + faltan.join(', '));
+    console.error('   Sin dirección de origen válida, Envia.com emite guías sin');
+    console.error('   número de seguimiento. Se detiene para no gastar guías en vano.\n');
+    process.exit(1);
+  }
+
+  // La región va como código de 2 letras. Con el nombre completo Envia.com
+  // responde 400 "String is too long" y la guía sale sin seguimiento.
+  if (String(d.region).trim().length > 2) {
+    console.error('\n❌ La región debe ir como código de 2 letras, no como nombre.');
+    console.error('   Está escrito: "' + d.region + '"');
+    console.error('   Debería ser, por ejemplo: "RM" para Región Metropolitana.');
+    console.error('   Los códigos están listados en empresa.config.json.\n');
+    process.exit(1);
+  }
+
+  return cfg;
+}
+
+const CONFIG = _leerConfigEmpresa();
+
 const ORIGEN = {
-  name:     'Fodor SpA',
-  company:  'Fodor SpA',
-  email:    'info@fodorspa.cl',        // ← EDITAR
-  phone:    '+56912345678',             // ← EDITAR con tu teléfono
-  street:   'EDITAR_NOMBRE_CALLE',     // ← EDITAR (solo nombre, sin número)
-  number:   '000',                      // ← EDITAR (número de la calle)
-  district: 'EDITAR_COMUNA',           // ← EDITAR
-  city:     'Santiago',                 // ← EDITAR si no es Santiago
-  state:    'Región Metropolitana',     // ← EDITAR si no es RM
-  country:  'CL',
-  zipCode:  ''
+  name:     CONFIG.despacho.nombre  || CONFIG.empresa.nombre,
+  company:  CONFIG.despacho.empresa || CONFIG.empresa.nombre,
+  email:    CONFIG.despacho.email   || '',
+  phone:    String(CONFIG.despacho.telefono).replace(/\D/g, ''),
+  street:   CONFIG.despacho.calle,
+  number:   String(CONFIG.despacho.numero),
+  district: CONFIG.despacho.comuna,
+  city:     CONFIG.despacho.ciudad,
+  state:    CONFIG.despacho.region,
+  country:  CONFIG.despacho.pais || 'CL',
+  // FIX 2026-08-01 — el campo se llama postalCode, NO zipCode.
+  // Envia.com respondia 400 "Required property missing: postalCode" y en el
+  // detalle mostraba el dato presente bajo el nombre zipCode. El codigo postal
+  // siempre estuvo bien; el nombre de la propiedad estaba mal. Por eso ninguna
+  // guia salio nunca con numero de seguimiento.
+  postalCode: CONFIG.despacho.codigoPostal || ''
 };
 
 // ─── PAQUETE POR DEFECTO ──────────────────────────────────────────────────────
@@ -362,7 +417,18 @@ async function crearGuia(lead, telefono, opcionesExtras) {
   // Courier elegido en pantalla; CARRIER queda solo como valor por defecto.
   const carrier = opc._carrier || CARRIER;
   const service = opc._service || 'normal';
-  const estado  = opc.estado   || 'Región Metropolitana';
+
+  // ── Código postal y región del destino ───────────────────────────────────
+  // Envia.com exige postalCode con mínimo 3 caracteres. El cotizador nunca lo
+  // capturaba (en Chile casi no se usan), así que iba vacío y la guía no se
+  // emitía. Se resuelve contra el servicio de geocodificación de Envia, que
+  // además devuelve el código de región de 2 letras — mejor que la tabla
+  // hardcodeada del cotizador, que tenía ~50 comunas y para el resto caía a
+  // 'RM' en silencio: un envío a Puerto Montt salía como Metropolitana.
+  //
+  // Si no se puede resolver, se corta con error. Mandar un código inventado
+  // emite la guía mal y el problema aparece más tarde y más caro.
+  const geo = await resolverCiudad(ciudad);
 
   const payload = {
     origin: { ...ORIGEN },
@@ -374,10 +440,10 @@ async function crearGuia(lead, telefono, opcionesExtras) {
       street:   calleNombre,
       number:   calleNum,
       district: ciudad,
-      city:     ciudad,
-      state:    estado,
+      city:     geo.localidad || ciudad,
+      state:    geo.state,
       country:  'CL',
-      zipCode:  ''
+      postalCode: geo.postalCode
     },
     packages: packages,
     shipment: {
@@ -387,7 +453,10 @@ async function crearGuia(lead, telefono, opcionesExtras) {
     },
     settings: {
       printFormat: 'PDF',
-      printSize:   'CARTA',
+      // 'CARTA' no es un valor valido de la API: Envia responde "Enum failed"
+      // y la guia no se emite. Sale del config para que cada empresa elija
+      // segun su impresora (hoja carta o etiqueta termica).
+      printSize:   (CONFIG.envios && CONFIG.envios.formatoEtiqueta) || 'PAPER_LETTER',
       comments:    'Pedido Fodor SpA — Lead #' + (lead.id || 'web'),
       currency:    'CLP'
     }
@@ -456,6 +525,20 @@ async function procesarPendientes() {
   let creados = 0;
   for (const [leadId, pendiente] of pendientes) {
     try {
+      // ── IDEMPOTENCIA (2026-07-31) ────────────────────────────────────────
+      // Antes de crear nada, verificar si este pedido YA tiene guía emitida.
+      // Sin este control, un pendiente que no se alcanzó a borrar hacía que el
+      // proceso emitiera una guía nueva cada 2 minutos para el mismo envío.
+      // Cada guía es un cobro real del courier: esto no es un detalle.
+      const yaEmitida = await httpsGet(FIREBASE_DB, '/envia_shipments/' + leadId + '.json', {});
+      if (yaEmitida.status === 200 && yaEmitida.body && typeof yaEmitida.body === 'object'
+          && yaEmitida.body.status === 'created') {
+        console.log('   ⏭  #' + leadId + ': ya tiene guía emitida el ' +
+          (yaEmitida.body.created_at || '?') + '. No se vuelve a crear.');
+        await httpsPutFirebase('/envia_pending/' + leadId + '.json', null);
+        continue;
+      }
+
       // Marcar como procesando para evitar doble ejecución
       await httpsPatchFirebase('/envia_pending/' + leadId + '.json', {
         status: 'processing',
@@ -484,7 +567,7 @@ async function procesarPendientes() {
           ciudad:    pendiente.ciudad || 'Santiago',
           correo:    pendiente.correo || '',
           direccion: (pendiente.calle || '') + ' ' + (pendiente.numero || 's/n'),
-          estado:    pendiente.estado || 'Región Metropolitana'
+          estado:    pendiente.estado || 'RM'
         };
       } else {
         // ── FIX 2026-07-31 (2 de 3): el prefijo 'kommo-' ────────────────────
@@ -542,8 +625,14 @@ async function procesarPendientes() {
       };
       await httpsPatchFirebase('/envia_shipments/' + leadId + '.json', shipment);
 
-      // Limpiar pendiente (PUT null = eliminar nodo)
-      await httpsPutFirebase('/envia_pending/' + leadId + '.json', null);
+      // Limpiar pendiente (PUT null = eliminar nodo).
+      // Se verifica el código de respuesta: si el borrado falla y nadie se entera,
+      // el pedido queda en la cola y se vuelve a emitir en la próxima vuelta.
+      const codBorrado = await httpsPutFirebase('/envia_pending/' + leadId + '.json', null);
+      if (codBorrado !== 200) {
+        console.error('   ⚠️  NO se pudo sacar #' + leadId + ' de la cola (HTTP ' + codBorrado + ').');
+        console.error('      La guía YA se emitió. Revisa /envia_pending en Firebase.');
+      }
 
       // Escribir tracking en campo Kommo. Solo si hay campo configurado, hay
       // tracking, y el pedido efectivamente viene de Kommo: los que nacen en el
@@ -660,8 +749,12 @@ async function procesarRatesPendientes() {
     const ancho  = parseFloat(datos.ancho) || PAQUETE_DEFAULT.ancho;
     const alto   = parseFloat(datos.alto)  || PAQUETE_DEFAULT.alto;
 
-    // Construir ORIGEN para rate API (state corto, max 2 chars)
-    const origenRate = Object.assign({}, ORIGEN, { state: 'RM', zipCode: '8320000' });
+    // Construir ORIGEN para rate API (state corto, max 2 chars).
+    // El codigo postal sale del config, no escrito a mano, y va como postalCode.
+    const origenRate = Object.assign({}, ORIGEN, {
+      state: 'RM',
+      postalCode: CONFIG.despacho.codigoPostal || ''
+    });
 
     const payload = {
       origin:      origenRate,
@@ -911,11 +1004,11 @@ if (args.includes('--discover')) {
     .catch(e => { console.error('Error:', e.message); process.exit(1); });
 
 } else {
-  // Validar que ORIGEN esté editado
-  if (ORIGEN.street.startsWith('EDITAR')) {
-    console.log('\n⚠️  ATENCIÓN: Debes editar la dirección de origen (Fodor SpA) en este script.');
-    console.log('   Busca la sección "ORIGEN — DIRECCIÓN DE FODOR SPA" y completa los campos.\n');
-  }
+  // La validación del origen ya ocurrió al leer empresa.config.json: si faltaba
+  // algo, el proceso ni siquiera llegó hasta acá. Se muestra para que quede a la
+  // vista desde dónde se van a despachar los paquetes.
+  console.log('📍 Retiro desde: ' + ORIGEN.street + ' ' + ORIGEN.number +
+              ', ' + ORIGEN.district + ', ' + ORIGEN.city);
 
   console.log('🚀 Envia.com Sync — Carrier: ' + CARRIER.toUpperCase() + ' — cada 2 min. Ctrl+C para detener.');
   console.log('   🤖 Auto-reply despacho: activo (cada 60 seg)');

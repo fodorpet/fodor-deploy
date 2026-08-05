@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fodor Spa — Diagnóstico de guardado</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background:#0f172a;color:#e2e8f0;margin:0;padding:28px;line-height:1.6}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#94a3b8;font-size:13px;margin-bottom:24px}
+  .caja{background:#1e293b;border-radius:14px;padding:20px;margin-bottom:16px;max-width:820px}
+  .caja h2{font-size:14px;margin:0 0 14px;color:#60a5fa;text-transform:uppercase;letter-spacing:.5px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:7px 0;border-bottom:1px solid #334155}
+  td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .ok{color:#4ade80}.mal{color:#f87171}.avi{color:#fbbf24}
+  .grande{font-size:26px;font-weight:800;margin:10px 0}
+  #veredicto{background:#1e3a5f;border-left:4px solid #60a5fa}
+  #veredicto p{margin:8px 0;font-size:14px}
+  .cargando{color:#94a3b8;font-style:italic}
+  code{background:#0f172a;padding:2px 6px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>🔍 Diagnóstico de guardado — Fodor Spa</h1>
+<div class="sub">Esta página <b>solo lee</b>. No modifica, no borra y no guarda nada, ni en el navegador ni en la nube.</div>
+
+<div class="caja">
+  <h2>1 · Qué hay en la nube (Firebase)</h2>
+  <table id="tNube"><tr><td class="cargando" colspan="2">Conectando…</td></tr></table>
+</div>
+
+<div class="caja">
+  <h2>2 · Qué hay en este navegador</h2>
+  <table id="tLocal"><tr><td class="cargando" colspan="2">Midiendo…</td></tr></table>
+</div>
+
+<div class="caja" id="veredicto">
+  <h2>3 · Veredicto</h2>
+  <div id="vtxt" class="cargando">Esperando datos…</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // Misma configuración que el panel: se conecta a la MISMA base.
+  var cfg = {
+    apiKey: "AIzaSyCQ87DLsSBWBr0ckqMZK45RyFmOvGdwaQQ",
+    authDomain: "odfor-bae97.firebaseapp.com",
+    databaseURL: "https://odfor-bae97-default-rtdb.firebaseio.com",
+    projectId: "odfor-bae97",
+    storageBucket: "odfor-bae97.firebasestorage.app",
+    messagingSenderId: "104622263175",
+    appId: "1:104622263175:web:c5f55c22a5c9d79a70a122"
+  };
+
+  var nube = {}, local = {};
+
+  function fila(t, etiqueta, valor, clase){
+    var tr = document.createElement('tr');
+    var a = document.createElement('td'); a.textContent = etiqueta;
+    var b = document.createElement('td'); b.textContent = valor;
+    if(clase) b.className = clase;
+    tr.appendChild(a); tr.appendChild(b); t.appendChild(tr);
+  }
+
+  function kb(n){ return (n/1024).toFixed(0) + ' KB'; }
+
+  // ── 2. Navegador (no depende de la red, se hace primero) ──────────────────
+  var tL = document.getElementById('tLocal');
+  tL.innerHTML = '';
+  var total = 0, claves = [];
+  try{
+    for(var k in localStorage){
+      if(!Object.prototype.hasOwnProperty.call(localStorage,k)) continue;
+      var s = (localStorage[k]||'').length;
+      total += s; claves.push([k,s]);
+    }
+  }catch(e){}
+  claves.sort(function(a,b){return b[1]-a[1];});
+
+  var mb = total/1048576;
+  fila(tL, 'Espacio usado', mb.toFixed(2)+' MB de ~5 MB',
+       mb > 4.5 ? 'mal' : (mb > 3.5 ? 'avi' : 'ok'));
+
+  try{
+    var wpL = localStorage.getItem('fodorspa_wp_v1');
+    local.wp = wpL ? JSON.parse(wpL).length : 0;
+    fila(tL, 'WebPay guardado acá', local.wp + ' transacciones');
+  }catch(e){ local.wp = -1; fila(tL,'WebPay guardado acá','ilegible','mal'); }
+
+  try{
+    var nuc = localStorage.getItem('fodorspa_cobranza_v1');
+    if(nuc){
+      var ts = JSON.parse(nuc).ts;
+      var dias = ts ? Math.floor((Date.now()-new Date(ts))/86400000) : null;
+      fila(tL, 'Último guardado local',
+           ts ? new Date(ts).toLocaleString('es-CL') + (dias>0 ? '  (hace '+dias+' días)' : '') : 'sin fecha',
+           dias > 0 ? 'mal' : 'ok');
+    } else {
+      fila(tL, 'Último guardado local', 'NO EXISTE', 'mal');
+    }
+  }catch(e){}
+
+  claves.slice(0,5).forEach(function(p){ fila(tL, '   ' + p[0], kb(p[1])); });
+
+  // ── 1. Nube ───────────────────────────────────────────────────────────────
+  var tN = document.getElementById('tNube');
+  function errorNube(msg){
+    tN.innerHTML = '';
+    fila(tN, 'Estado', msg, 'mal');
+    veredicto();
+  }
+
+  try{
+    firebase.initializeApp(cfg);
+    firebase.auth().signInAnonymously().then(function(){
+      return firebase.database().ref('estado').once('value');
+    }).then(function(snap){
+      var d = snap.val() || {};
+      tN.innerHTML = '';
+      fila(tN, 'Conexión', 'OK', 'ok');
+
+      function contar(campo){
+        try{
+          var v = d[campo];
+          if(!v) return null;
+          var a = JSON.parse(v);
+          return Array.isArray(a) ? a.length : null;
+        }catch(e){ return null; }
+      }
+
+      nube.wp = contar('WEBPAY_DATA');
+      fila(tN, 'WebPay en la nube',
+           nube.wp === null ? 'NO EXISTE' : nube.wp + ' transacciones',
+           nube.wp === null ? 'mal' : 'ok');
+
+      ['TRF_DATA','GETNET_DATA','MP_DATA','D26_EXTRA'].forEach(function(c){
+        var n = contar(c);
+        fila(tN, c.replace('_DATA','').replace('D26_EXTRA','Facturas importadas'),
+             n === null ? '—' : n + ' registros');
+      });
+
+      if(d.updatedAt) fila(tN, 'Última escritura', new Date(d.updatedAt).toLocaleString('es-CL'));
+      if(d.updatedBy) fila(tN, 'Escrito por', String(d.updatedBy));
+
+      var pesoTotal = 0;
+      Object.keys(d).forEach(function(k){ if(typeof d[k]==='string') pesoTotal += d[k].length; });
+      fila(tN, 'Peso del nodo completo', (pesoTotal/1048576).toFixed(2)+' MB',
+           pesoTotal/1048576 > 4 ? 'avi' : 'ok');
+
+      veredicto();
+    }).catch(function(e){ errorNube('ERROR: ' + e.message); });
+  }catch(e){ errorNube('No se pudo iniciar Firebase: ' + e.message); }
+
+  // ── 3. Veredicto ──────────────────────────────────────────────────────────
+  function veredicto(){
+    var v = document.getElementById('vtxt');
+    v.className = '';
+    var h = '';
+
+    if(nube.wp === null || nube.wp === undefined){
+      h += '<p class="mal"><b>La nube no tiene WebPay.</b> Las escrituras no están llegando. ' +
+           'El problema está en el guardado, no en la lectura.</p>';
+    } else if(local.wp > 0 && nube.wp > local.wp){
+      h += '<p class="ok"><b>La nube tiene MÁS que este navegador</b> (' + nube.wp + ' contra ' + local.wp + ').</p>' +
+           '<p>Los datos están a salvo arriba. El problema es que al abrir el panel no se traen de vuelta, ' +
+           'o la copia vieja de este navegador los pisa.</p>';
+    } else if(local.wp > 0 && nube.wp < local.wp){
+      h += '<p class="mal"><b>Este navegador tiene MÁS que la nube</b> (' + local.wp + ' contra ' + nube.wp + ').</p>' +
+           '<p>Algo subió una copia incompleta y borró registros que estaban arriba.</p>';
+    } else if(nube.wp === local.wp){
+      h += '<p class="ok"><b>Nube y navegador coinciden</b> (' + nube.wp + ' cada uno).</p>' +
+           '<p>Si el panel muestra un número distinto a este, lo que falla es la carga al abrir.</p>';
+    }
+
+    if(mb > 4.5){
+      h += '<p class="mal"><b>La memoria de este navegador está llena</b> (' + mb.toFixed(2) + ' MB de ~5 MB). ' +
+           'Todo lo que se intente guardar acá va a fallar en silencio.</p>';
+    }
+
+    v.innerHTML = h || '<p>Sin datos suficientes.</p>';
+  }
+})();
+</script>
+</body>
+</html>

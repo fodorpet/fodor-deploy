@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<title>Cotizador de Envíos Fodor — Instalación</title>
+<style>
+body{font-family:'Segoe UI',Arial,sans-serif;max-width:780px;margin:0 auto;padding:32px 24px;color:#1e293b;line-height:1.65}
+h1{color:#1e3a5f;border-bottom:3px solid #2563eb;padding-bottom:10px}
+h2{color:#1d4ed8;margin-top:34px;border-left:4px solid #2563eb;padding-left:10px}
+h3{color:#0369a1;margin-top:24px}
+pre{background:#0f172a;color:#e2e8f0;padding:12px 16px;border-radius:8px;overflow-x:auto;font-size:13px}
+code{background:#e0f2fe;color:#0c4a6e;padding:2px 6px;border-radius:4px;font-size:13px}
+pre code{background:none;color:inherit}
+blockquote{background:#fffbeb;border-left:4px solid #f59e0b;margin:14px 0;padding:10px 16px;color:#78350f}
+ul{padding-left:22px} li{margin:5px 0}
+hr{border:none;border-top:1px solid #e2e8f0;margin:30px 0}
+b{color:#0f172a}
+@media print{body{max-width:none}}
+</style></head><body>
+<h1>Cotizador de Envíos Fodor — Instalación en Windows</h1>
+
+<p>Guía para vendedores. Toma unos 10 minutos y se hace <b>una sola vez</b>.</p>
+
+<hr>
+
+<h2>Antes de empezar</h2>
+
+<p>Necesitás <b>Google Chrome</b>. Si no lo tenés, descargalo de <code>google.com/chrome</code> e instalalo.</p>
+
+<p>Hay dos partes:</p>
+
+<ul><li><b>Parte 1 — El cotizador.</b> Es lo mínimo indispensable. No se instala nada.</li>
+<li><b>Parte 2 — El botón dentro de Kommo.</b> Opcional pero muy recomendado: te ahorra copiar y pegar la ciudad en cada cotización.</li>
+</ul>
+<hr>
+
+<h2>PARTE 1 — El cotizador de envíos</h2>
+
+<h3>Paso 1. Abrí el cotizador</h3>
+
+<p>En Chrome, andá a esta dirección:</p>
+
+<pre>
+https://odfor-bae97.web.app/envios.html
+</pre>
+
+<p>Escribila tal cual, sin espacios. No pide usuario ni contraseña.</p>
+
+<h3>Paso 2. Dejalo a mano</h3>
+
+<p>Para no escribir la dirección cada vez:</p>
+
+<ul><li>Con la página abierta, presioná <b>Ctrl + D</b></li>
+<li>Ponele de nombre <b>Cotizador Envíos</b></li>
+<li>Elegí guardarlo en la <b>Barra de marcadores</b></li>
+<li>Aceptar</li>
+</ul>
+<p>Si no ves la barra de marcadores, presioná <b>Ctrl + Shift + B</b> para mostrarla.</p>
+
+<h3>Paso 3. Probá que funcione</h3>
+
+<ul><li>Escribí una ciudad de destino, por ejemplo <code>Puerto Montt</code></li>
+<li>Agregá cantidad a algún producto con el botón <b>+</b></li>
+<li>Apretá <b>Buscar Tarifas</b></li>
+</ul>
+<p>Deberías ver la lista de couriers ordenada de más barato a más caro.</p>
+
+<p><b>Listo. Con esto ya podés cotizar.</b></p>
+
+<hr>
+
+<h2>PARTE 2 — El botón dentro de Kommo</h2>
+
+<p>Esto agrega un botón flotante <b>🚚 Cotizar Envío</b> en cada ficha de cliente en Kommo. Al apretarlo abre el cotizador con la ciudad ya cargada.</p>
+
+<h3>Paso 1. Descomprimí la carpeta</h3>
+
+<ul><li>Guardá el archivo <b>Cotizador-Envios-Fodor.zip</b> que te enviaron</li>
+<li>Clic derecho sobre el archivo → <b>Extraer todo...</b></li>
+<li><b>Importante:</b> elegí una carpeta donde vaya a quedar para siempre. Por ejemplo:</li>
+</ul><p>   <code>`</code></p>
+<p>   C:\Fodor\Cotizador</p>
+<p>   <code>`</code></p>
+<p>   <b>No la dejes en Descargas ni en el Escritorio.</b> Si después borrás esa carpeta, el botón deja de funcionar.</p>
+<ul><li>Extraer</li>
+</ul>
+<p>Adentro vas a ver una carpeta llamada <b>fodor-kommo-extension</b>. Esa es la que importa.</p>
+
+<h3>Paso 2. Abrí las extensiones de Chrome</h3>
+
+<p>Escribí esto en la barra de direcciones y presioná Enter:</p>
+
+<pre>
+chrome://extensions
+</pre>
+
+<h3>Paso 3. Activá el modo desarrollador</h3>
+
+<p>Arriba a la derecha hay un interruptor que dice <b>Modo de desarrollador</b>. Activalo.</p>
+
+<p>Van a aparecer tres botones nuevos arriba a la izquierda.</p>
+
+<h3>Paso 4. Cargá la extensión</h3>
+
+<ul><li>Apretá <b>Cargar descomprimida</b></li>
+<li>Buscá y seleccioná la carpeta <b>fodor-kommo-extension</b></li>
+</ul><p>   (la que está adentro de donde extrajiste, por ejemplo <code>C:\Fodor\Cotizador\fodor-kommo-extension</code>)</p>
+<ul><li>Aceptar</li>
+</ul>
+<p>Tiene que aparecer una tarjeta que dice <b>Fodor Envíos</b>.</p>
+
+<blockquote>**Ojo:** hay que elegir la carpeta `fodor-kommo-extension`, no el ZIP ni la carpeta que la contiene. Si Chrome dice que no encuentra el manifiesto, entraste una carpeta de más o una de menos.</blockquote>
+
+<h3>Paso 5. Probalo</h3>
+
+<ul><li>Abrí Kommo y entrá a la ficha de cualquier cliente</li>
+<li>Abajo a la derecha tiene que aparecer el botón <b>🚚 Cotizar Envío</b></li>
+<li>Apretalo: abre el cotizador con la ciudad del cliente ya puesta</li>
+</ul>
+<p>Si no aparece, recargá la página de Kommo con <b>Ctrl + F5</b>.</p>
+
+<hr>
+
+<h2>Cómo usar el cotizador</h2>
+
+<h3>Cargar el pedido</h3>
+
+<p>Apretá <b>+</b> en cada producto según las cajas que lleve el pedido.</p>
+
+<p>Debajo de cada producto vas a ver algo así:</p>
+
+<pre>
+Vaso 500cc Natural Liso
+📐 69×42×50 cm · 0,145 m³
+⚖️ real 23,0 kg · volumétrico 36,2 kg → cobran 36,2 kg
+</pre>
+
+<p><b>Por qué importa:</b> los couriers no cobran por lo que pesa la caja, sino por lo que <b>ocupa</b>. Cobran el mayor de los dos pesos. En casi todos nuestros productos manda el volumen. Cuando eso pasa, la línea sale <b>en amarillo</b>.</p>
+
+<p>Ese dato sirve para explicarle al cliente por qué el flete cuesta lo que cuesta.</p>
+
+<h3>Leer los totales</h3>
+
+<p>Arriba del todo aparece:</p>
+
+<pre>
+4 cajas · 92,0 kg reales · 0,580 m³ · cobran 144,9 kg (manda el volumen)
+</pre>
+
+<p>El número que importa para el precio es <b>el de &quot;cobran&quot;</b>, no el peso real.</p>
+
+<h3>Elegir courier</h3>
+
+<p>Escribí la ciudad y apretá <b>Buscar Tarifas</b>. Vas a ver:</p>
+
+<ul><li><b>Chilexpress, Starken, Correos de Chile, Blue Express</b> y otros — cotizados en vivo</li>
+<li><b>Varmontt</b> — con fondo café y la etiqueta <b>CONTRATO DIRECTO</b></li>
+</ul>
+<p><b>Diferencia importante con Varmontt:</b> es contrato directo de Fodor, no pasa por el sistema de los otros couriers. El cotizador te muestra el precio para que puedas compararlo, pero <b>la etiqueta se pide por el canal de siempre con Varmontt</b>. Por eso al elegirlo no aparece el formulario de generar envío.</p>
+
+<h3>Precio al cliente</h3>
+
+<p>El campo <b>% de ganancia</b> de arriba recalcula todos los precios al toque. El número verde es el que le pasás al cliente.</p>
+
+<hr>
+
+<h2>Problemas frecuentes</h2>
+
+<p><b>La ciudad no aparece / no encuentra tarifa Varmontt</b></p>
+<p>Podés escribirla sin tilde: <code>concepcion</code>, <code>valparaiso</code>, <code>vina del mar</code> funcionan igual. Si te dice que no hay tarifa, esa ciudad no está en el convenio Varmontt — igual te va a cotizar con los otros couriers.</p>
+
+<p><b>Dice &quot;Sin tarifas disponibles para esa ciudad&quot;</b></p>
+<p>Revisá que la ciudad esté bien escrita y que hayas cargado al menos un producto.</p>
+
+<p><b>El botón de Kommo desapareció</b></p>
+<p>Casi siempre es porque se movió o borró la carpeta de la extensión. Volvé a hacer la Parte 2 desde el Paso 1.</p>
+
+<p><b>Veo precios o productos distintos a los de un compañero</b></p>
+<p>Recargá con <b>Ctrl + F5</b>. Eso fuerza a Chrome a bajar la última versión en vez de usar la que tiene guardada.</p>
+
+<hr>
+
+<h2>Si algo no funciona</h2>
+
+<p>Antes de avisar, probá estas dos cosas:</p>
+
+<ul><li>Recargar con <b>Ctrl + F5</b></li>
+<li>Cerrar Chrome por completo y volver a abrirlo</li>
+</ul>
+<p>Si sigue igual, avisá indicando:</p>
+
+<ul><li>Qué paso estabas haciendo</li>
+<li>La ciudad y los productos que cargaste</li>
+<li>Una captura de pantalla</li>
+</ul>
+<hr>
+
+<p>*Documento actualizado el 28 de julio de 2026 · versión del panel v2026-07-28D*</p>
+
+</body></html>

@@ -123,8 +123,7 @@ async function cargarAlertasPrevias() {
 // ─── Sync principal ──────────────────────────────────────────────────────────
 
 async function sync() {
-  await procesarResetsPago();
-  await procesarResetsEnvio();
+  // (los resets ahora corren en su propio ciclo rápido cada 5 s — ver más abajo)
   const ts = new Date().toLocaleTimeString('es-CL');
   process.stdout.write('[' + ts + '] Consultando Kommo... ');
   try {
@@ -348,8 +347,47 @@ async function fetchContactPhones(contactIds) {
 
 // ─── Inicio ──────────────────────────────────────────────────────────────────
 
-console.log('🚀 Kommo sync v2 — ENVÍOS + alertas PAGÓ — cada 5 min. Ctrl+C para detener.\n');
+// ─── CICLO RÁPIDO 2026-07-25: resets en 5 segundos + latido de vida ──────────
+// Los resets (apagar toggles en Kommo) deben ser casi inmediatos, así que corren
+// aparte del sync pesado. El nodo de Firebase es diminuto: leerlo es muy barato.
+let _ciclentoRapidoOcupado = false;   // evita que dos ciclos se solapen
+
+async function latido(estado, extra) {
+  try {
+    const body = JSON.stringify(Object.assign({
+      ts: new Date().toISOString(),
+      estado: estado || 'ok',
+      pid: process.pid
+    }, extra || {}));
+    await httpsPut(FIREBASE_DB, '/kommo_sync_estado.json', body);
+  } catch(e) { /* el latido nunca debe romper el ciclo */ }
+}
+
+async function cicloRapido() {
+  if (_ciclentoRapidoOcupado) return;         // el anterior sigue corriendo
+  _ciclentoRapidoOcupado = true;
+  try {
+    await procesarResetsPago();
+    await procesarResetsEnvio();
+    await latido('ok');
+  } catch(e) {
+    console.log('   ⚠️  cicloRapido:', e.message);
+    await latido('error', { error: String(e.message).slice(0, 120) });
+  } finally {
+    _ciclentoRapidoOcupado = false;
+  }
+}
+
+console.log('🚀 Kommo sync v3 — resets cada 5 s · sincronización completa cada 5 min. Ctrl+C para detener.\n');
 cargarAlertasPrevias().then(() => {
   sync();
   setInterval(sync, 5 * 60 * 1000);
+  cicloRapido();
+  setInterval(cicloRapido, 5 * 1000);
+});
+
+process.on('SIGINT', async () => {
+  console.log('\n👋 Deteniendo...');
+  await latido('detenido');
+  process.exit(0);
 });

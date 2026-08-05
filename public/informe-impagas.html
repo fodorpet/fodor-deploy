@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fodor Spa — Informe de facturas impagas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background:#0f172a;color:#e2e8f0;margin:0;padding:24px;line-height:1.5}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:#94a3b8;font-size:13px;margin-bottom:18px}
+  .wrap{max-width:1150px}
+  .card{background:#1e293b;border-radius:14px;padding:18px 20px;margin-bottom:14px}
+  .card h2{font-size:12px;margin:0 0 14px;color:#60a5fa;text-transform:uppercase;letter-spacing:.6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+     padding:6px 8px;border-bottom:1px solid #475569}
+  td{padding:6px 8px;border-bottom:1px solid #334155}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tr.tot td{border-top:2px solid #475569;border-bottom:none;font-weight:800;padding-top:9px}
+  .ok{color:#4ade80}.avi{color:#fbbf24}.mal{color:#f87171}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+  .kpi>div{background:#1e293b;border-radius:12px;padding:15px 17px;border-left:4px solid #475569}
+  .kpi .lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+  .kpi .val{font-size:23px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi .pie{font-size:11px;color:#64748b;margin-top:2px}
+  .meses{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+  .meses button{background:#1e293b;color:#cbd5e1;border:1px solid #475569;border-radius:9px;
+       padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  .meses button.on{background:#2563eb;color:#fff;border-color:#2563eb}
+  .barra{height:6px;background:#334155;border-radius:3px;overflow:hidden;margin-top:4px}
+  .barra i{display:block;height:100%;background:#f87171}
+  .cargando{color:#64748b;font-style:italic;padding:30px 0;text-align:center}
+  .nota{font-size:12px;color:#94a3b8;margin-top:10px;padding:10px 12px;background:#0f172a;border-radius:8px}
+  button.exp{background:#16a34a;color:#fff;border:none;border-radius:9px;padding:8px 16px;
+       font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>📋 Facturas impagas — Fodor Spa</h1>
+<div class="sub" id="sub">Leyendo la base en vivo…</div>
+
+<div class="meses" id="meses"></div>
+<div class="kpi" id="kpi"></div>
+<div id="cuerpo"><div class="cargando">Conectando con la base…</div></div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  var cfg = {
+    apiKey:"AIzaSyCQ87DLsSBWBr0ckqMZK45RyFmOvGdwaQQ",
+    authDomain:"odfor-bae97.firebaseapp.com",
+    databaseURL:"https://odfor-bae97-default-rtdb.firebaseio.com",
+    projectId:"odfor-bae97", storageBucket:"odfor-bae97.firebasestorage.app",
+    messagingSenderId:"104622263175", appId:"1:104622263175:web:c5f55c22a5c9d79a70a122"
+  };
+
+  var NOM = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+             'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var HOY = new Date(); HOY.setHours(0,0,0,0);
+
+  var TODAS = [];          // todas las facturas con su estado
+  var SEL   = {};          // meses seleccionados
+
+  function $(id){ return document.getElementById(id); }
+  function money(n){ return '$' + Math.round(n).toLocaleString('es-CL'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function parse(x){ try{ var a = JSON.parse(x); return a; }catch(e){ return null; } }
+
+  firebase.initializeApp(cfg);
+  firebase.auth().signInAnonymously()
+    .then(function(){ return firebase.database().ref('estado').once('value'); })
+    .then(function(snap){
+      var d = snap.val() || {};
+
+      var EST      = parse(d.EST) || {};
+      var BORRADAS = parse(d.BORRADAS) || [];
+      var base     = parse(d.D26) || [];
+      var extra    = parse(d.D26_EXTRA) || [];
+
+      if(!base.length && !extra.length){
+        $('cuerpo').innerHTML = '<div class="card"><h2>Sin datos</h2>' +
+          '<p>La nube no tiene el listado de facturas (<code>D26</code>). Abrí el panel una vez ' +
+          'para que lo suba, y volvé a cargar esta página.</p></div>';
+        $('sub').textContent = 'Sin datos de facturas en la nube.';
+        return;
+      }
+
+      // Unir base + importadas, sin repetir folios
+      var vistos = {}, todo = [];
+      base.concat(extra).forEach(function(r){
+        var f = String(r.folio||'');
+        if(!f || vistos[f]) return;
+        vistos[f] = 1; todo.push(r);
+      });
+
+      var borr = {}; BORRADAS.forEach(function(f){ borr[String(f)] = 1; });
+
+      TODAS = todo.map(function(r){
+        var f    = String(r.folio||'');
+        var iso  = String(r.fecha_iso || '');
+        var e    = EST[f] || {};
+        var pagada = !!e.pagado || !!borr[f];
+        // Vencimiento: el propio campo, o fecha + días de plazo
+        var venc = String(r.fecha_venc_iso || '');
+        if(!venc && iso){
+          var dd = new Date(iso + 'T00:00:00');
+          dd.setDate(dd.getDate() + (parseInt(r.dias_plazo,10) || 30));
+          venc = dd.toISOString().slice(0,10);
+        }
+        var dias = venc ? Math.floor((HOY - new Date(venc+'T00:00:00'))/86400000) : null;
+        return {
+          folio:f, iso:iso, mes:iso.slice(0,7),
+          empresa:String(r.empresa||''), rut:String(r.rut||''),
+          vendedor:String(r.vendedor||''), saldo:+(r.saldo||0),
+          venc:venc, dias:dias, pagada:pagada
+        };
+      }).filter(function(r){ return r.mes && r.saldo > 0; });
+
+      // Meses disponibles, del más nuevo al más viejo
+      var meses = {};
+      TODAS.forEach(function(r){ meses[r.mes] = 1; });
+      var lista = Object.keys(meses).sort().reverse();
+
+      // Por defecto: los tres meses más recientes que tengan impagas
+      var conDeuda = lista.filter(function(m){
+        return TODAS.some(function(r){ return r.mes===m && !r.pagada; });
+      });
+      conDeuda.slice(0,3).forEach(function(m){ SEL[m] = 1; });
+
+      $('meses').innerHTML = lista.map(function(m){
+        var p = m.split('-');
+        return '<button data-m="'+m+'" class="'+(SEL[m]?'on':'')+'">'+
+               NOM[+p[1]]+' '+p[0].slice(2)+'</button>';
+      }).join('') + '<button id="btnTodos" style="background:#334155">Todos</button>';
+
+      $('meses').addEventListener('click', function(ev){
+        var b = ev.target.closest('button'); if(!b) return;
+        if(b.id === 'btnTodos'){ lista.forEach(function(m){ SEL[m]=1; }); }
+        else { var m=b.dataset.m; if(SEL[m]) delete SEL[m]; else SEL[m]=1; }
+        Array.prototype.forEach.call($('meses').querySelectorAll('button[data-m]'), function(x){
+          x.className = SEL[x.dataset.m] ? 'on' : '';
+        });
+        render();
+      });
+
+      var ts = d.updatedAt ? new Date(d.updatedAt) : null;
+      $('sub').innerHTML = 'Datos en vivo desde la base del panel' +
+        (ts ? ' · última escritura ' + ts.toLocaleString('es-CL') : '') +
+        ' · <b>' + TODAS.length.toLocaleString('es-CL') + '</b> facturas analizadas' +
+        '<button class="exp" onclick="window.exportarCSV()">⬇ Exportar CSV</button>';
+
+      render();
+    })
+    .catch(function(e){
+      $('cuerpo').innerHTML = '<div class="card"><h2 class="mal">No se pudo leer la base</h2><p>'+esc(e.message)+'</p></div>';
+      $('sub').textContent = 'Error de conexión.';
+    });
+
+  function render(){
+    var sel = TODAS.filter(function(r){ return SEL[r.mes]; });
+    var imp = sel.filter(function(r){ return !r.pagada; });
+    var totFact = sel.reduce(function(a,r){ return a+r.saldo; }, 0);
+    var totImp  = imp.reduce(function(a,r){ return a+r.saldo; }, 0);
+    var vencidas = imp.filter(function(r){ return r.dias !== null && r.dias > 0; });
+    var totVenc  = vencidas.reduce(function(a,r){ return a+r.saldo; }, 0);
+
+    $('kpi').innerHTML =
+      k('Facturado', money(totFact), sel.length+' facturas', '#3b82f6') +
+      k('Impago', money(totImp), imp.length+' facturas · '+(totFact?Math.round(totImp/totFact*100):0)+'%', '#f59e0b') +
+      k('Ya vencido', money(totVenc), vencidas.length+' facturas pasadas de plazo', '#ef4444') +
+      k('Clientes con deuda', new Set(imp.map(function(r){return r.empresa;})).size, 'distintos', '#8b5cf6');
+
+    // Por mes
+    var pm = {};
+    sel.forEach(function(r){
+      pm[r.mes] = pm[r.mes] || {f:0,fn:0,i:0,inn:0};
+      pm[r.mes].f += r.saldo; pm[r.mes].fn++;
+      if(!r.pagada){ pm[r.mes].i += r.saldo; pm[r.mes].inn++; }
+    });
+    var filasMes = Object.keys(pm).sort().map(function(m){
+      var v = pm[m], p = m.split('-'), pc = v.f ? v.i/v.f*100 : 0;
+      return '<tr><td><b>'+NOM[+p[1]]+' '+p[0]+'</b></td>'+
+             '<td class="n">'+money(v.f)+'</td><td class="n">'+v.fn+'</td>'+
+             '<td class="n '+(pc>50?'mal':pc>25?'avi':'ok')+'">'+money(v.i)+'</td>'+
+             '<td class="n">'+v.inn+'</td>'+
+             '<td class="n">'+pc.toFixed(1)+'%<div class="barra"><i style="width:'+Math.min(100,pc)+'%"></i></div></td></tr>';
+    }).join('');
+
+    // Antigüedad
+    var tramos = [['Aún no vencidas',function(r){return r.dias===null||r.dias<=0;}],
+                  ['1 a 30 días',    function(r){return r.dias>0&&r.dias<=30;}],
+                  ['31 a 60 días',   function(r){return r.dias>30&&r.dias<=60;}],
+                  ['61 a 90 días',   function(r){return r.dias>60&&r.dias<=90;}],
+                  ['Más de 90 días', function(r){return r.dias>90;}]];
+    var filasAnt = tramos.map(function(t){
+      var g = imp.filter(t[1]), s = g.reduce(function(a,r){return a+r.saldo;},0);
+      if(!g.length) return '';
+      var alerta = t[0].indexOf('90')>=0 || t[0].indexOf('61')>=0;
+      return '<tr><td'+(alerta?' class="mal"':'')+'>'+t[0]+'</td>'+
+             '<td class="n">'+g.length+'</td><td class="n'+(alerta?' mal':'')+'">'+money(s)+'</td>'+
+             '<td class="n">'+(totImp?Math.round(s/totImp*100):0)+'%</td></tr>';
+    }).join('');
+
+    // Deudores
+    var porCli = {};
+    imp.forEach(function(r){
+      var k2 = r.empresa || '(sin nombre)';
+      porCli[k2] = porCli[k2] || {m:0,n:0,rut:r.rut,peor:0};
+      porCli[k2].m += r.saldo; porCli[k2].n++;
+      if(r.dias > porCli[k2].peor) porCli[k2].peor = r.dias||0;
+    });
+    var top = Object.keys(porCli).map(function(k2){ var v=porCli[k2]; v.nom=k2; return v; })
+                    .sort(function(a,b){ return b.m-a.m; }).slice(0,15);
+    var sumTop = top.reduce(function(a,v){ return a+v.m; },0);
+    var filasCli = top.map(function(v,i){
+      return '<tr><td class="n">'+(i+1)+'</td><td>'+esc(v.nom)+'<div style="font-size:11px;color:#64748b">'+esc(v.rut)+'</div></td>'+
+             '<td class="n">'+money(v.m)+'</td><td class="n">'+v.n+'</td>'+
+             '<td class="n'+(v.peor>60?' mal':v.peor>30?' avi':'')+'">'+(v.peor>0?v.peor+' d':'—')+'</td></tr>';
+    }).join('');
+
+    // Tamaño
+    var rangos = [['Más de $1.000.000',function(r){return r.saldo>=1000000;}],
+                  ['$500.000 a $1.000.000',function(r){return r.saldo>=500000&&r.saldo<1000000;}],
+                  ['$100.000 a $500.000',function(r){return r.saldo>=100000&&r.saldo<500000;}],
+                  ['Menos de $100.000',function(r){return r.saldo<100000;}]];
+    var acum = 0;
+    var filasTam = rangos.map(function(t){
+      var g = imp.filter(t[1]), s = g.reduce(function(a,r){return a+r.saldo;},0);
+      acum += s;
+      return '<tr><td>'+t[0]+'</td><td class="n">'+g.length+'</td><td class="n">'+money(s)+'</td>'+
+             '<td class="n">'+(totImp?Math.round(acum/totImp*100):0)+'%</td></tr>';
+    }).join('');
+
+    $('cuerpo').innerHTML =
+      card('Mes a mes', '<table><tr><th>Mes</th><th class="n">Facturado</th><th class="n">N°</th>'+
+           '<th class="n">Impago</th><th class="n">N°</th><th class="n">% impago</th></tr>'+filasMes+'</table>') +
+      card('Antigüedad de la deuda', '<table><tr><th>Tramo</th><th class="n">Facturas</th>'+
+           '<th class="n">Monto</th><th class="n">% del total</th></tr>'+filasAnt+'</table>'+
+           '<div class="nota">Sobre <b>61 días</b> la probabilidad de cobro cae fuerte. Ese es el bloque que hay que atacar primero.</div>') +
+      card('Dónde está concentrada la plata', '<table><tr><th>Tamaño de factura</th><th class="n">Facturas</th>'+
+           '<th class="n">Monto</th><th class="n">% acumulado</th></tr>'+filasTam+'</table>') +
+      card('Top 15 deudores', '<table><tr><th class="n">#</th><th>Cliente</th><th class="n">Deuda</th>'+
+           '<th class="n">Facturas</th><th class="n">Más vieja</th></tr>'+filasCli+'</table>'+
+           '<div class="nota">Estos 15 concentran <b>'+money(sumTop)+'</b> — el <b>'+
+           (totImp?Math.round(sumTop/totImp*100):0)+'%</b> de la deuda del período.</div>');
+
+    window._imp = imp;
+  }
+
+  function k(l,v,p,c){
+    return '<div style="border-left-color:'+c+'"><div class="lbl">'+l+'</div>'+
+           '<div class="val">'+v+'</div><div class="pie">'+p+'</div></div>';
+  }
+  function card(t,h){ return '<div class="card"><h2>'+t+'</h2>'+h+'</div>'; }
+
+  window.exportarCSV = function(){
+    var r = window._imp || [];
+    var l = ['Folio;Fecha;Vencimiento;Dias vencida;RUT;Cliente;Vendedor;Saldo'];
+    r.sort(function(a,b){ return b.saldo-a.saldo; }).forEach(function(x){
+      l.push([x.folio,x.iso,x.venc,(x.dias>0?x.dias:0),x.rut,
+              '"'+x.empresa.replace(/"/g,"'")+'"',x.vendedor,Math.round(x.saldo)].join(';'));
+    });
+    var b = new Blob(['﻿'+l.join('\n')],{type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'impagas_'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();
+  };
+})();
+</script>
+</body>
+</html>

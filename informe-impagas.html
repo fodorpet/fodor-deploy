@@ -35,6 +35,14 @@
   .nota{font-size:12px;color:#94a3b8;margin-top:10px;padding:10px 12px;background:#0f172a;border-radius:8px}
   button.exp{background:#16a34a;color:#fff;border:none;border-radius:9px;padding:8px 16px;
        font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:8px}
+  .buscar{width:100%;max-width:320px;background:#0f172a;border:1px solid #475569;border-radius:8px;
+       color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:inherit;margin-bottom:12px}
+  .buscar::placeholder{color:#64748b}
+  .detWrap{max-height:520px;overflow-y:auto;border:1px solid #334155;border-radius:8px}
+  .detWrap table{font-size:12.5px}
+  .detWrap thead th{position:sticky;top:0;background:#1e293b;z-index:1}
+  .detWrap tbody tr:hover{background:#25334a}
+  .contador{font-size:12px;color:#94a3b8;margin-top:8px}
 </style>
 </head>
 <body>
@@ -254,9 +262,50 @@
       card('Top 15 deudores', '<table><tr><th class="n">#</th><th>Cliente</th><th class="n">Deuda</th>'+
            '<th class="n">Facturas</th><th class="n">Más vieja</th></tr>'+filasCli+'</table>'+
            '<div class="nota">Estos 15 concentran <b>'+money(sumTop)+'</b> — el <b>'+
-           (totImp?Math.round(sumTop/totImp*100):0)+'%</b> de la deuda del período.</div>');
+           (totImp?Math.round(sumTop/totImp*100):0)+'%</b> de la deuda del período.</div>') +
+      card('Detalle por factura', '<input class="buscar" id="buscaDet" placeholder="Buscar por folio, cliente o RUT…">'+
+           '<div id="detTabla"></div><div class="contador" id="detCont"></div>');
 
     window._imp = imp;
+    renderDetalle(imp, '');
+    $('buscaDet').addEventListener('input', function(){
+      renderDetalle(window._imp||[], this.value);
+    });
+  }
+
+  // Listado completo, factura por factura, ordenado de más vencida a menos.
+  // Es el detalle que sostiene cada número de los cuadros de arriba: acá se
+  // puede ver exactamente qué folio compone cada total.
+  function renderDetalle(imp, filtro){
+    var q = (filtro||'').trim().toLowerCase();
+    var filas = imp.filter(function(r){
+      if(!q) return true;
+      return r.folio.toLowerCase().indexOf(q)>=0 ||
+             r.empresa.toLowerCase().indexOf(q)>=0 ||
+             r.rut.toLowerCase().indexOf(q)>=0;
+    }).sort(function(a,b){
+      var da = a.dias===null?-1:a.dias, db = b.dias===null?-1:b.dias;
+      if(db !== da) return db - da;
+      return b.saldo - a.saldo;
+    });
+
+    var html = '<div class="detWrap"><table><thead><tr>'+
+      '<th>Folio</th><th>Fecha</th><th>Vencimiento</th><th class="n">Días</th>'+
+      '<th>Cliente</th><th>RUT</th><th>Vendedor</th><th class="n">Saldo</th>'+
+      '</tr></thead><tbody>'+
+      filas.map(function(r){
+        var diasTxt = r.dias===null ? '—' : (r.dias>0 ? r.dias+' d' : 'no vence');
+        var diasCls = r.dias>60 ? 'mal' : (r.dias>30 ? 'avi' : '');
+        return '<tr><td>'+esc(r.folio)+'</td><td>'+esc(r.iso)+'</td><td>'+esc(r.venc||'—')+'</td>'+
+               '<td class="n '+diasCls+'">'+diasTxt+'</td><td>'+esc(r.empresa)+'</td>'+
+               '<td>'+esc(r.rut)+'</td><td>'+esc(r.vendedor)+'</td>'+
+               '<td class="n">'+money(r.saldo)+'</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+    $('detTabla').innerHTML = filas.length ? html : '<div class="nota">Sin resultados para esa búsqueda.</div>';
+    var totFiltro = filas.reduce(function(a,r){return a+r.saldo;},0);
+    $('detCont').textContent = filas.length.toLocaleString('es-CL') + ' factura(s) · ' + money(totFiltro);
   }
 
   function k(l,v,p,c){

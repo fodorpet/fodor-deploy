@@ -1,5 +1,5 @@
 # ESTADO ACTUAL — Fodor SpA Panel de Cobranzas y Envíos
-**Última actualización:** 2026-07-31
+**Última actualización:** 2026-08-06
 **Carpeta de trabajo:** ~/fodor-deploy
 **Último commit:** `e82089f` — Fix generación de guías + persistencia de descartes
 
@@ -77,9 +77,23 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 5. Último trabajo realizado
 
+**Sesión 06-08 (más reciente) — Hueco de importación ene-abr 2026 (COMPLETO Y ESCRITO EN PRODUCCIÓN):**
+
+- 🔍 **Origen:** usuaria reportó que el folio 46698 no aparecía en el panel pese a existir y estar pagado en el sistema de facturación.
+- 🔍 **Causa raíz confirmada con evidencia:** el proceso de importación usado para enero-abril 2026 solo traía facturas PENDIENTES de pago (cartera). Cualquier factura ya pagada al momento de esa importación nunca entró a `D26_EXTRA` — ni como pagada ni como pendiente, no existía en absoluto. Verificado comparando 3 archivos de detalle completo (marzo, junio, julio) + 1 archivo de todo el año contra la base real de Firebase. Junio y julio dieron 0% de hueco (proceso de importación posterior, correcto); enero-abril dieron 76-89% de hueco.
+- 📊 **Tamaño real del problema:** 2.261 facturas pagadas ausentes, $1.120.162.299, concentradas 100% en enero-abril 2026.
+- ✅ **Corrección aplicada (06-08-2026):**
+  - `D26_EXTRA`: 11.093 → 13.354 filas (+2.261, con nota explicando origen y motivo en cada una)
+  - `EST`: 542 → 2.799 folios (+2.257 marcadas `pagoTipo:"IMPORT_HISTORICO"`; los 4 folios restantes del lote ya tenían pago real conciliado por la usuaria el 05-08 — esos NO se tocaron)
+  - Backups previos a la escritura: `BACKUP_D26_EXTRA_*.json` y `BACKUP_EST_*.json` (fuera del repo, en carpeta de trabajo de la sesión — pedir si se necesita rollback)
+  - Verificado post-escritura: conteos coinciden exactamente, folio 46698 confirmado con factura + pago.
+- ⚠️ **Riesgo identificado y evitado:** casi se rompe otra vez la cuota de localStorage (ver Deuda Técnica Mayor abajo). Se evitó usando registros `EST` livianos (sin `docSnap`/`historial`, ~370 KB en vez de ~1480 KB) en lugar de tocar la arquitectura de guardado — **NO se sacó `EST` del bloque cifrado local**, eso sigue prohibido (ver punto 9).
+- 📄 **Herramienta nueva:** `informe-impagas.html` — informe en vivo de facturas impagas con detalle factura por factura, buscador, y export CSV. Publicado en `https://odfor-bae97.web.app/informe-impagas.html`.
+- 🔲 **Pendiente:** revisar si el mismo patrón de "cartera pendiente en vez de detalle completo" se usó en años anteriores (2024, 2025) — no se verificó.
+
 **Sesión anterior (resumida):** Payment cross-validation + Varmontt en envíos + CODVENDEDOR fix + Ventas tab.
 
-**Sesión actual (29-07):**
+**Sesión 29-07:**
 
 ### A. Fix guía generation stuck (PARCIAL)
 - ✅ Diagnosticado: 3 bugs en `envia-sync.js`

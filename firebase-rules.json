@@ -73,6 +73,10 @@
     "kommo_sync_estado": {
       ".read": true,
       ".write": true
+    },
+    "alertas_whatsapp_deborah": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

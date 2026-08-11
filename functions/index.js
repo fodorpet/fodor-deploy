@@ -1,5 +1,11 @@
 const functions = require('firebase-functions');
 const https = require('https');
+const admin = require('firebase-admin');
+if (!admin.apps.length) {
+  admin.initializeApp({
+    databaseURL: 'https://odfor-bae97-default-rtdb.firebaseio.com',
+  });
+}
 
 exports.kommoProxy = functions.https.onRequest((req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -24,3 +30,293 @@ exports.kommoProxy = functions.https.onRequest((req, res) => {
     });
   }).on('error', e => res.status(500).json({ error: e.message }));
 });
+
+/* ==========================================================================
+   RECALCULAR DEUDA POR RUT — Fodor SpA (agregado 10-08-2026)
+   Vive en el proyecto de PRODUCCION (odfor-bae97).
+
+   Que hace: cada vez que el Panel guarda algo en /estado/EST (se marca un
+   pago, se anula, se agrega gestión), recalcula la deuda pendiente de TODOS
+   los clientes desde la única fuente de verdad real (D26+D25+D24+D26_EXTRA,
+   cruzado con EST) y actualiza deuda_por_rut/rut/{rut} — el nodo que lee
+   la función alertaCobranza (Cloud Run, independiente, no se toca acá).
+
+   Por que existe: deuda_por_rut era un nodo huérfano — nada lo escribía.
+   Quedó con datos manuales/desactualizados que no correspondían a la
+   realidad del Panel (verificado 10-08-2026 con el caso Rapa Nui, RUT
+   78.142.889-2: el número real es $65.450 / 1 factura / 315 días, y no
+   coincidía con lo que había cacheado). Esta función reemplaza esa carga
+   manual por un cálculo automático, trazable y desde una sola fuente de
+   verdad (principio OEGS #3 — CLAUDE.md).
+
+   Que NO hace: no toca EST, no toca D26/D25/D24, no manda mensajes a nadie,
+   no crea notas en Kommo (eso lo sigue haciendo alertaCobranza, sin cambios
+   en su código).
+   ========================================================================== */
+
+function rutNorm(r) {
+  return String(r || '').replace(/[^0-9kK]/g, '').toUpperCase();
+}
+
+function diasVencido(fechaVencIso, hoy) {
+  try {
+    const v = new Date(fechaVencIso.slice(0, 10) + 'T00:00:00');
+    return Math.round((hoy - v) / 86400000);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function calcularYPublicarDeudaPorRut() {
+  const db = admin.database();
+
+  // IMPORTANTE — dos particularidades del guardado de este Panel:
+  //
+  // 1) D26, D25, D24, D26_EXTRA y EST se guardan como STRING JSON
+  //    DOBLE-CODIFICADO (JSON.stringify aplicado dos veces), no como nodos
+  //    reales con hijos. Por eso snap.exists()===true pero
+  //    snap.numChildren()===0: es un valor de texto plano, no un objeto.
+  //    Hay que leer snap.val() como string y hacer JSON.parse dos veces.
+  //    (Mismo patrón ya documentado y usado en informe-impagas.html y en
+  //    los scripts de diagnóstico de sesiones anteriores.)
+  //
+  // 2) Si alguna vez se guardara como nodo real con hijos, evitar
+  //    snap.val() + Object.values() en nodos grandes: si las claves
+  //    numéricas no son 0,1,2,3... seguidas (como en D26_EXTRA, indexado
+  //    por folio), el SDK puede reconstruir un arreglo con huecos hasta el
+  //    índice más alto, multiplicando la memoria real necesaria (esto tiró
+  //    "heap out of memory" en un intento anterior). Por eso se contempla
+  //    también la vía forEach() como respaldo.
+  function decodificarNodo(snap) {
+    if (!snap.exists()) return null;
+    const v = snap.val();
+    if (typeof v === 'string') {
+      try {
+        let parsed = JSON.parse(v);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+        return parsed;
+      } catch (e) {
+        console.error('No se pudo decodificar', snap.ref.toString(), e.message);
+        return null;
+      }
+    }
+    return v;
+  }
+
+  function aArray(valor) {
+    if (!valor) return [];
+    if (Array.isArray(valor)) return valor;
+    return Object.values(valor);
+  }
+
+  const [d26Snap, d25Snap, d24Snap, d26ExtraSnap, estSnap] = await Promise.all([
+    db.ref('estado/D26').once('value'),
+    db.ref('estado/D25').once('value'),
+    db.ref('estado/D24').once('value'),
+    db.ref('estado/D26_EXTRA').once('value'),
+    db.ref('estado/EST').once('value'),
+  ]);
+
+  const todas = [
+    ...aArray(decodificarNodo(d26Snap)),
+    ...aArray(decodificarNodo(d25Snap)),
+    ...aArray(decodificarNodo(d24Snap)),
+    ...aArray(decodificarNodo(d26ExtraSnap)),
+  ];
+
+  const estVal = decodificarNodo(estSnap) || {};
+
+  const hoy = new Date();
+  const porRut = {};
+
+  for (const r of todas) {
+    if (!r || !r.folio || !r.rut) continue;
+    const folio = String(r.folio);
+    const pagado = !!(estVal[folio] && estVal[folio].pagado);
+    if (pagado) continue;
+
+    const key = rutNorm(r.rut);
+    if (!key) continue;
+
+    if (!porRut[key]) {
+      porRut[key] = { rut: r.rut, empresa: r.empresa || '', facturas: [] };
+    }
+    const venc = r.fecha_venc_iso || r.fecha_iso || null;
+    porRut[key].facturas.push({
+      folio,
+      saldo: Number(r.saldo) || 0,
+      fecha_venc_iso: venc,
+      dias_vencido: venc ? diasVencido(venc, hoy) : null,
+    });
+  }
+
+  const salida = {};
+  for (const key in porRut) {
+    const c = porRut[key];
+    const total = c.facturas.reduce((s, f) => s + (f.saldo || 0), 0);
+    const diasMax = c.facturas.reduce((m, f) => Math.max(m, f.dias_vencido || 0), 0);
+    salida[key] = {
+      rut: c.rut,
+      empresa: c.empresa,
+      cantidad_facturas: c.facturas.length,
+      total_pendiente: total,
+      dias_mas_antigua: diasMax,
+      folios: c.facturas.map((f) => f.folio),
+      actualizado_ts: hoy.toISOString(),
+      fuente: 'recalcularDeudaPorRut v1 (D26+D25+D24+D26_EXTRA+EST)',
+    };
+  }
+
+  await db.ref('deuda_por_rut/rut').set(salida);
+  await db.ref('deuda_por_rut/ts').set(hoy.toISOString());
+  await db.ref('deuda_por_rut/meta').set({
+    clientes_con_deuda: Object.keys(salida).length,
+    calculado_por: 'recalcularDeudaPorRut',
+  });
+
+  return {
+    clientes_con_deuda: Object.keys(salida).length,
+    total_facturas_procesadas: todas.length,
+  };
+}
+
+/* ==========================================================================
+   NOTIFICAR ALERTA WHATSAPP — Fodor SpA (agregado 10-08-2026)
+
+   Que hace: cada vez que alertaCobranza manda una alerta de "DEUDA VENCIDA"
+   a un lead de Kommo, deja registro en /cobranza_avisos/{leadId} (para su
+   propio control de no repetir aviso antes de 24h — eso NO se toca). Esta
+   función escucha esa misma escritura y arma un mensaje para WhatsApp,
+   cruzando el RUT (mismo formato normalizado en ambos nodos) contra
+   deuda_por_rut/rut/{rut} para sacar empresa, monto y días de atraso reales.
+
+   El mensaje se deja en /alertas_whatsapp_deborah — un proceso aparte que
+   corre en el Mac (whatsapp-watcher.js) lo lee y lo manda por WhatsApp.
+   Esta función NO manda el WhatsApp directamente: no tiene cómo, vive en la
+   nube y la sesión de WhatsApp está en el teléfono/Mac de Deborah.
+
+   Que NO hace: no modifica alertaCobranza, no modifica cobranza_avisos, no
+   crea ni borra notas de Kommo.
+   ========================================================================== */
+exports.notificarAlertaWhatsapp = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 30 })
+  .database.ref('/cobranza_avisos/{leadId}')
+  .onWrite(async (change, context) => {
+    if (!change.after.exists()) return null; // se borró, no se avisa
+    const aviso = change.after.val();
+    if (!aviso || !aviso.rut) return null;
+
+    const db = admin.database();
+    const infoSnap = await db.ref(`deuda_por_rut/rut/${aviso.rut}`).once('value');
+    const info = infoSnap.val();
+
+    const monto = Number(aviso.monto || (info && info.total_pendiente) || 0)
+      .toLocaleString('es-CL');
+    const empresa = (info && info.empresa) || 'Cliente sin nombre en el Panel';
+    const dias = info && info.dias_mas_antigua;
+    const facturas = info && info.cantidad_facturas;
+
+    const texto =
+      `⚠️ *DEUDA VENCIDA* — se avisó en Kommo\n` +
+      `${empresa}\n` +
+      `RUT: ${aviso.rut}\n` +
+      `Monto: $${monto}` +
+      (facturas ? ` (${facturas} factura${facturas === 1 ? '' : 's'})` : '') +
+      (dias ? `\nLa más antigua: ${dias} días vencida` : '') +
+      `\nLead Kommo: ${context.params.leadId}`;
+
+    await db.ref('alertas_whatsapp_deborah').push({
+      texto,
+      leadId: context.params.leadId,
+      rut: aviso.rut,
+      ts: Date.now(),
+      enviado: false,
+    });
+
+    console.log(`Aviso WhatsApp encolado para lead ${context.params.leadId}`);
+    return null;
+  });
+
+// Memoria: se sube a 1GB como margen de seguridad además del fix de
+// snapAArray (que ya evita el problema real de fondo).
+const CONFIG_MEMORIA = { memory: '1GB', timeoutSeconds: 120 };
+
+// Se dispara sola cada vez que el Panel guarda /estado/EST
+exports.recalcularDeudaPorRut = functions
+  .runWith(CONFIG_MEMORIA)
+  .database.ref('/estado/EST')
+  .onWrite(async (change, context) => {
+    const r = await calcularYPublicarDeudaPorRut();
+    console.log(`deuda_por_rut recalculada: ${r.clientes_con_deuda} clientes con deuda pendiente.`);
+    return null;
+  });
+
+// Endpoint manual para probar sin esperar un cambio real en EST.
+// NO requiere token — solo lee y recalcula, no expone ni modifica nada
+// sensible. Se puede restringir después si se quiere.
+exports.recalcularDeudaPorRutManual = functions
+  .runWith(CONFIG_MEMORIA)
+  .https.onRequest(async (req, res) => {
+    try {
+      const r = await calcularYPublicarDeudaPorRut();
+      res.json({ ok: true, ...r });
+    } catch (e) {
+      console.error('ERROR en recalcularDeudaPorRutManual:', e);
+      res.status(500).json({ ok: false, error: e.message, stack: e.stack });
+    }
+  });
+
+/* ==========================================================================
+   LISTAR ALERTAS DE UN DÍA — Fodor SpA (agregado 10-08-2026)
+   Devuelve, para una fecha dada (YYYY-MM-DD, por defecto hoy), los clientes
+   a los que alertaCobranza les mandó aviso de deuda vencida, con empresa,
+   monto y días de atraso (cruzando cobranza_avisos con deuda_por_rut).
+   Parámetro opcional: ?fecha=2026-08-09
+   ========================================================================== */
+exports.listarAlertasDelDia = functions
+  .runWith({ memory: '256MB', timeoutSeconds: 30 })
+  .https.onRequest(async (req, res) => {
+    try {
+      const db = admin.database();
+      const fechaObjetivo = req.query.fecha || new Date().toISOString().slice(0, 10);
+
+      const [avisosSnap, deudaSnap] = await Promise.all([
+        db.ref('cobranza_avisos').once('value'),
+        db.ref('deuda_por_rut/rut').once('value'),
+      ]);
+
+      const avisos = avisosSnap.val() || {};
+      const deuda = deudaSnap.val() || {};
+
+      const resultado = [];
+      for (const leadId in avisos) {
+        const a = avisos[leadId];
+        if (!a || !a.ts) continue;
+        const fechaAviso = new Date(a.ts).toISOString().slice(0, 10);
+        if (fechaAviso !== fechaObjetivo) continue;
+
+        const info = deuda[a.rut] || {};
+        resultado.push({
+          leadId,
+          rut: a.rut,
+          empresa: info.empresa || null,
+          monto: a.monto,
+          cantidad_facturas: info.cantidad_facturas || null,
+          dias_mas_antigua: info.dias_mas_antigua || null,
+          hora: new Date(a.ts).toLocaleTimeString('es-CL', { timeZone: 'America/Santiago' }),
+        });
+      }
+
+      resultado.sort((x, y) => (y.monto || 0) - (x.monto || 0));
+
+      res.json({
+        ok: true,
+        fecha: fechaObjetivo,
+        total_alertas: resultado.length,
+        clientes: resultado,
+      });
+    } catch (e) {
+      console.error('ERROR en listarAlertasDelDia:', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });

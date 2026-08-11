@@ -1,5 +1,5 @@
 # ESTADO ACTUAL — Fodor SpA Panel de Cobranzas y Envíos
-**Última actualización:** 2026-08-06
+**Última actualización:** 2026-08-10 (tarde)
 **Carpeta de trabajo:** ~/fodor-deploy
 **Último commit:** `e82089f` — Fix generación de guías + persistencia de descartes
 
@@ -77,7 +77,26 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 5. Último trabajo realizado
 
-**Sesión 06-08 (más reciente) — Hueco de importación ene-abr 2026 (COMPLETO Y ESCRITO EN PRODUCCIÓN):**
+**Sesión 10-08 (más reciente) — Alerta "DEUDA VENCIDA" en Kommo con datos incorrectos → Webhook DESACTIVADO (mitigación de emergencia, investigación abierta):**
+
+- 🔍 **Origen:** llegó a un lead de Kommo una nota automática ">>> DEUDA VENCIDA <<< $208.250 - RAPA NUI... 2 facturas vencidas, la mas antigua de 312 dias" — la usuaria no reconocía esos números.
+- 🔍 **Rastreado hasta:** Cloud Function `alertaCobranza` (Cloud Run, proyecto `odfor-bae97`, `https://alertacobranza-rwi2a436vq-uc.a.run.app`), disparada por un Webhook de Kommo en el evento "Mensaje entrante recibido". Lee el RUT del lead, consulta el nodo Firebase `deuda_por_rut/rut/{rut}` y postea la nota si hay deuda.
+- ⚠️ **Hallazgo grave:** el nodo `deuda_por_rut` da NÚMEROS DISTINTOS en cada consulta y ninguno coincide con la factura real verificada directamente (comprobado en 2 lecturas separadas, mismo cliente: 2 facturas/$208.250/312 días en la alerta real → 1 factura/$65.450/315 días en una lectura de caché → 3 facturas/$408.170/284 días en la fuente real). No es solo un dato desactualizado: hay un error de cálculo real en lo que sea que llena ese caché.
+- 🔍 **Búsqueda exhaustiva del origen de `deuda_por_rut` — SIN ÉXITO:** revisado el repo git completo, las 4 Cloud Functions de `odfor-bae97` (ninguna lo escribe), Cloud Scheduler (API deshabilitada), los 5 Terminal abiertos en el Mac, `launchctl list`, los otros 3 proyectos de Google Cloud de la cuenta (`fenix-pruebas` → es el sistema real pero no relacionado "Canal Ciego"; `cobranzas-57610` → pertenece a KANKAT, otro negocio, no Fodor; "Muebles para convivir..." → tampoco relacionado), y 19 nombres de archivo probados en Firebase Hosting (todos 404). **Sigue pendiente:** revisar `crontab -l` en el Mac — único lugar no verificado todavía.
+- ✅ **Mitigación aplicada (10-08-2026, reversible, sin tocar código ni producción):** eliminado el Webhook de Kommo que dispara `alertaCobranza` (Ajustes → Integración → Web Hooks, contador bajó de 6 a 5). La función Cloud Run sigue existiendo intacta — no se tocó código ni se hizo ningún deploy — pero ya no recibe el evento que la activa, así que no puede volver a postear una alerta con datos incorrectos. Reversible: basta con volver a agregar el webhook `https://alertacobranza-rwi2a436vq-uc.a.run.app?k=9b1a8f834173242b165d7d9f7895b3b6` en el evento "Mensaje entrante recibido".
+- 🔍 **Búsqueda cerrada (10-08-2026, con evidencia):** `crontab -l` → sin resultados. Tampermonkey → solo el userscript de envíos, nada de cobranza. `fodor-deploy-sanitizado` sí existe en disco (corrige nota del 31-07 que decía lo contrario) pero no contiene `deuda_por_rut`. **Conclusión: `deuda_por_rut` era un nodo huérfano — nada lo mantenía actualizado.** El comentario en el código de `alertaCobranza` decía "se consulta la tabla deuda_por_rut que publica el Panel", pero esa pieza nunca se construyó.
+- ✅ **Pieza faltante construida (10-08-2026):** función `recalcularDeudaPorRut` + endpoint manual `recalcularDeudaPorRutManual`, agregadas a `functions/index.js` (Firebase Functions, no tocan `kommoProxy`). Calcula deuda pendiente por RUT desde la única fuente de verdad real (`D26`+`D25`+`D24`+`D26_EXTRA`, cruzadas con `EST`) y escribe `deuda_por_rut/rut/{rut}`. Se dispara sola cada vez que el Panel guarda `/estado/EST`.
+  - 3 bugs encontrados y corregidos durante el despliegue: (1) memoria insuficiente (256MB) para cargar ~16.176 facturas — subida a 1GB; (2) uso de `Object.values()` en nodos con claves dispersas puede inflar memoria (Firebase reconstruye arreglos con huecos) — corregido usando decodificación directa; (3) causa raíz real: `D26`/`D25`/`D24`/`D26_EXTRA`/`EST` se guardan como **string JSON doble-codificado**, no como nodos con hijos — sin decodificar, la función leía todo vacío. Corregido con `JSON.parse` doble antes de procesar.
+  - **Validado contra el caso real:** RUT 78.142.889-2 (Rapa Nui) → 1 factura pendiente, folio 42388, $65.450, 316 días vencida. Coincide exacto con lo verificado a mano contra el Panel.
+- ✅ **Webhook reactivado (10-08-2026):** vuelto a agregar en Kommo (Ajustes → Integración → Web Hooks) apuntando a `https://alertacobranza-rwi2a436vq-uc.a.run.app?k=9b1a8f834173242b165d7d9f7895b3b6`, evento "Mensaje entrante recibido" — mismo evento que tenía antes. `alertaCobranza` vuelve a estar activa, ahora consultando un `deuda_por_rut` que se recalcula solo y correctamente.
+- ✅ **Nuevo: aviso a WhatsApp (10-08-2026).** A pedido de la usuaria, cada alerta de "DEUDA VENCIDA" que se manda en Kommo ahora también llega a su WhatsApp personal ("Mensaje para mí"). Diseño: función `notificarAlertaWhatsapp` (Firebase Functions, agregada a `functions/index.js`) escucha `/cobranza_avisos/{leadId}` — el mismo nodo que `alertaCobranza` ya usaba internamente para su control de no repetir aviso antes de 24h — cruza el RUT contra `deuda_por_rut/rut/{rut}` (ya corregido) para sacar empresa/monto/días, y deja el mensaje armado en `/alertas_whatsapp_deborah`. `whatsapp-watcher.js` (proceso en el Mac, ya usado para lo de los retiros) revisa ese nodo cada 20s y manda el WhatsApp. **No se tocó `alertaCobranza` en absoluto** — cero riesgo sobre la función crítica ya reactivada.
+  - Regla de Firebase agregada: `alertas_whatsapp_deborah` con `auth != null` (mismo patrón que `estado`), desplegada vía `firebase deploy --only database` — NUNCA se tocó la consola.
+  - Bug encontrado y resuelto en el camino: `@whiskeysockets/baileys` desactualizado hacía que WhatsApp rechazara la conexión (código de cierre 405 en loop, sin mostrar QR). Se resolvió con `npm install @whiskeysockets/baileys@latest`. Sin relación con los cambios de esta sesión — era una deuda técnica preexistente.
+  - Probado extremo a extremo con un caso simulado (Rapa Nui) y confirmado: llegó el WhatsApp correctamente.
+  - **Importante — limitación conocida:** el WhatsApp solo se manda si `whatsapp-watcher.js` está corriendo en el Mac de Deborah. Si el Mac está apagado o el proceso no está corriendo, el aviso queda encolado en `alertas_whatsapp_deborah` con `enviado:false` y se manda apenas el watcher vuelva a conectarse — no se pierde, pero puede llegar tarde.
+- 🔲 **Pendiente:** retomar el feature original que motivó esta investigación — mostrar la deuda directamente en la ficha de lead de Kommo.
+
+**Sesión 06-08 — Hueco de importación ene-abr 2026 (COMPLETO Y ESCRITO EN PRODUCCIÓN):**
 
 - 🔍 **Origen:** usuaria reportó que el folio 46698 no aparecía en el panel pese a existir y estar pagado en el sistema de facturación.
 - 🔍 **Causa raíz confirmada con evidencia:** el proceso de importación usado para enero-abril 2026 solo traía facturas PENDIENTES de pago (cartera). Cualquier factura ya pagada al momento de esa importación nunca entró a `D26_EXTRA` — ni como pagada ni como pendiente, no existía en absoluto. Verificado comparando 3 archivos de detalle completo (marzo, junio, julio) + 1 archivo de todo el año contra la base real de Firebase. Junio y julio dieron 0% de hueco (proceso de importación posterior, correcto); enero-abril dieron 76-89% de hueco.
@@ -315,10 +334,10 @@ Requiere análisis previo, plan de migración de los datos existentes y reversi�
   NO están en el enum de Envia (`PAPER_8.5X11`, `STOCK_4X4`, `STOCK_4X8`). Los únicos
   válidos: `PAPER_4X6`, `PAPER_7X4.75`, `STOCK_4X6`, `PAPER_LETTER`.
 
-### ✅ RESUELTO EL 31-07
-- `fodor-deploy-sanitizado` **no existe en el disco** — solo en Git. No puede pisar deploys.
-- Los cambios ahora están **commiteados** (`e82089f`), así que un `restore` los recupera
-  en vez de borrarlos. Antes se perdieron justamente por estar sin commitear.
+### ✅ RESUELTO EL 31-07 (CORREGIDO 10-08)
+- La nota original decía "`fodor-deploy-sanitizado` no existe en el disco — solo en Git" — **eso era incorrecto**. La carpeta sí existe en disco (confirmado por captura de Finder, 10-08-2026), junto a `fodor-deploy`. Se corrige acá para no repetir el error.
+- Búsqueda real 10-08-2026: `grep -rn "deuda_por_rut" ~/fodor-deploy-sanitizado` → sin resultados. No contiene código relacionado a la investigación de `deuda_por_rut`.
+- Los cambios de `fodor-deploy` (el repo activo) están **commiteados** (`e82089f`), así que un `restore` los recupera en vez de borrarlos. Antes se perdieron justamente por estar sin commitear.
 
 ### 🟡 RIESGOS ABIERTOS
 1. **TRF_DATA blob 4MB:** Guardado futuro puede fallar sin aviso (mitigado, no resuelto)

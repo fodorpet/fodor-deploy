@@ -9,7 +9,7 @@
 //  Dependencias: npm install @whiskeysockets/baileys pino
 // ══════════════════════════════════════════════════════════════════
 
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, jidNormalizedUser } = require('@whiskeysockets/baileys');
 const https  = require('https');
 const path   = require('path');
 const pino   = require('pino');
@@ -21,8 +21,11 @@ const { exec } = require('child_process');
 const FIREBASE_DB    = 'odfor-bae97-default-rtdb.firebaseio.com';
 const FB_PATH        = '/retiros_wa.json';
 const FB_PATH_G1     = '/grafica1_msgs.json';
+const FB_PATH_ALERTAS = '/alertas_whatsapp_deborah.json';
+const FIREBASE_API_KEY = 'AIzaSyCQ87DLsSBWBr0ckqMZK45RyFmOvGdwaQQ'; // misma que usa el Panel (pública, no es secreta)
 const MAX_EVENTOS    = 200;
 const MAX_G1         = 500;
+const ALERTAS_POLL_MS = 20000; // cada 20s revisa si hay alertas de deuda nuevas
 const GRUPO_PALABRAS = ['moto', 'carlos'];
 const PALABRAS_CLAVE = ['retiro', 'catedral', 'despacho', 'envio', 'envío'];
 const AUTH_DIR       = path.join(__dirname, '.watcher_auth');
@@ -59,6 +62,89 @@ function fbPut(fbPath, data) {
     req.write(buf);
     req.end();
   });
+}
+
+// ── Autenticación anónima (solo para /alertas_whatsapp_deborah, que sí
+//    exige login a diferencia de /retiros_wa y /grafica1_msgs) ────────
+let _authToken = null;
+let _authTokenExp = 0;
+
+function fbAuthToken() {
+  return new Promise((resolve, reject) => {
+    if (_authToken && Date.now() < _authTokenExp) return resolve(_authToken);
+    const buf = Buffer.from(JSON.stringify({ returnSecureToken: true }));
+    const req = https.request({
+      hostname: 'identitytoolkit.googleapis.com',
+      path: `/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': buf.length },
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(data);
+          _authToken = j.idToken;
+          _authTokenExp = Date.now() + 55 * 60 * 1000; // ~55 min de margen
+          resolve(_authToken);
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(buf);
+    req.end();
+  });
+}
+
+function fbGetAuth(fbPath) {
+  return fbAuthToken().then(token => new Promise((resolve, reject) => {
+    https.get({ hostname: FIREBASE_DB, path: `${fbPath}?auth=${token}` }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve(null); } });
+    }).on('error', reject);
+  }));
+}
+
+function fbPatchAuth(fbPath, data) {
+  return fbAuthToken().then(token => new Promise((resolve, reject) => {
+    const buf = Buffer.from(JSON.stringify(data));
+    const req = https.request({
+      hostname: FIREBASE_DB, path: `${fbPath}?auth=${token}`, method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': buf.length }
+    }, res => { res.resume(); resolve(res.statusCode); });
+    req.on('error', reject);
+    req.write(buf);
+    req.end();
+  }));
+}
+
+// ── Alertas de deuda vencida → WhatsApp ────────────────────────────
+// Revisa /alertas_whatsapp_deborah cada ALERTAS_POLL_MS, manda por
+// WhatsApp (a "Mensaje para mí") las que tengan enviado:false, y las
+// marca enviado:true para no repetirlas.
+
+async function revisarAlertasDeuda(sock) {
+  try {
+    const alertas = await fbGetAuth(FB_PATH_ALERTAS);
+    if (!alertas) return;
+
+    const miJid = jidNormalizedUser(sock.user.id);
+
+    for (const id in alertas) {
+      const a = alertas[id];
+      if (!a || a.enviado) continue;
+      try {
+        await sock.sendMessage(miJid, { text: a.texto });
+        await fbPatchAuth(`/alertas_whatsapp_deborah/${id}.json`, { enviado: true });
+        console.log(C.verde(`  📲 Alerta de deuda enviada a WhatsApp (lead ${a.leadId || '?'})`));
+      } catch (e) {
+        console.error(C.rojo(`  ⚠️ No se pudo enviar alerta ${id}:`), e.message);
+      }
+    }
+  } catch (e) {
+    console.error(C.rojo('  ⚠️ Error revisando alertas de deuda:'), e.message);
+  }
 }
 
 // ── Lógica de detección ────────────────────────────────────────────
@@ -171,6 +257,9 @@ async function conectar() {
       }
     } else if (connection === 'open') {
       console.log(C.verde('\n  🟢 WhatsApp CONECTADO — escuchando Fodor Grup...\n'));
+      console.log(C.gris(`  💰 Alertas de deuda vencida: revisando cada ${ALERTAS_POLL_MS/1000}s (se envían a "Mensaje para mí")\n`));
+      revisarAlertasDeuda(sock); // primera revisión inmediata
+      setInterval(() => revisarAlertasDeuda(sock), ALERTAS_POLL_MS);
     }
   });
 

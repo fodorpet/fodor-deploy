@@ -1,5 +1,5 @@
 # ESTADO ACTUAL — Fodor SpA Panel de Cobranzas y Envíos
-**Última actualización:** 2026-08-10 (tarde)
+**Última actualización:** 2026-08-11
 **Carpeta de trabajo:** ~/fodor-deploy
 **Último commit:** `e82089f` — Fix generación de guías + persistencia de descartes
 
@@ -77,7 +77,21 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 5. Último trabajo realizado
 
-**Sesión 10-08 (más reciente) — Alerta "DEUDA VENCIDA" en Kommo con datos incorrectos → Webhook DESACTIVADO (mitigación de emergencia, investigación abierta):**
+**Sesión 11-08 (más reciente) — Bug de contrato de campos: `alertaCobranza` no detectaba deuda de NINGÚN cliente desde el 10-08 (RESUELTO):**
+
+- 🔍 **Origen:** usuaria reportó "A36797 el aviso de facturas impagas no está funcionando" para EVENTOS E.M.LTDA (RUT 77.675.924-4) — el sistema de facturación mostraba 2 facturas impagas ($927.605), pero nunca llegó aviso a Kommo ni WhatsApp.
+- 🔍 **Investigado en el Panel:** el cliente en realidad tiene 10 facturas pendientes según `D26/D25/D24/D26_EXTRA+EST` (no 2), por $8.206.716, con folios 42835 y 37623 **duplicados** en el cálculo (aparecen dos veces cada uno) — señal de registros duplicados en los datos de origen. **Deuda técnica registrada, sin resolver todavía** — probablemente afecta a más clientes, no solo a este.
+- ✅ **Bug real #1 encontrado y corregido:** `notificarAlertaWhatsapp` consultaba `deuda_por_rut/rut/${aviso.rut}` con el RUT tal cual ("77.675.924-4", con puntos), pero Firebase RTDB prohíbe "." en las rutas → la función tronaba en silencio para cualquier cliente con RUT en ese formato (la mayoría). Corregido: ahora usa `rutNorm(aviso.rut)`, igual que la clave con la que se guarda el nodo.
+- ✅ **Bug real #2 encontrado y corregido — el que de verdad explica el reporte, y es MUCHO más grave de lo que parecía:** revisado el código fuente real de `alertaCobranza` (Cloud Run, `us-central1-odfor-bae97.cloudfunctions.net/alertaCobranza`, vía consola de Google Cloud → pestaña "Fuente"). Esa función lee de `deuda_por_rut/rut/{rut}` los campos `total`, `vencido`, `nVenc`, `masViejo`, `n`, `empresa` — pero `recalcularDeudaPorRut` (construida el 10-08 para reemplazar el nodo huérfano) publicaba otros nombres: `total_pendiente`, `dias_mas_antigua`, `cantidad_facturas`. Como no coincidían, `if (!d || !(d.total > 0)) return "sin_deuda"` se cumplía SIEMPRE — **desde el 10-08, `alertaCobranza` no detectaba deuda de ningún cliente**, no solo de EVENTOS E.M.LTDA. Los 46 avisos vistos en `cobranza_avisos` son todos anteriores a esa fecha.
+  - **Causa raíz del bug:** al reconstruir `deuda_por_rut` el 10-08 no se revisó el contrato exacto de campos que su consumidor (`alertaCobranza`) necesitaba — se asumió un esquema propio en vez de verificar el real.
+  - **Corrección aplicada (11-08-2026):** `calcularYPublicarDeudaPorRut` ahora escribe AMBOS conjuntos de campos — los que espera `alertaCobranza` (`total`, `vencido`, `nVenc`, `masViejo`, `n`) y los propios del Panel (`total_pendiente`, `dias_mas_antigua`, `cantidad_facturas`, `folios`) — sin quitar nada, sin tocar `listarAlertasDelDia` ni `notificarAlertaWhatsapp`, que siguen usando sus campos de siempre.
+  - **Validado:** recálculo manual disparado (`recalcularDeudaPorRutManual` → 5.160 clientes, 16.232 facturas procesadas), confirmado con el caso EVENTOS E.M.LTDA que ahora `deuda_por_rut` trae `total:8.206.716, vencido:8.206.716, nVenc:10, masViejo:495, n:10` — contrato completo.
+  - **Pendiente de validación real:** falta que llegue un mensaje entrante nuevo de un cliente con deuda para confirmar que `alertaCobranza` efectivamente postea la nota con los datos ya corregidos (no se puede simular el webhook de Kommo sin riesgo desde acá).
+- 🔧 **Función temporal de diagnóstico** (`diagRutTemp`) creada, usada y borrada en la misma sesión (`firebase functions:delete diagRutTemp --force`); el código también se quitó de `functions/index.js`.
+- 🔲 **Pendiente commitear a git:** el archivo `functions/index.js` tiene estos cambios sin commitear — hacerlo en el próximo `deploy-panel.command` (responder "S" cuando pregunte).
+- 🔲 **Pendiente:** investigar el origen de los folios duplicados (42835 y 37623 aparecen 2 veces en el cálculo de deuda) — probablemente el mismo folio está presente en más de una fuente (`D26_EXTRA` + `D25`/`D24`) sin dedup.
+
+**Sesión 10-08 — Alerta "DEUDA VENCIDA" en Kommo con datos incorrectos → Webhook DESACTIVADO (mitigación de emergencia, investigación abierta):**
 
 - 🔍 **Origen:** llegó a un lead de Kommo una nota automática ">>> DEUDA VENCIDA <<< $208.250 - RAPA NUI... 2 facturas vencidas, la mas antigua de 312 dias" — la usuaria no reconocía esos números.
 - 🔍 **Rastreado hasta:** Cloud Function `alertaCobranza` (Cloud Run, proyecto `odfor-bae97`, `https://alertacobranza-rwi2a436vq-uc.a.run.app`), disparada por un Webhook de Kommo en el evento "Mensaje entrante recibido". Lee el RUT del lead, consulta el nodo Firebase `deuda_por_rut/rut/{rut}` y postea la nota si hay deuda.

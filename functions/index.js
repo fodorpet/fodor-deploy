@@ -155,15 +155,39 @@ async function calcularYPublicarDeudaPorRut() {
     const c = porRut[key];
     const total = c.facturas.reduce((s, f) => s + (f.saldo || 0), 0);
     const diasMax = c.facturas.reduce((m, f) => Math.max(m, f.dias_vencido || 0), 0);
+
+    // Subconjunto vencido (dias_vencido > 0) — es lo que alertaCobranza usa
+    // para decidir si avisa y con qué texto.
+    const facturasVencidas = c.facturas.filter((f) => (f.dias_vencido || 0) > 0);
+    const totalVencido = facturasVencidas.reduce((s, f) => s + (f.saldo || 0), 0);
+    const diasMaxVencido = facturasVencidas.reduce((m, f) => Math.max(m, f.dias_vencido || 0), 0);
+
     salida[key] = {
       rut: c.rut,
       empresa: c.empresa,
+
+      // ---- Contrato que consume alertaCobranza (Cloud Run, código en
+      // otro servicio — NO se modifica, ver source en
+      // us-central1-odfor-bae97.cloudfunctions.net/alertaCobranza).
+      // Encontrado 11-08-2026: hasta este fix estos campos NO existían,
+      // por eso alertaCobranza devolvía "sin_deuda" para TODOS los
+      // clientes desde el 10-08-2026 (fecha en que este nodo se reemplazó
+      // por primera vez) — no era un problema de un cliente puntual.
+      total,                        // deuda total pendiente (vencida o no)
+      vencido: totalVencido,        // solo la parte vencida
+      nVenc: facturasVencidas.length,
+      masViejo: diasMaxVencido,
+      n: c.facturas.length,
+
+      // ---- Campos propios de este Panel (usados por listarAlertasDelDia,
+      // notificarAlertaWhatsapp y por cualquier futura pantalla del Panel).
+      // Se mantienen igual, no se tocan sus consumidores.
       cantidad_facturas: c.facturas.length,
       total_pendiente: total,
       dias_mas_antigua: diasMax,
       folios: c.facturas.map((f) => f.folio),
       actualizado_ts: hoy.toISOString(),
-      fuente: 'recalcularDeudaPorRut v1 (D26+D25+D24+D26_EXTRA+EST)',
+      fuente: 'recalcularDeudaPorRut v2 (D26+D25+D24+D26_EXTRA+EST) — con contrato alertaCobranza',
     };
   }
 
@@ -207,7 +231,14 @@ exports.notificarAlertaWhatsapp = functions
     if (!aviso || !aviso.rut) return null;
 
     const db = admin.database();
-    const infoSnap = await db.ref(`deuda_por_rut/rut/${aviso.rut}`).once('value');
+    // BUG encontrado 11-08-2026: deuda_por_rut se guarda con la clave
+    // normalizada (rutNorm, solo dígitos/K) pero acá se estaba consultando
+    // con aviso.rut tal cual viene ("77.675.924-4"). Firebase RTDB no
+    // permite "." en las rutas, así que esto lanzaba una excepción y
+    // notificarAlertaWhatsapp se caía en silencio para cualquier cliente
+    // cuyo RUT tuviera puntos (la mayoría). Caso detectado: EVENTOS
+    // E.M.LTDA, RUT 77.675.924-4.
+    const infoSnap = await db.ref(`deuda_por_rut/rut/${rutNorm(aviso.rut)}`).once('value');
     const info = infoSnap.val();
 
     const monto = Number(aviso.monto || (info && info.total_pendiente) || 0)

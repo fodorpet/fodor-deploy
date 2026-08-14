@@ -1,5 +1,5 @@
 # ESTADO ACTUAL — Fodor SpA Panel de Cobranzas y Envíos
-**Última actualización:** 2026-08-11
+**Última actualización:** 2026-08-12
 **Carpeta de trabajo:** ~/fodor-deploy
 **Último commit:** `e82089f` — Fix generación de guías + persistencia de descartes
 
@@ -77,7 +77,17 @@ Sistema profesional de cobranzas, facturación y gestión de envíos para Fodor 
 
 ## 5. Último trabajo realizado
 
-**Sesión 11-08 (más reciente) — Bug de contrato de campos: `alertaCobranza` no detectaba deuda de NINGÚN cliente desde el 10-08 (RESUELTO):**
+**Sesión 12-08 (más reciente) — Deuda de clientes inflada por facturas duplicadas entre D25 y D26_EXTRA (RESUELTO):**
+
+- 🔍 **Origen:** siguiendo el caso EVENTOS E.M.LTDA de la sesión anterior, se confirmó que sus 10 facturas "pendientes" en realidad eran 8 — los folios 42835 y 37623 estaban contados dos veces.
+- 🔍 **Alcance real (verificado con evidencia, no solo este cliente):** 668 folios existen simultáneamente en `D25` (669 registros en total) y `D26_EXTRA` (13.601 registros) — casi todo `D25` está duplicado dentro de `D26_EXTRA`. Comparado el saldo de los 668 pares: **0 inconsistencias**, el monto es idéntico en ambas fuentes. `D26_EXTRA` además trae `fecha_venc_iso` (fecha de vencimiento real) que `D25` no tiene — es la reimportación más completa.
+- 📊 **Impacto medido antes del fix:** de los 668 folios duplicados, 662 estaban pendientes de pago → se estaba sumando **$243.984.784 de más** en la deuda total calculada de todo el sistema (afecta a `deuda_por_rut`, no a lo que se muestra en el Panel visual directamente, pero sí a los avisos de `alertaCobranza`).
+- ✅ **Fix aplicado (12-08-2026):** en `calcularYPublicarDeudaPorRut` (`functions/index.js`), antes de sumar se deduplica por folio usando un `Map` — al recorrer las fuentes en orden `D26→D25→D24→D26_EXTRA` y quedarse con la última aparición de cada folio, el duplicado conserva automáticamente la versión de `D26_EXTRA` (la más completa), sin perder ningún dato.
+- ✅ **Validado:** recálculo manual disparado (5.175 clientes, 15.658 facturas procesadas — bajó de 16.232 antes del fix). Caso EVENTOS E.M.LTDA confirmado: 10 facturas → 8 facturas únicas, total bajó de $8.206.716 a **$7.279.111** (diferencia exacta: $927.605, el monto de los 2 folios duplicados).
+- 🔲 **Pendiente, distinto al bug de hoy:** el Panel sigue mostrando 8 facturas pendientes ($7.279.111) para EVENTOS E.M.LTDA, pero el sistema de facturación oficial (captura de la usuaria) solo mostraba 2 impagas ($927.605) al momento del reporte original. Puede ser que 6 facturas ya estén pagadas en la realidad y el Panel no lo tenga registrado, o que el sistema de facturación filtre distinto. **No investigado todavía.**
+- 🔲 **Pendiente, igual que antes:** confirmación "en vivo" de que `alertaCobranza` postea la nota correcta con el monto ya corregido cuando un cliente con deuda real escribe a Kommo.
+
+**Sesión 11-08 — Bug de contrato de campos: `alertaCobranza` no detectaba deuda de NINGÚN cliente desde el 10-08 (RESUELTO):**
 
 - 🔍 **Origen:** usuaria reportó "A36797 el aviso de facturas impagas no está funcionando" para EVENTOS E.M.LTDA (RUT 77.675.924-4) — el sistema de facturación mostraba 2 facturas impagas ($927.605), pero nunca llegó aviso a Kommo ni WhatsApp.
 - 🔍 **Investigado en el Panel:** el cliente en realidad tiene 10 facturas pendientes según `D26/D25/D24/D26_EXTRA+EST` (no 2), por $8.206.716, con folios 42835 y 37623 **duplicados** en el cálculo (aparecen dos veces cada uno) — señal de registros duplicados en los datos de origen. **Deuda técnica registrada, sin resolver todavía** — probablemente afecta a más clientes, no solo a este.

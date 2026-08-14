@@ -117,12 +117,29 @@ async function calcularYPublicarDeudaPorRut() {
     db.ref('estado/EST').once('value'),
   ]);
 
-  const todas = [
+  const todasConDuplicados = [
     ...aArray(decodificarNodo(d26Snap)),
     ...aArray(decodificarNodo(d25Snap)),
     ...aArray(decodificarNodo(d24Snap)),
     ...aArray(decodificarNodo(d26ExtraSnap)),
   ];
+
+  // FIX 12-08-2026 — deduplicar por folio antes de sumar.
+  // Encontrado: 668 folios existen simultáneamente en D25 y D26_EXTRA con
+  // saldo IDÉNTICO en ambas fuentes (verificado, 0 inconsistencias) —
+  // D26_EXTRA es la reimportación más completa (trae fecha_venc_iso que D25
+  // no tiene). Sin este dedup, esos folios se sumaban dos veces: inflaba la
+  // deuda total del sistema en $243.984.784 (662 de esos folios estaban
+  // pendientes de pago). Caso que lo destapó: EVENTOS E.M.LTDA, RUT
+  // 77.675.924-4 (folios 42835 y 37623 contados dos veces).
+  // Al recorrer el array en orden D26→D25→D24→D26_EXTRA y quedarnos con la
+  // ÚLTIMA aparición de cada folio, el duplicado automáticamente conserva
+  // la versión de D26_EXTRA (la más completa), sin perder ningún dato.
+  const porFolio = new Map();
+  for (const r of todasConDuplicados) {
+    if (r && r.folio) porFolio.set(String(r.folio), r);
+  }
+  const todas = Array.from(porFolio.values());
 
   const estVal = decodificarNodo(estSnap) || {};
 

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-18_14:18</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-18_15:07</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -497,7 +497,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-18_14:18</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-18_15:07</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -1779,10 +1779,13 @@ function selRow(tr){
 function guardarEstado(){
   try {
     console.log('[FODOR] guardarEstado ORIGINAL (sin cifrado), COT_DATA:', typeof COT_DATA !== 'undefined' ? COT_DATA.length : 'undefined');
-    try{if(typeof COT_DATA!=='undefined'&&COT_DATA.length)localStorage.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
-    try{if(typeof PROV_DATA!=='undefined'&&PROV_DATA.length)localStorage.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));}catch(e){}
-    try{if(typeof CARTOLA_DATA!=='undefined'&&CARTOLA_DATA.length)localStorage.setItem('fodorspa_cart_v1',JSON.stringify(CARTOLA_DATA));}catch(e){}
-    try{if(typeof WEBPAY_DATA!=='undefined'&&WEBPAY_DATA.length)localStorage.setItem('fodorspa_wp_v1',JSON.stringify(WEBPAY_DATA));}catch(e){}
+    // PERF 2026-08-18: COT_DATA/PROV_DATA/CARTOLA_DATA/WEBPAY_DATA ya se guardan cada
+    // uno en su propio punto dedicado (importarCotizXls, importarProveedores, cargar
+    // cartola, vincularWP). Repetirlo acá era trabajo redundante en las 96 llamadas a
+    // guardarEstado() de TODA la app — no protegía nada, solo hacía lento cada clic.
+    // GETNET_DATA y MP_DATA se dejan: no tienen otro punto de guardado propio
+    // (GetNet se modifica en 3 lugares distintos — import, borrar, reparar — y este
+    // es el único punto común a los tres).
     try{if(typeof GETNET_DATA!=='undefined'&&GETNET_DATA.length)localStorage.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
     try{if(typeof MP_DATA!=='undefined'&&MP_DATA.length)localStorage.setItem('fodorspa_mp_v1',JSON.stringify(MP_DATA));}catch(e){}
     // Guardar TRF_DATA delta (solo IDs nuevos, no los hardcodeados) en clave propia
@@ -15061,12 +15064,12 @@ cargarEstado = function(){
 var _origGuardar = guardarEstado;
 guardarEstado = function(){
   if(!_CRYPT_KEY){ _origGuardar(); return; }
-  // ── Saves sincrónicos ANTES del async (respaldo seguro) ──
-  try{if(WEBPAY_DATA&&WEBPAY_DATA.length)localStorage.setItem('fodorspa_wp_v1',JSON.stringify(WEBPAY_DATA));}catch(e){}
-  try{if(CARTOLA_DATA&&CARTOLA_DATA.length)localStorage.setItem('fodorspa_cart_v1',JSON.stringify(CARTOLA_DATA));}catch(e){}
+  // PERF 2026-08-18: se quitaron acá los saves sincrónicos de WEBPAY_DATA/CARTOLA_DATA/
+  // PROV_DATA/COT_DATA — cada uno ya se guarda en su propio punto dedicado (donde
+  // realmente se modifica), así que repetirlo en cada una de las 96 llamadas a
+  // guardarEstado() de toda la app era trabajo duplicado, no una protección real.
+  // GETNET_DATA y TRF_DATA se dejan: no tienen otro punto de guardado propio.
   try{if(GETNET_DATA&&GETNET_DATA.length)localStorage.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
-  try{if(PROV_DATA&&PROV_DATA.length)localStorage.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));}catch(e){}
-  try{if(COT_DATA&&COT_DATA.length)localStorage.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
   // FIX-TRF-CRYPT 2026-07-24: guardar TRF_DATA en su clave dedicada también en modo cifrado
   try{if(TRF_DATA&&TRF_DATA.length)localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e){try{localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}}
   // ── TRF_DATA NO se incluye en cifrado (está hardcodeado en HTML = 2MB innecesarios) ──

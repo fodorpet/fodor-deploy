@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-19_10:59</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-19_11:32</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -454,6 +454,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn" onclick="showTab('tOT',this);renderOT()">🔧 Órd. Trabajo <span id="otBadge" style="display:none;background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tVentas',this)">📊 Ventas</button>
   <button class="tab-btn" onclick="showTab('tFactCL',this);renderFactCL()">🧾 Facturación.cl</button>
+  <button class="tab-btn" onclick="showTab('tCruceBCI',this);renderCruceBCI()">🔀 Cruce Facturación-Banco</button>
   <button class="tab-btn" onclick="showTab('tBit',this)">📋 Bitácora</button>
   <button class="tab-btn" onclick="showTab('tAlm',this)">⏰ Alertas</button>
   <div class="sidebar-sep" id="invSidebarSep">Bodega</div>
@@ -498,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_10:59</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_11:32</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -2797,6 +2798,21 @@ function detectarFacturasMultiTrf(){
     if(!fo) return;
     (mapa[fo]=mapa[fo]||[]).push(t);
   });
+  // BCI 2026-08-19: el Caso B solo miraba TRF_DATA, así que un folio con un TRF +
+  // un pago BCI (o dos pagos BCI) que sumaran de más no disparaba esta alerta.
+  // Se arma un pseudo-TRF por cada pago BCI vinculado en EST, leyendo el monto/fecha
+  // real desde CARTOLA_DATA — sin escribir nada, solo para que este cuadre lo vea.
+  if(typeof EST!=='undefined' && typeof CARTOLA_DATA!=='undefined'){
+    var _cartById={};
+    CARTOLA_DATA.forEach(function(c){ _cartById[c.id]=c; });
+    Object.keys(EST).forEach(function(fo){
+      var e=EST[fo];
+      if(!e || !e.pagado || e.pagoTipo!=='BCI' || !e.pagoId) return;
+      var c=_cartById[e.pagoId];
+      if(!c) return;
+      (mapa[fo]=mapa[fo]||[]).push({ id:c.id, fecha:c.fecha, monto:Number(c.monto_abono)||0, origen:c.desc||'(Cartola BCI)', folio:fo, descartada:false, _bci:true });
+    });
+  }
   var res=[];
   Object.keys(mapa).forEach(function(fo){
     var ts=mapa[fo];
@@ -10003,6 +10019,30 @@ function renderGetnet(){
   </div>
 </div>
 
+<!-- ==================== TAB CRUCE FACTURACIÓN-BANCO ==================== -->
+<!-- 2026-08-19: cruce semi-automático. Compara CARTOLA_DATA (Cartola BCI, ya importada
+     en el Panel) contra FACTCL_DATA (Facturación.cl) por monto+fecha, sin tocar ninguno
+     de los dos datasets. Cada vínculo requiere un clic manual — nunca se vincula en
+     lote automático, para no repetir el riesgo de guardado masivo ya conocido. -->
+<div class="tab-content" id="tCruceBCI">
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:12px;color:#94a3b8;line-height:1.5">
+      🔀 Cruza los abonos de la <b>Cartola BCI</b> que todavía no están vinculados contra las facturas <b>pendientes de Facturación.cl</b>, por monto exacto (±$1) y fecha. Revisa cada sugerencia y confirma con "Vincular" — no se vincula nada solo. Primero carga la Cartola BCI y el Reporte de Venta en sus pestañas.
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi azul"><label>Coincidencias sugeridas</label><div class="val" id="cruceBCITotal">0</div><div class="sub">abonos con al menos una candidata</div></div>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    <table class="tabla">
+      <thead><tr>
+        <th>Fecha</th><th>Descripción cartola</th><th>Monto</th><th>Facturas candidatas</th>
+      </tr></thead>
+      <tbody id="cruceBCIBody"><tr><td colspan="4" style="text-align:center;color:#888;padding:30px">Sin datos aún</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ==================== TAB GETNET ==================== -->
 <div class="tab-content" id="tGetnet">
   <div class="kpi-row">
@@ -10844,6 +10884,107 @@ function limpiarFactCL(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// CRUCE FACTURACIÓN-BANCO — 2026-08-19
+// ------------------------------------------------------------------------------
+// Solo LEE CARTOLA_DATA y FACTCL_DATA para sugerir coincidencias; el único punto
+// que ESCRIBE es vincularCruceBCI, y pasa por el núcleo canónico registrarPago
+// (Principio 3: una sola fuente de verdad). Cada vínculo es un clic manual del
+// usuario — no hay "vincular todo" automático.
+// ══════════════════════════════════════════════════════════════════════════════
+function _cruceBCICandidatos(){
+  var linked = {};
+  if(typeof EST!=='undefined'){
+    Object.keys(EST).forEach(function(f){
+      var e=EST[f];
+      if(e && e.pagoTipo==='BCI' && e.pagoId) linked[e.pagoId]=f;
+    });
+  }
+  var trfKey = {};
+  (typeof TRF_DATA!=='undefined'?TRF_DATA:[]).forEach(function(t){
+    if(t.descartada) return;
+    trfKey[((t.fecha||'')+'').slice(0,10)+'|'+(Number(t.monto)||0)] = 1;
+  });
+  var pendientes = (typeof FACTCL_DATA!=='undefined'?FACTCL_DATA:[]).filter(function(r){
+    if(r.pagadoFCL) return false;
+    var e = (typeof EST!=='undefined' && EST[r.folio]) || {};
+    return !e.pagado;
+  });
+  var sugerencias = [];
+  (typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:[]).forEach(function(c){
+    var ab = Number(c.monto_abono)||0;
+    if(ab<=0) return;
+    if(linked[c.id]) return;                                    // ya vinculado
+    var k = ((c.fecha||'')+'').slice(0,10)+'|'+ab;
+    if(trfKey[k]) return;                                        // ya contado como TRF
+    var cands = pendientes.filter(function(r){
+      return Math.abs((Number(r.total)||0)-ab) <= 1;
+    }).slice(0,5);
+    if(!cands.length) return;
+    sugerencias.push({ cart:c, candidatas:cands });
+  });
+  sugerencias.sort(function(a,b){ return (b.cart.fecha||'').localeCompare(a.cart.fecha||''); });
+  return sugerencias;
+}
+
+function renderCruceBCI(){
+  var lista = _cruceBCICandidatos();
+  var elT = document.getElementById('cruceBCITotal'); if(elT) elT.textContent = lista.length;
+  var body = document.getElementById('cruceBCIBody');
+  if(!body) return;
+  if(!lista.length){
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:30px">Sin coincidencias pendientes. Carga la Cartola BCI y el Reporte de Venta en Facturación.cl primero.</td></tr>';
+    return;
+  }
+  var F = (typeof fmt==='function') ? fmt : function(v){ return '$'+(Number(v)||0).toLocaleString('es-CL'); };
+  var html = '';
+  lista.forEach(function(s){
+    var c = s.cart;
+    html += '<tr><td>'+(c.fecha||'')+'</td>'
+      +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.desc||'').replace(/"/g,'')+'">'+(c.desc||'')+'</td>'
+      +'<td style="font-weight:700;text-align:right">'+F(c.monto_abono)+'</td>'
+      +'<td>';
+    s.candidatas.forEach(function(r){
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
+        +'<span style="font-size:11px">'+r.folio+' — '+(r.razon||'').slice(0,32)+'</span>'
+        +'<button onclick="vincularCruceBCI(\''+c.id+'\',\''+r.folio+'\')" style="background:#16a34a;color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Vincular ✓</button>'
+        +'</div>';
+    });
+    html += '</td></tr>';
+  });
+  body.innerHTML = html;
+}
+
+function vincularCruceBCI(cartolaId, folio){
+  var c = (typeof CARTOLA_DATA!=='undefined' ? CARTOLA_DATA : []).find(function(x){ return x.id===cartolaId; });
+  if(!c){ alert('No encontré ese movimiento de la cartola.'); return; }
+  var fs = String(folio||'').trim();
+  if(!fs){ return; }
+  // Misma guarda anti-duplicado que usa el flujo de Transferencias (vincularTrf).
+  if(typeof confirmarTrfIdUnico==='function' && !confirmarTrfIdUnico(c.id, fs)) return;
+  var res = registrarPago(fs, c, 'BCI', {
+    historialTipo: '💸 Pago aplicado',
+    historialNota: 'Cruce automático Cartola BCI ↔ Facturación.cl · movimiento '+c.id
+  });
+  if(!res.ok){
+    var msgs = {
+      'monto-invalido':        'El movimiento no tiene un monto válido.',
+      'comprobante-duplicado': 'Ese movimiento ya está vinculado a otra factura: '+((res.folios||[]).join(', ')),
+      'factura-inexistente':   'No encontré la factura '+fs+' entre tus facturas 2026/2025.',
+      'folio-vacio':           'Folio inválido.'
+    };
+    alert('❌ No se vinculó: '+(msgs[res.motivo]||res.motivo));
+    return;
+  }
+  try{ guardarEstado(); }catch(e){ console.error('[CRUCE-BCI] guardarEstado:',e); }
+  try{ if(_fbDb) _fbSetEstado({EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA)}); }catch(e){}
+  renderCruceBCI();
+  try{ renderFactCL(); }catch(e){}
+  try{ f26(); }catch(e){}
+  alert('✅ Folio '+fs+' vinculado al movimiento del '+(c.fecha||'')+' — '+F_cruceBCI(c.monto_abono)+'.');
+}
+function F_cruceBCI(v){ return (typeof fmt==='function') ? fmt(v) : '$'+(Number(v)||0).toLocaleString('es-CL'); }
+
+// ══════════════════════════════════════════════════════════════════════════════
 // NÚCLEO DE PAGOS — función canónica · 2026-07-25
 // ------------------------------------------------------------------------------
 // Única vía autorizada para registrar o anular un pago sobre una factura.
@@ -10865,6 +11006,10 @@ var PAGO_FUENTES = {
   WEBPAY: { etiqueta:'WebPay',        id:'id', fecha:'fecha', monto:'monto', pagador:'nombre',  rutEn:'rut'  },
   GETNET: { etiqueta:'GetNet',        id:'id', fecha:'fecha', monto:'monto', pagador:'marca',   rutEn:null   },
   MP:     { etiqueta:'MercadoPago',   id:'id', fecha:'fecha', monto:'monto', pagador:'cliente', rutEn:null   },
+  // BCI 2026-08-19: pago detectado desde la Cartola BCI (CARTOLA_DATA), sin pasar por
+  // TRF_DATA. Mapea los campos reales del importador de cartola (monto_abono, desc) —
+  // sin esto, _normalizarPago caía en MANUAL y guardaba el pago con monto $0.
+  BCI:    { etiqueta:'Cartola BCI',   id:'id', fecha:'fecha', monto:'monto_abono', pagador:'desc', rutEn:null },
   MANUAL: { etiqueta:'Registro manual',id:'id',fecha:'fecha', monto:'monto', pagador:'origen',  rutEn:null   }
 };
 
@@ -10960,6 +11105,11 @@ function registrarPago(folio, pago, fuente, opciones){
     var enUso = _trfIdEnUso(np.id, fo);
     if(enUso.length && !o.forzar) return { ok:false, motivo:'comprobante-duplicado', folios:enUso };
   }
+
+  // VALIDACIÓN-MONTO 2026-08-19: si el comprobante no trae un monto real (por ejemplo,
+  // una fuente nueva que _normalizarPago no supo leer bien), NO se guarda el pago —
+  // antes esto pasaba en silencio y quedaba un pago registrado con $0 (Principio 4/5).
+  if(!(np.monto > 0) && !o.forzar) return { ok:false, motivo:'monto-invalido' };
 
   var anterior = EST[fo] ? JSON.parse(JSON.stringify(EST[fo])) : null;
   if(!EST[fo]) EST[fo] = {};

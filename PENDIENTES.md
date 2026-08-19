@@ -5,7 +5,6 @@ Revisión de cierre 19:00 → todo lo abierto, preguntando en qué quedó
 
 ## Con fecha
 
-- **2026-08-13 — Álvaro**: Confirmar la reunión del jueves.
 - **2026-08-28 — Audiencia de Marcelo**: Tener listos los documentos para el abogado.
   - Registros de pago de luz
   - Registros de pago de agua
@@ -15,6 +14,7 @@ Revisión de cierre 19:00 → todo lo abierto, preguntando en qué quedó
 
 ## Abiertos
 
+- **2026-08-19 — Álvaro**: La reunión se corrió. Esperando que me diga la nueva fecha.
 - **2026-08-11 — Regina**: Le envié los números de factura sin pago identificado, para que me dé la información de esos pagos.
   - Facturas: 47047, 46755, 46741, 47240, 47224
 - **2026-08-11 — Marcelo**: Recordarle que me tiene que pagar, y que él tiene que pagarle a Fabián.

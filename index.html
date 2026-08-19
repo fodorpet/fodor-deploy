@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-19_11:32</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-19_12:31</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_11:32</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_12:31</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -1752,6 +1752,10 @@ function cargarEstado(){
     if(!PROV_DATA.length){try{var _provBk=localStorage.getItem('fodorspa_prov_v1');if(_provBk){var _provBkP=JSON.parse(_provBk);if(_provBkP&&_provBkP.length)PROV_DATA=_provBkP;}}catch(e){}}
     if(saved.COT_DATA && saved.COT_DATA.length) COT_DATA = saved.COT_DATA;
     if(!COT_DATA.length){try{var _cotBk=localStorage.getItem('fodorspa_cot_v1');if(_cotBk){var _cotBkP=JSON.parse(_cotBk);if(_cotBkP.length)COT_DATA=_cotBkP;}}catch(e){}}
+    // FIX-PERSISTENCIA-FCL 2026-08-19: FACTCL_DATA (Facturación.cl) se importaba y
+    // nunca se guardaba en ningún lado — vivía solo en memoria de esa pestaña y se
+    // perdía al recargar. Se agrega su clave dedicada, igual que las demás fuentes.
+    if(typeof FACTCL_DATA!=='undefined' && !FACTCL_DATA.length){try{var _fclBk=localStorage.getItem('fodorspa_fcl_v1');if(_fclBk){var _fclBkP=JSON.parse(_fclBk);if(_fclBkP&&_fclBkP.length)FACTCL_DATA=_fclBkP;}}catch(e){}}
     try{var _ktBk=localStorage.getItem('_fsp_kommo_tel');if(_ktBk){var _ktBkP=JSON.parse(_ktBk);if(_ktBkP&&typeof _ktBkP==='object')KOMMO_TEL=_ktBkP;}}catch(e){}
     if(saved.METAS) METAS = Object.assign({recMensual:0,contactosDiarios:0,ventaPorVendedor:{}}, saved.METAS);
     if(saved.TRF_DESCARTES) TRF_DESCARTES = saved.TRF_DESCARTES;
@@ -10601,6 +10605,10 @@ function importarFacturacionCL(event){
         nuevos++;
       });
       FACTCL_DATA.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+      // FIX-PERSISTENCIA-FCL 2026-08-19: antes esto solo quedaba en memoria y se
+      // perdía al recargar la página o abrir el Panel en otra pestaña.
+      try{localStorage.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
+      try{ if(_fbDb) _fbSetEstado({FACTCL_DATA:JSON.stringify(FACTCL_DATA)}); }catch(ex){}
       renderFactCL();
       alert('✅ '+nuevos+' documentos cargados'+(skip?' ('+skip+' ya existían)':''));
     } catch(err){ alert('Error al leer archivo: '+err.message); }
@@ -10880,6 +10888,8 @@ function agregarFactCLIndividual(folio){
 function limpiarFactCL(){
   if(!confirm('¿Limpiar todos los documentos cargados de Facturación.cl?')) return;
   FACTCL_DATA=[];
+  try{localStorage.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
+  try{ if(_fbDb) _fbSetEstado({FACTCL_DATA:JSON.stringify(FACTCL_DATA)}); }catch(ex){}
   renderFactCL();
 }
 
@@ -15234,6 +15244,7 @@ cargarEstado = function(){
     if(s.GETNET_DATA&&s.GETNET_DATA.length)    GETNET_DATA      = s.GETNET_DATA;
     if(s.GETNET_ELIMINADO)                     GETNET_ELIMINADO = s.GETNET_ELIMINADO;
     if(s.CARTOLA_DATA&&s.CARTOLA_DATA.length)  CARTOLA_DATA     = s.CARTOLA_DATA;
+    if(s.FACTCL_DATA&&s.FACTCL_DATA.length)    FACTCL_DATA      = s.FACTCL_DATA;
     if(s.PROV_DATA&&s.PROV_DATA.length)        PROV_DATA        = s.PROV_DATA;
     if(s.METAS) METAS=Object.assign({recMensual:0,contactosDiarios:0,ventaPorVendedor:{}},s.METAS);
     if(s.COT_DATA && s.COT_DATA.length) COT_DATA = s.COT_DATA;
@@ -15245,6 +15256,8 @@ cargarEstado = function(){
     // ── Fallback a claves dedicadas si cache cifrado no las tiene ──
     if(!WEBPAY_DATA.length){try{var _wpC=localStorage.getItem('fodorspa_wp_v1');if(_wpC){var _wpCP=JSON.parse(_wpC);if(_wpCP&&_wpCP.length)WEBPAY_DATA=_wpCP;}}catch(e){}}
     if(!CARTOLA_DATA.length){try{var _caC=localStorage.getItem('fodorspa_cart_v1');if(_caC){var _caCP=JSON.parse(_caC);if(_caCP&&_caCP.length)CARTOLA_DATA=_caCP;}}catch(e){}}
+    // FIX-PERSISTENCIA-FCL 2026-08-19: ver misma nota en cargarEstado() plano.
+    if(!FACTCL_DATA.length){try{var _fclC=localStorage.getItem('fodorspa_fcl_v1');if(_fclC){var _fclCP=JSON.parse(_fclC);if(_fclCP&&_fclCP.length)FACTCL_DATA=_fclCP;}}catch(e){}}
     if(!GETNET_DATA.length){try{var _gnC=localStorage.getItem('fodorspa_gn_v1');if(_gnC){var _gnCP=JSON.parse(_gnC);if(_gnCP&&_gnCP.length)GETNET_DATA=_gnCP;}}catch(e){}}
     if(!PROV_DATA.length){try{var _pvC=localStorage.getItem('fodorspa_prov_v1');if(_pvC){var _pvCP=JSON.parse(_pvC);if(_pvCP&&_pvCP.length)PROV_DATA=_pvCP;}}catch(e){}}
     var el=document.getElementById('lastSave');

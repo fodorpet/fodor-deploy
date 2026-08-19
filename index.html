@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-18_15:35</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-19_10:52</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -453,6 +453,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn" onclick="showTab('tCotiz',this);(function(){if(typeof COT_DATA!=='undefined'&&!COT_DATA.length){try{var _r=localStorage.getItem('fodorspa_cot_v1');if(_r){var _p=JSON.parse(_r);if(_p&&_p.length)COT_DATA=_p;}}catch(e){}}})();renderCotiz()">📝 Cotizaciones <span id="cotBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tOT',this);renderOT()">🔧 Órd. Trabajo <span id="otBadge" style="display:none;background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tVentas',this)">📊 Ventas</button>
+  <button class="tab-btn" onclick="showTab('tFactCL',this);renderFactCL()">🧾 Facturación.cl</button>
   <button class="tab-btn" onclick="showTab('tBit',this)">📋 Bitácora</button>
   <button class="tab-btn" onclick="showTab('tAlm',this)">⏰ Alertas</button>
   <div class="sidebar-sep" id="invSidebarSep">Bodega</div>
@@ -497,7 +498,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-18_15:35</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_10:52</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -9962,6 +9963,42 @@ function renderGetnet(){
         <th onclick="sortWp('fecha')" style="cursor:pointer">Fecha ↕</th><th>Cód. Aut.</th><th>Cliente</th><th>Correo</th><th onclick="sortWp('monto')" style="cursor:pointer">Monto ↕</th><th>Tipo</th><th>Marca</th><th>Folio</th><th>Cotización</th><th></th>
       </tr></thead>
       <tbody id="tbWebpay"><tr><td colspan="6" style="text-align:center;color:#888;padding:30px">Sin datos — carga un archivo WebPay</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== TAB FACTURACIÓN.CL ==================== -->
+<!-- PERF 2026-08-19: la lógica (importarFacturacionCL/renderFactCL/sincronizarFactCL/
+     limpiarFactCL/agregarFactCLIndividual) ya existía en el código desde antes pero
+     nunca tuvo pestaña ni botón de menú — quedó inalcanzable desde la interfaz.
+     Este bloque solo EXPONE esa lógica existente; no se tocó ninguna función. -->
+<div class="tab-content" id="tFactCL">
+  <div class="kpi-row">
+    <div class="kpi azul"><label>Documentos</label><div class="val" id="fclTotal">0</div><div class="sub" id="fclSub">documentos</div></div>
+    <div class="kpi verde"><label>Pagadas</label><div class="val" id="fclPagadas">0</div></div>
+    <div class="kpi rojo"><label>Pendientes</label><div class="val" id="fclPendientes">0</div></div>
+    <div class="kpi" style="background:#fef9c3;border-left:4px solid #ca8a04"><label style="color:#92400e">Sin cruzar en cobranza</label><div class="val" id="fclSinCruzar" style="color:#92400e">0</div></div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div><label>Filtro</label><select id="fclFiltro" onchange="renderFactCL()">
+        <option value="">Todos</option>
+        <option value="pagada">Pagadas</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="sincruzar">Sin cruzar en cobranza</option>
+      </select></div>
+      <button class="bshare" style="background:#0891b2;color:white;border-color:#0891b2" onclick="document.getElementById('fclFile').click()">📂 Cargar Reporte de Venta</button>
+      <input type="file" id="fclFile" accept=".xlsx,.xls" style="display:none" onchange="importarFacturacionCL(event)">
+      <button class="bshare" style="background:#16a34a;color:white;border-color:#16a34a" onclick="sincronizarFactCL()">🔄 Sincronizar pagadas</button>
+      <button class="bshare" style="background:#dc2626;color:white;border-color:#dc2626;margin-left:auto" onclick="limpiarFactCL()">🗑 Limpiar</button>
+    </div>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    <table class="tabla">
+      <thead><tr>
+        <th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th><th>Vendedor</th><th>Forma pago</th><th>Vencimiento</th><th>Total</th><th>Estado</th><th>Cobranza</th>
+      </tr></thead>
+      <tbody id="factCLBody"><tr><td colspan="10" style="text-align:center;color:#888;padding:30px">Sin datos — carga el Reporte de Venta</td></tr></tbody>
     </table>
   </div>
 </div>

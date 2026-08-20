@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-19_13:00</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-20_09:51</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-19_13:00</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_09:51</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -1756,6 +1756,9 @@ function cargarEstado(){
     // nunca se guardaba en ningún lado — vivía solo en memoria de esa pestaña y se
     // perdía al recargar. Se agrega su clave dedicada, igual que las demás fuentes.
     if(typeof FACTCL_DATA!=='undefined' && !FACTCL_DATA.length){try{var _fclBk=localStorage.getItem('fodorspa_fcl_v1');if(_fclBk){var _fclBkP=JSON.parse(_fclBk);if(_fclBkP&&_fclBkP.length)FACTCL_DATA=_fclBkP;}}catch(e){}}
+    // PERF-BLOB 2026-08-19: ver misma nota en cargarEstado() cifrado.
+    if(typeof BITACORA!=='undefined' && !BITACORA.length){try{var _bitBk=localStorage.getItem('fodorspa_bit_v1');if(_bitBk){var _bitBkP=JSON.parse(_bitBk);if(_bitBkP&&_bitBkP.length)BITACORA=_bitBkP;}}catch(e){}}
+    if(typeof OT_DATA!=='undefined' && !OT_DATA.length){try{var _otBk=localStorage.getItem('fodorspa_ot_v1');if(_otBk){var _otBkP=JSON.parse(_otBk);if(_otBkP&&_otBkP.length)OT_DATA=_otBkP;}}catch(e){}}
     try{var _ktBk=localStorage.getItem('_fsp_kommo_tel');if(_ktBk){var _ktBkP=JSON.parse(_ktBk);if(_ktBkP&&typeof _ktBkP==='object')KOMMO_TEL=_ktBkP;}}catch(e){}
     if(saved.METAS) METAS = Object.assign({recMensual:0,contactosDiarios:0,ventaPorVendedor:{}}, saved.METAS);
     if(saved.TRF_DESCARTES) TRF_DESCARTES = saved.TRF_DESCARTES;
@@ -8575,6 +8578,17 @@ function _fbSetEstado(campos, opciones){
       }catch(e){console.error('[FODOR] Error cargando D26_EXTRA desde Firebase:',e);} }
       // FIX-PROV: Cargar proveedores desde Firebase
       if(data.PROV_DATA) { try{ var _pv=JSON.parse(data.PROV_DATA); if(_pv&&_pv.length>0&&PROV_DATA.length===0) PROV_DATA=_pv; }catch(e){} }
+      // PERF-BLOB 2026-08-19: OT_DATA nunca se leía de vuelta desde Firebase (nunca se
+      // había enviado hasta hoy). Merge por id, igual que GETNET_DATA/MP_DATA, para no
+      // perder una OT creada offline por otro usuario ni pisar las locales recientes.
+      if(data.OT_DATA) { try{
+        var _ot=JSON.parse(data.OT_DATA);
+        if(_ot&&_ot.length>0){
+          if(OT_DATA.length===0){ OT_DATA=_ot; }
+          else{ var _otSet=new Set(OT_DATA.map(function(r){return r.id;})); _ot.forEach(function(r){if(!_otSet.has(r.id))OT_DATA.push(r);}); }
+          try{localStorage.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
+        }
+      }catch(e){} }
       // FF_DATA: Sincronizar envíos Fodor Fast desde Firebase
       if(data.FF_DATA){try{
         var _ff=JSON.parse(data.FF_DATA);
@@ -8614,6 +8628,7 @@ function _fbSetEstado(campos, opciones){
         try{ if(typeof renderFodorFast==='function'&&document.getElementById('tFodorFast')&&document.getElementById('tFodorFast').classList.contains('active')) renderFodorFast(); }catch(e){}
         try{ if(typeof renderFactCL==='function'&&document.getElementById('tFactCL')&&document.getElementById('tFactCL').classList.contains('active')) renderFactCL(); }catch(e){}
         try{ if(typeof renderCruceBCI==='function'&&document.getElementById('tCruceBCI')&&document.getElementById('tCruceBCI').classList.contains('active')) renderCruceBCI(); }catch(e){}
+        try{ if(typeof renderOT==='function'&&document.getElementById('tOT')&&document.getElementById('tOT').classList.contains('active')) renderOT(); }catch(e){}
         var ind=document.getElementById('fbSyncInd');
         if(ind){ind.textContent='🟢 Sincronizado';ind.style.color='#16a34a';}
       }
@@ -13564,6 +13579,7 @@ function _crearOTdesdeCot(cot){
   };
   OT_DATA.unshift(ot);
   guardarEstado();
+  try{ if(_fbDb) _fbSetEstado({OT_DATA:JSON.stringify(OT_DATA)}); }catch(e){}
   _actualizarOTBadge();
   alert('🔧 Orden de Trabajo '+num+' creada correctamente.\nVe al tab Órd. Trabajo para planificarla.');
 }
@@ -13764,6 +13780,7 @@ function guardarOT(){
     OT_DATA.unshift(ot);
   }
   guardarEstado();
+  try{ if(_fbDb) _fbSetEstado({OT_DATA:JSON.stringify(OT_DATA)}); }catch(e){}
   // ── [T8] Auto-descuento de materiales al Finalizar/Cerrar ──
   if((ot.estado==='Finalizada'||ot.estado==='Cerrada')&&ot.materiales&&ot.materiales.length){
     _invInit();
@@ -13784,6 +13801,7 @@ function eliminarOT(id){
   if(!confirm('¿Eliminar esta Orden de Trabajo?')) return;
   OT_DATA=OT_DATA.filter(function(x){return x.id!==id;});
   guardarEstado();
+  try{ if(_fbDb) _fbSetEstado({OT_DATA:JSON.stringify(OT_DATA)}); }catch(e){}
   renderOT();
 }
 
@@ -13869,6 +13887,7 @@ function otCargarExcel(e){
         importadas++;
       });
       guardarEstado();
+      try{ if(_fbDb) _fbSetEstado({OT_DATA:JSON.stringify(OT_DATA)}); }catch(e){}
       renderOT();
       var msg='✅ '+importadas+' OT importadas.';
       if(omitidas) msg+='\n⚠️ '+omitidas+' omitidas (duplicadas o sin datos).';
@@ -15278,6 +15297,10 @@ cargarEstado = function(){
     if(!FACTCL_DATA.length){try{var _fclC=localStorage.getItem('fodorspa_fcl_v1');if(_fclC){var _fclCP=JSON.parse(_fclC);if(_fclCP&&_fclCP.length)FACTCL_DATA=_fclCP;}}catch(e){}}
     if(!GETNET_DATA.length){try{var _gnC=localStorage.getItem('fodorspa_gn_v1');if(_gnC){var _gnCP=JSON.parse(_gnC);if(_gnCP&&_gnCP.length)GETNET_DATA=_gnCP;}}catch(e){}}
     if(!PROV_DATA.length){try{var _pvC=localStorage.getItem('fodorspa_prov_v1');if(_pvC){var _pvCP=JSON.parse(_pvC);if(_pvCP&&_pvCP.length)PROV_DATA=_pvCP;}}catch(e){}}
+    // PERF-BLOB 2026-08-19: BITACORA y OT_DATA salen del blob cifrado (crecían sin
+    // límite / nunca se guardaban aparte) — ver nota completa junto a guardarEstado.
+    if(!BITACORA.length){try{var _bitC=localStorage.getItem('fodorspa_bit_v1');if(_bitC){var _bitCP=JSON.parse(_bitC);if(_bitCP&&_bitCP.length)BITACORA=_bitCP;}}catch(e){}}
+    if(!OT_DATA.length){try{var _otC=localStorage.getItem('fodorspa_ot_v1');if(_otC){var _otCP=JSON.parse(_otC);if(_otCP&&_otCP.length)OT_DATA=_otCP;}}catch(e){}}
     var el=document.getElementById('lastSave');
     if(el&&s.ts) el.textContent='Última actualización: '+new Date(s.ts).toLocaleString('es-CL');
     (function(){
@@ -15300,6 +15323,11 @@ guardarEstado = function(){
   try{if(GETNET_DATA&&GETNET_DATA.length)localStorage.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
   // FIX-TRF-CRYPT 2026-07-24: guardar TRF_DATA en su clave dedicada también en modo cifrado
   try{if(TRF_DATA&&TRF_DATA.length)localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e){try{localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}}
+  // PERF-BLOB 2026-08-19: BITACORA y OT_DATA salen del bloque cifrado (ver nota completa
+  // más abajo) — igual que GETNET_DATA/TRF_DATA arriba, no tienen otro punto de guardado
+  // local propio, así que se guardan acá en su propia clave dedicada.
+  try{if(BITACORA&&BITACORA.length)localStorage.setItem('fodorspa_bit_v1',JSON.stringify(BITACORA));}catch(e){}
+  try{if(OT_DATA&&OT_DATA.length)localStorage.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
   // ── TRF_DATA NO se incluye en cifrado (está hardcodeado en HTML = 2MB innecesarios) ──
   //
   // ── D26_EXTRA TAMPOCO, DESDE EL 04-08-2026 ─────────────────────────────────
@@ -15323,11 +15351,15 @@ guardarEstado = function(){
   // siguiente candidato a sacar sería EST — que es el estado de cobranza en sí
   // y NO se puede sacar. El diseño correcto es migrar la persistencia local a
   // IndexedDB, que da cientos de MB en vez de 5. Anotado en ESTADO-ACTUAL.md.
+  // PERF-BLOB 2026-08-19: BITACORA y OT_DATA salían de acá también — BITACORA crecía
+  // sin límite (nunca se podaba) y OT_DATA nunca tuvo guardado propio en ningún otro
+  // lado. Ambas ya se cargan de vuelta por su clave dedicada (ver cargarEstado arriba)
+  // y BITACORA ya se manda a Firebase en sus ~15 puntos de escritura existentes; a
+  // OT_DATA se le agregó ese envío en sus propios puntos de mutación.
   var data={
-    EST:EST,BITACORA:BITACORA,BORRADAS:BORRADAS,BORRADAS25:BORRADAS25,
+    EST:EST,BORRADAS:BORRADAS,BORRADAS25:BORRADAS25,
     WEBPAY_DATA:WEBPAY_DATA,GETNET_DATA:GETNET_DATA,GETNET_ELIMINADO:GETNET_ELIMINADO,
     CARTOLA_DATA:CARTOLA_DATA,METAS:METAS,PROV_DATA:PROV_DATA,
-    OT_DATA:OT_DATA,
     INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO,
     ts:new Date().toISOString()
   };

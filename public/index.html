@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-20_12:31</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-20_12:51</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_12:31</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_12:51</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8092,6 +8092,12 @@ function importarFacturasExcel(event){
       var _porFolio={};
       [D26, D26_EXTRA].forEach(function(l){ (l||[]).forEach(function(r){ if(r&&r.folio) _porFolio[String(r.folio)]=r; }); });
       var completadas=0, camposCompletados={};
+      // PAGADO 2026-08-20: esta función nunca leía la columna PAGADO del Excel —
+      // por eso una factura conciliada en Facturación.cl (PAGADO=SI) se cargaba
+      // o se completaba, pero nunca quedaba marcada pagada en el Panel. Solo pone
+      // pagado=true; nunca lo saca (si el Excel dice NO, no se toca nada).
+      var ipagado = ci('pagado');
+      var pagNuevas=0;
       // 27-07-2026: delega en la fuente única. La versión anterior exigía año de
       // 4 dígitos y, si no matcheaba, devolvía el texto crudo (`return v+''`),
       // que es como se guardaron las fechas ilegibles.
@@ -8156,6 +8162,24 @@ function importarFacturasExcel(event){
             }
             var _vIso=_fechaISO(ivenc>=0?row[ivenc]:'');
             if(_vIso && !_fechaEsValida(_ex.fecha_venc_iso)){ _ex.fecha_venc_iso=_vIso; _cambio=true; }
+            // PAGADO 2026-08-20: si el Excel dice pagada y en el Panel no lo
+            // estaba, se marca acá mismo. Antes esta rama solo completaba
+            // campos vacíos y nunca tocaba el estado de pago.
+            if(ipagado>=0){
+              var _pag=((row[ipagado]||'')+'').toUpperCase().trim();
+              if(_pag==='SI'){
+                if(!EST[folio]) EST[folio]={};
+                if(!EST[folio].pagado){
+                  EST[folio].pagado=true;
+                  EST[folio].estadoGest='PAGADO';
+                  if(!EST[folio].historial) EST[folio].historial=[];
+                  EST[folio].historial.push({ts:new Date().toISOString(),tipo:'💰 Pago FCL',autor:CURRENT_USER||'Sistema',nota:'Marcada pagada al re-cargar Excel (columna PAGADO=SI)',compromisoFecha:''});
+                  BITACORA.unshift({ts:new Date().toISOString(),tipo:'💰 FCL',autor:CURRENT_USER||'Sistema',folio:folio,empresa:_ex.empresa||'',nota:'Marcada pagada al re-cargar Excel — columna PAGADO=SI',compromisoFecha:''});
+                  camposCompletados['pagado (marcada PAGADA)']=(camposCompletados['pagado (marcada PAGADA)']||0)+1;
+                  _cambio=true;
+                }
+              }
+            }
             if(_cambio) completadas++;
           }
           continue;
@@ -8180,6 +8204,17 @@ function importarFacturasExcel(event){
         obj.fecha=_fechaVisible(fechaIso);
         // Si la fecha no se pudo leer, la fila NO entra: se reporta al final.
         if(!fechaIso){ rechazadas.push({folio:folio, crudo:(ifecha>=0?row[ifecha]:'')+''}); continue; }
+        // PAGADO 2026-08-20: si esta factura NUEVA ya viene marcada pagada en
+        // el Excel, se refleja en EST al mismo tiempo que se agrega a D26.
+        if(ipagado>=0 && ((row[ipagado]||'')+'').toUpperCase().trim()==='SI'){
+          if(!EST[folio]) EST[folio]={};
+          EST[folio].pagado=true;
+          EST[folio].estadoGest='PAGADO';
+          if(!EST[folio].historial) EST[folio].historial=[];
+          EST[folio].historial.push({ts:new Date().toISOString(),tipo:'💰 Pago FCL',autor:CURRENT_USER||'Sistema',nota:'Marcada pagada al cargar desde Excel (columna PAGADO=SI)',compromisoFecha:''});
+          BITACORA.unshift({ts:new Date().toISOString(),tipo:'💰 FCL',autor:CURRENT_USER||'Sistema',folio:folio,empresa:obj.empresa||'',nota:'Cargada ya pagada desde Excel — columna PAGADO=SI',compromisoFecha:''});
+          pagNuevas++;
+        }
         nuevas.push(obj);
       }
       // Aviso de fechas ilegibles: antes se guardaban igual y aparecían como
@@ -8204,7 +8239,11 @@ function importarFacturasExcel(event){
           // Respaldo '_fsp_d26bk' retirado 04-08-2026 (ver nota en beforeunload):
           // llenaba la memoria del navegador e impedía guardar el estado completo.
           // La línea de abajo ya lo manda a Firebase, que es de donde se recupera.
-          try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA)});}catch(e){}
+          // EST y BITACORA se agregan 2026-08-20 junto con D26_EXTRA: antes esta
+          // llamada no las mandaba, y las facturas recién marcadas pagadas acá
+          // solo quedaban en el respaldo cifrado (guardarEstado), no en la nube
+          // en vivo que usan otras sesiones/dispositivos.
+          try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA),EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA)});}catch(e){}
           try{f26();}catch(e){}
           try{buildResumen();}catch(e){}
         }
@@ -8218,7 +8257,9 @@ function importarFacturasExcel(event){
       nuevas.forEach(function(r){if(!D26_EXTRA.find(function(x){return String(x.folio)===String(r.folio);}))D26_EXTRA.unshift(r);});
       guardarEstado();
       // Respaldo '_fsp_d26bk' retirado 04-08-2026 (ver nota en beforeunload).
-      try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA)});}catch(e){}
+      // EST y BITACORA se agregan 2026-08-20: ver nota junto a la otra llamada
+      // a _fbSetEstado en esta misma función.
+      try{if(_fbDb)_fbSetEstado({D26_EXTRA:JSON.stringify(D26_EXTRA),EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA)});}catch(e){}
       try{f26();}catch(e){}
       try{fmes26('2026-01','13');}catch(e){}
       try{fmes26('2026-02','14');}catch(e){}
@@ -8230,7 +8271,8 @@ function importarFacturasExcel(event){
       var mesesNuevos={};
       nuevas.forEach(function(r){if(r.fecha_iso)mesesNuevos[r.fecha_iso.slice(0,7)]=true;});
       if(msg) msg.textContent='✅ '+nuevas.length+' facturas cargadas';
-      alert('✅ '+nuevas.length+' facturas nuevas cargadas!\nMeses: '+Object.keys(mesesNuevos).join(', ')+_avisoCompletadas+_avisoFechas);
+      var _avisoPagadas = pagNuevas ? '\n\n💰 '+pagNuevas+' factura(s) nueva(s) cargadas ya como PAGADAS (columna PAGADO=SI).' : '';
+      alert('✅ '+nuevas.length+' facturas nuevas cargadas!\nMeses: '+Object.keys(mesesNuevos).join(', ')+_avisoPagadas+_avisoCompletadas+_avisoFechas);
     } catch(err){ if(msg) msg.textContent='❌ '+err.message; alert('Error al leer el archivo: '+err.message); }
   };
   reader.readAsArrayBuffer(file);

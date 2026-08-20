@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-20_17:04</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-20_17:19</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_17:04</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_17:19</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8103,6 +8103,11 @@ function importarFacturasExcel(event){
       // que es como se guardaron las fechas ilegibles.
       var xlDate = _fechaISO;
       var nuevas=[], rechazadas=[];
+      // DETECCIÓN DE ELIMINADOS EN FACTURACIÓN.CL — 2026-08-20
+      // Junta todos los folios que trae ESTE Excel (para comparar, al final,
+      // contra lo que ya estaba marcado como venido de Facturación.cl y ya no
+      // aparece). No borra nada acá — solo arma la lista de folios vistos.
+      var excelFolios = {};
       for(var i=hdrIdx+1;i<rows.length;i++){
         var row=rows[i];
         var folio=(row[ifolio]||'')+'';
@@ -8112,6 +8117,7 @@ function importarFacturasExcel(event){
         // crédito podía alimentar datos a la factura del mismo folio.
         var itipo = hdrs.indexOf('documento');
         if(itipo>=0 && (row[itipo]+'').toLowerCase().indexOf('nota de credito')>=0) continue;
+        excelFolios[folio]=true;
         // ══════════════════════════════════════════════════════════════════
         // COMPLETAR EN VEZ DE SALTAR  (27-07-2026)
         // Antes acá había un `continue` seco: si el folio ya existía, la fila
@@ -8162,6 +8168,10 @@ function importarFacturasExcel(event){
             }
             var _vIso=_fechaISO(ivenc>=0?row[ivenc]:'');
             if(_vIso && !_fechaEsValida(_ex.fecha_venc_iso)){ _ex.fecha_venc_iso=_vIso; _cambio=true; }
+            // ORIGEN-FCL 2026-08-20: confirma que este folio pertenece a la
+            // numeración de Facturación.cl (apareció en este Excel). Sirve para
+            // la detección de eliminados más abajo — nunca se pisa si ya estaba.
+            if(!_ex._origenFCL){ _ex._origenFCL=true; }
             // PAGADO 2026-08-20: si el Excel dice pagada y en el Panel no lo
             // estaba, se marca acá mismo. Antes esta rama solo completaba
             // campos vacíos y nunca tocaba el estado de pago.
@@ -8199,7 +8209,8 @@ function importarFacturasExcel(event){
           correo:icorreo>=0?(row[icorreo]||'')+'':'',
           fono:ifono>=0?(row[ifono]||'')+'':'',
           nota:inota>=0?(row[inota]||'')+'':'',
-          mes_pago:'', dias_plazo:0
+          mes_pago:'', dias_plazo:0,
+          _origenFCL:true  // ORIGEN-FCL 2026-08-20: ver nota en la rama "completar"
         };
         obj.fecha=_fechaVisible(fechaIso);
         // Si la fecha no se pudo leer, la fila NO entra: se reporta al final.
@@ -8249,6 +8260,7 @@ function importarFacturasExcel(event){
         }
         alert('ℹ️ '+totalRows+' filas leídas en el Excel.\nNinguna factura NUEVA se agregó (los folios ya estaban).'
           +_avisoCompletadas+_avisoFechas);
+        try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
         return;
       }
       // Ordenar nuevas de más reciente a más antigua antes de agregar
@@ -8273,9 +8285,54 @@ function importarFacturasExcel(event){
       if(msg) msg.textContent='✅ '+nuevas.length+' facturas cargadas';
       var _avisoPagadas = pagNuevas ? '\n\n💰 '+pagNuevas+' factura(s) nueva(s) cargadas ya como PAGADAS (columna PAGADO=SI).' : '';
       alert('✅ '+nuevas.length+' facturas nuevas cargadas!\nMeses: '+Object.keys(mesesNuevos).join(', ')+_avisoPagadas+_avisoCompletadas+_avisoFechas);
+      try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
     } catch(err){ if(msg) msg.textContent='❌ '+err.message; alert('Error al leer el archivo: '+err.message); }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DETECCIÓN DE ELIMINADOS EN FACTURACIÓN.CL — 2026-08-20
+// Compara los folios marcados _origenFCL (confirmados como venidos de un
+// Excel de Facturación.cl) contra los folios que trae el Excel recién subido.
+// Si alguno ya no aparece, SE PREGUNTA antes de hacer nada — nunca se oculta
+// solo. "Borrar" acá usa el MISMO mecanismo que ya existe en toda la app
+// (BORRADAS + bitácora): la factura nunca se elimina de verdad de D26, y
+// sigue disponible el botón "↩ Restaurar factura borrada" para deshacerlo.
+// ══════════════════════════════════════════════════════════════════════════
+function detectarFolliosEliminadosFCL(excelFolios){
+  if(!excelFolios) return;
+  var candidatos = D26.filter(function(r){
+    return r && r.folio && r._origenFCL===true
+      && !excelFolios[String(r.folio)]
+      && BORRADAS.indexOf(r.folio)<0 && BORRADAS.indexOf(String(r.folio))<0;
+  });
+  if(!candidatos.length) return;
+  var lista = candidatos.slice(0,15).map(function(r){
+    return '   · folio '+r.folio+' — '+(r.empresa||'(sin razón social)')+' — '+fmt(r.saldo||0);
+  }).join('\n');
+  var msg = '🗑 '+candidatos.length+' factura(s) que antes venían de Facturación.cl ya NO están en este Excel:\n\n'
+    + lista + (candidatos.length>15?'\n   · ...y '+(candidatos.length-15)+' más':'')
+    + '\n\nProbablemente se eliminaron o anularon en Facturación.cl.\n'
+    + '¿Las marco como BORRADAS acá también? (se pueden restaurar después con "↩ Restaurar factura borrada")';
+  if(!confirm(msg)) return;
+  var marcadas=0;
+  candidatos.forEach(function(r){
+    var fo=r.folio;
+    if(BORRADAS.indexOf(fo)<0) BORRADAS.push(fo);
+    var entry={ts:new Date().toISOString(),tipo:'🗑 Eliminada FCL',autor:CURRENT_USER||'Sistema',
+      folio:fo,empresa:r.empresa||'',nota:'Ya no aparece en el Excel de Facturación.cl — marcada BORRADA (revisar/restaurar si corresponde)',compromisoFecha:''};
+    if(!EST[fo]) EST[fo]={};
+    if(!EST[fo].historial) EST[fo].historial=[];
+    EST[fo].historial.push(entry);
+    BITACORA.unshift(entry);
+    marcadas++;
+  });
+  guardarEstado();
+  try{if(_fbDb)_fbSetEstado({BORRADAS:JSON.stringify(BORRADAS),EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA)});}catch(e){}
+  try{f26();}catch(e){}
+  try{buildResumen();}catch(e){}
+  alert('✅ '+marcadas+' factura(s) marcadas como borradas.\n\nSi alguna no debía borrarse, usá "↩ Restaurar factura borrada" con su N° de folio.');
 }
 
 // ============ IMPORTAR EXCEL KOMMO (teléfonos) ============

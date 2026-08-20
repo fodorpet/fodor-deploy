@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-20_12:51</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-20_17:04</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_12:51</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-20_17:04</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -10112,9 +10112,9 @@ function renderGetnet(){
   <div class="card" style="overflow-x:auto">
     <table class="tabla">
       <thead><tr>
-        <th>Fecha</th><th>Descripción cartola</th><th>Monto</th><th>Facturas candidatas</th>
+        <th>Fecha</th><th>N° Doc.</th><th>Descripción cartola</th><th>Monto</th><th>Facturas candidatas</th>
       </tr></thead>
-      <tbody id="cruceBCIBody"><tr><td colspan="4" style="text-align:center;color:#888;padding:30px">Sin datos aún</td></tr></tbody>
+      <tbody id="cruceBCIBody"><tr><td colspan="5" style="text-align:center;color:#888;padding:30px">Sin datos aún</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -11014,15 +11014,20 @@ function renderCruceBCI(){
   var body = document.getElementById('cruceBCIBody');
   if(!body) return;
   if(!lista.length){
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:30px">Sin coincidencias pendientes. Carga la Cartola BCI y el Reporte de Venta en Facturación.cl primero.</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:30px">Sin coincidencias pendientes. Carga la Cartola BCI y el Reporte de Venta en Facturación.cl primero.</td></tr>';
     return;
   }
   var F = (typeof fmt==='function') ? fmt : function(v){ return '$'+(Number(v)||0).toLocaleString('es-CL'); };
   var html = '';
   lista.forEach(function(s){
     var c = s.cart;
+    // 2026-08-20: antes se recortaba la descripción y la razón social, y no se
+    // mostraba el N° de documento del banco — la usuaria no tenía con qué
+    // verificar el cruce contra su propia cartola. c.ndoc es el número real
+    // que trae el BCI (c.id es solo un correlativo interno, no sirve para eso).
     html += '<tr><td>'+(c.fecha||'')+'</td>'
-      +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.desc||'').replace(/"/g,'')+'">'+(c.desc||'')+'</td>'
+      +'<td style="font-size:11px">'+(c.ndoc||'—')+'</td>'
+      +'<td>'+(c.desc||'').replace(/</g,'&lt;')+'</td>'
       +'<td style="font-weight:700;text-align:right">'+F(c.monto_abono)+'</td>'
       +'<td>';
     s.candidatas.forEach(function(r){
@@ -11030,7 +11035,7 @@ function renderCruceBCI(){
       // nombre/descripción) — se muestra el RUT de la FACTURA candidata para que
       // el usuario compare a ojo el nombre de la transferencia contra ese RUT.
       html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
-        +'<span style="font-size:11px">'+r.folio+' — '+(r.razon||'').slice(0,32)+(r.rut?' · <span style="color:#94a3b8">'+r.rut+'</span>':'')+'</span>'
+        +'<span style="font-size:11px">'+r.folio+' — '+(r.razon||'').replace(/</g,'&lt;')+(r.rut?' · <span style="color:#94a3b8">'+r.rut+'</span>':'')+'</span>'
         +'<button onclick="vincularCruceBCI(\''+c.id+'\',\''+r.folio+'\')" style="background:#16a34a;color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Vincular ✓</button>'
         +'</div>';
     });

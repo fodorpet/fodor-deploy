@@ -1,11 +1,108 @@
 const functions = require('firebase-functions');
 const https = require('https');
 const admin = require('firebase-admin');
+const { defineSecret } = require('firebase-functions/params');
 if (!admin.apps.length) {
   admin.initializeApp({
     databaseURL: 'https://odfor-bae97-default-rtdb.firebaseio.com',
   });
 }
+
+/* ==========================================================================
+   TRELLO PROXY — Fodor SpA (agregado 20-08-2026)
+
+   Por qué existe: _TRELLO_KEY/_TRELLO_TOKEN vivían como texto plano en el
+   HTML del Panel — cualquiera que abriera "Ver código fuente" en el
+   navegador los veía. Se revocaron y se vaciaron (ver comentario en
+   index.html), lo que dejó "Enviar a Trello" roto (401 missing scopes).
+
+   Qué hace: guarda la clave y el token de Trello en Secret Manager (nunca
+   en el código ni en el navegador) y expone 3 funciones — una por cada
+   operación que el Panel necesita — que el frontend llama sin conocer el
+   secreto. Un secreto por operación, no una API key genérica reexpuesta:
+   el navegador solo manda los datos de negocio (folio, nombre, lista).
+
+   Qué NO hace: no toca EST, D26 ni ningún dato de facturación — solo
+   reenvía a Trello lo que el Panel ya arma (nombre, descripción, lista).
+   ========================================================================== */
+const TRELLO_KEY = defineSecret('TRELLO_KEY');
+const TRELLO_TOKEN = defineSecret('TRELLO_TOKEN');
+
+function _trelloCors(req, res) {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(204).send(''); return true; }
+  return false;
+}
+
+function _trelloRequest(method, path, body, cb) {
+  const data = body ? new URLSearchParams(body).toString() : '';
+  const options = {
+    hostname: 'api.trello.com',
+    path: path,
+    method: method,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  };
+  const req = https.request(options, (tRes) => {
+    let out = '';
+    tRes.on('data', (chunk) => { out += chunk; });
+    tRes.on('end', () => cb(null, tRes.statusCode, out));
+  });
+  req.on('error', (e) => cb(e));
+  if (method !== 'GET' && data) req.write(data);
+  req.end();
+}
+
+exports.trelloCrearTarjeta = functions
+  .runWith({ secrets: [TRELLO_KEY, TRELLO_TOKEN], memory: '256MB', timeoutSeconds: 20 })
+  .https.onRequest((req, res) => {
+    if (_trelloCors(req, res)) return;
+    if (req.method !== 'POST') { res.status(405).json({ error: 'method-not-allowed' }); return; }
+    const b = req.body || {};
+    if (!b.idList || !b.name) { res.status(400).json({ error: 'faltan idList o name' }); return; }
+    const body = {
+      key: TRELLO_KEY.value(), token: TRELLO_TOKEN.value(),
+      idList: b.idList, name: b.name, desc: b.desc || '',
+    };
+    if (b.due) body.due = b.due;
+    if (b.idLabels) body.idLabels = b.idLabels;
+    _trelloRequest('POST', '/1/cards', body, (err, status, out) => {
+      if (err) { res.status(500).json({ error: err.message }); return; }
+      res.status(status).set('Content-Type', 'application/json').send(out);
+    });
+  });
+
+exports.trelloAgregarComentario = functions
+  .runWith({ secrets: [TRELLO_KEY, TRELLO_TOKEN], memory: '256MB', timeoutSeconds: 20 })
+  .https.onRequest((req, res) => {
+    if (_trelloCors(req, res)) return;
+    if (req.method !== 'POST') { res.status(405).json({ error: 'method-not-allowed' }); return; }
+    const b = req.body || {};
+    if (!b.cardId || !b.texto) { res.status(400).json({ error: 'faltan cardId o texto' }); return; }
+    const body = { key: TRELLO_KEY.value(), token: TRELLO_TOKEN.value(), text: b.texto };
+    _trelloRequest('POST', '/1/cards/' + encodeURIComponent(b.cardId) + '/actions/comments', body, (err, status, out) => {
+      if (err) { res.status(500).json({ error: err.message }); return; }
+      res.status(status).set('Content-Type', 'application/json').send(out);
+    });
+  });
+
+exports.trelloMoverTarjeta = functions
+  .runWith({ secrets: [TRELLO_KEY, TRELLO_TOKEN], memory: '256MB', timeoutSeconds: 20 })
+  .https.onRequest((req, res) => {
+    if (_trelloCors(req, res)) return;
+    if (req.method !== 'POST') { res.status(405).json({ error: 'method-not-allowed' }); return; }
+    const b = req.body || {};
+    if (!b.cardId || !b.idList) { res.status(400).json({ error: 'faltan cardId o idList' }); return; }
+    const path = '/1/cards/' + encodeURIComponent(b.cardId)
+      + '?key=' + encodeURIComponent(TRELLO_KEY.value())
+      + '&token=' + encodeURIComponent(TRELLO_TOKEN.value())
+      + '&idList=' + encodeURIComponent(b.idList);
+    _trelloRequest('PUT', path, null, (err, status, out) => {
+      if (err) { res.status(500).json({ error: err.message }); return; }
+      res.status(status).set('Content-Type', 'application/json').send(out);
+    });
+  });
 
 exports.kommoProxy = functions.https.onRequest((req, res) => {
   res.set('Access-Control-Allow-Origin', '*');

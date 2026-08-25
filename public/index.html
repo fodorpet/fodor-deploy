@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-24_22:22</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-24_22:27</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-24_22:22</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-24_22:27</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -11118,6 +11118,49 @@ function _cruceBCICandidatos(){
   return sugerencias;
 }
 
+/* ══ UX 2026-08-25 · Señal de NOMBRE para el Cruce Facturación-Banco ══════════
+   _cruceBCICandidatos() filtra por monto igual (±$1). Por lo tanto TODAS las
+   candidatas de una fila tienen el mismo monto: el monto ya no distingue nada.
+   Lo único que puede decidir cuál es la correcta es el nombre.
+   Estas funciones comparan el nombre del abono de la cartola contra la razón
+   social de cada factura candidata. NO cambian QUÉ candidatas aparecen
+   (_cruceBCICandidatos queda intacta): solo las ordenan y avisan cuando
+   ninguna calza por nombre, que es el caso peligroso. */
+function _bciNorm(t){
+  return (t||'').toUpperCase()
+    .replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I')
+    .replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U').replace(/Ñ/g,'N')
+    .replace(/[^A-Z0-9]+/g,' ').trim();
+}
+var _BCI_STOP={'TRANSFER':1,'TRANSFERENCIA':1,'TRANSFERENCIAS':1,'DE':1,'DEL':1,'LA':1,'EL':1,'LOS':1,'LAS':1,'Y':1,'FONDOS':1,'AUTOSERVICIO':1,'PAGO':1,'PAGOS':1,'ABONO':1,'SPA':1,'SA':1,'LTDA':1,'LIMITADA':1,'EIRL':1,'CIA':1,'SOCIEDAD':1,'COMERCIAL':1,'SERVICIOS':1,'GROUP':1,'CHILE':1};
+/* Palabras de RUBRO: dos empresas sin relación las comparten a menudo
+   ("EVENTOS", "TRANSPORTES", "CONSTRUCTORA"). Compartir una de estas NO es
+   evidencia de que sea el mismo cliente — nunca puede dar verde. */
+var _BCI_GEN={'INVERSIONES':1,'INVERSION':1,'EVENTOS':1,'PRODUCCIONES':1,'PRODUCTORA':1,'CONSTRUCTORA':1,'CONSTRUCCIONES':1,'TRANSPORTES':1,'TRANSPORTE':1,'DISTRIBUIDORA':1,'COMERCIALIZADORA':1,'IMPORTADORA':1,'EXPORTADORA':1,'ASESORIAS':1,'ASESORIA':1,'CONSULTORA':1,'INMOBILIARIA':1,'AGRICOLA':1,'AGRICOLAS':1,'INDUSTRIAL':1,'INDUSTRIAS':1,'INGENIERIA':1,'TURISMO':1,'PUBLICIDAD':1,'PUBLICITARIOS':1,'PUBLICITARIA':1,'ALIMENTOS':1,'TECNOLOGIA':1,'SOLUCIONES':1,'GESTION':1,'GLOBAL':1,'CENTRO':1,'GRUPO':1,'EMPRESA':1,'EMPRESAS':1,'NACIONAL':1,'INTERNACIONAL':1,'SERVICIO':1,'SISTEMAS':1,'PROYECTOS':1,'DESARROLLO':1,'MARKETING':1,'LOGISTICA':1,'SEGURIDAD':1,'MAQUINARIAS':1,'MATERIALES':1,'PRODUCTOS':1,'INSUMOS':1,'EQUIPOS':1,'INSTALACIONES':1,'MANTENCION':1,'ARRIENDOS':1,'ARRIENDO':1,'CAPITAL':1,'FINANZAS':1,'CREDITOS':1,'SOCIEDADES':1,'HOLDING':1,'PARTNERS':1,'NEGOCIOS':1,'ADMINISTRADORA':1};
+/* Por PREFIJO además de exacto: el BCI trunca ("INMOB." por "INMOBILIARIA",
+   "CONSTRUC" por "CONSTRUCTORA"), y una palabra de rubro truncada sigue siendo
+   una palabra de rubro — no puede dar verde. */
+function _bciEsGenerico(w){
+  if(!w) return false;
+  if(_BCI_GEN[w]) return true;
+  for(var g in _BCI_GEN){ if(g.slice(0,w.length)===w) return true; }
+  return false;
+}
+function _bciTokens(t){
+  return _bciNorm(t).split(' ').filter(function(w){ return w.length>=4 && !_BCI_STOP[w]; });
+}
+/* Palabra más larga que comparten, comparando por PREFIJO — el BCI trunca los
+   nombres ("PORTER COMUNI", "ACCION GRAFIC"), así que exigir igualdad no sirve.
+   Devuelve '' si no comparten ninguna palabra de 4+ letras. */
+function _bciParecido(descCartola, razonFactura){
+  var A=_bciTokens(descCartola), B=_bciTokens(razonFactura), mejor='';
+  A.forEach(function(a){ B.forEach(function(b){
+    var n=Math.min(a.length,b.length);
+    if(n>=4 && a.slice(0,n)===b.slice(0,n) && n>mejor.length) mejor=a.slice(0,n);
+  }); });
+  return mejor;
+}
+
 function renderCruceBCI(){
   var lista = _cruceBCICandidatos();
   var elT = document.getElementById('cruceBCITotal'); if(elT) elT.textContent = lista.length;
@@ -11131,22 +11174,49 @@ function renderCruceBCI(){
   var html = '';
   lista.forEach(function(s){
     var c = s.cart;
-    // 2026-08-20: antes se recortaba la descripción y la razón social, y no se
-    // mostraba el N° de documento del banco — la usuaria no tenía con qué
-    // verificar el cruce contra su propia cartola. c.ndoc es el número real
-    // que trae el BCI (c.id es solo un correlativo interno, no sirve para eso).
-    html += '<tr><td>'+(c.fecha||'')+'</td>'
-      +'<td style="font-size:11px">'+(c.ndoc||'—')+'</td>'
-      +'<td>'+(c.desc||'').replace(/</g,'&lt;')+'</td>'
-      +'<td style="font-weight:700;text-align:right">'+F(c.monto_abono)+'</td>'
-      +'<td>';
-    s.candidatas.forEach(function(r){
-      // 2026-08-19: BCI no entrega el RUT de quien transfiere en la cartola (solo
-      // nombre/descripción) — se muestra el RUT de la FACTURA candidata para que
-      // el usuario compare a ojo el nombre de la transferencia contra ese RUT.
-      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
-        +'<span style="font-size:11px">'+r.folio+' — '+(r.razon||'').replace(/</g,'&lt;')+(r.rut?' · <span style="color:#94a3b8">'+r.rut+'</span>':'')+'</span>'
-        +'<button onclick="vincularCruceBCI(\''+c.id+'\',\''+r.folio+'\')" style="background:#16a34a;color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">Vincular ✓</button>'
+    // 2026-08-20: c.ndoc es el número real que trae el BCI (c.id es un correlativo
+    // interno). La usuaria necesita ndoc para verificar contra su propia cartola.
+    // 2026-08-25: las candidatas se ordenan por parecido de NOMBRE, porque el monto
+    // ya no distingue (todas entraron por tener el mismo monto).
+    // 2026-08-25b: compartir una palabra de RUBRO no es evidencia. Si la única
+    // coincidencia es genérica, NO cuenta como calce de nombre (fuerte=false):
+    // no da verde y el aviso rojo sigue saliendo. Se muestra igual, marcada.
+    var cands = s.candidatas.map(function(r){
+      var m=_bciParecido(c.desc, r.razon);
+      var gen=m?_bciEsGenerico(m):false;
+      return { r:r, m:m, gen:gen, fuerte:(!!m && !gen), sc:(gen?0:m.length) };
+    }).sort(function(a,b){ return (b.sc-a.sc) || (b.m.length-a.m.length); });
+    var hayNombre = cands.some(function(x){ return x.fuerte; });
+    html += '<tr style="border-top:3px solid #334155;">'
+      +'<td style="vertical-align:top;padding-top:14px;white-space:nowrap;">'+(c.fecha||'')+'</td>'
+      +'<td style="vertical-align:top;padding-top:14px;font-size:11px;color:#94a3b8;">'+(c.ndoc||'—')+'</td>'
+      +'<td style="vertical-align:top;padding-top:14px;font-weight:700;font-size:13px;">'+(c.desc||'').replace(/</g,'&lt;')+'</td>'
+      +'<td style="vertical-align:top;padding-top:14px;font-weight:900;text-align:right;font-size:14px;white-space:nowrap;">'+F(c.monto_abono)+'</td>'
+      +'<td style="padding:10px 0;min-width:420px;">';
+    if(!hayNombre){
+      html += '<div style="background:#7f1d1d;color:#fecaca;border-left:4px solid #dc2626;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;font-weight:800;">'
+        +'⚠️ NINGUNA calza por nombre — solo coincide el monto'
+        +'<div style="font-weight:500;font-size:11px;margin-top:3px;opacity:.9;">Coincidir en monto no es prueba de nada. Verifica antes de vincular.</div>'
+        +'</div>';
+    }
+    html += '<div style="font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:.4px;margin-bottom:4px;">'+cands.length+' CANDIDATA'+(cands.length!==1?'S':'')+'</div>';
+    cands.forEach(function(x){
+      var r=x.r;
+      var chip = (x.fuerte && x.m.length>=6)
+        ? '<span style="background:#16a34a;color:#fff;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">✓ '+x.m+'</span>'
+        : (x.fuerte
+        ? '<span style="background:#ca8a04;color:#fff;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap;">≈ '+x.m+'</span>'
+        : (x.gen
+        ? '<span style="background:#475569;color:#fbbf24;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;" title="Palabra de rubro: no prueba que sea el mismo cliente">solo rubro: '+x.m+'</span>'
+        : '<span style="background:#475569;color:#cbd5e1;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;">sin relación</span>'));
+      var aten = x.fuerte ? '' : 'opacity:.45;';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #1e293b;">'
+        +'<span style="flex:0 0 auto;width:132px;">'+chip+'</span>'
+        +'<span style="flex:1 1 auto;font-size:12px;line-height:1.45;">'
+          +'<b style="color:#e2e8f0;">'+(r.razon||'').replace(/</g,'&lt;')+'</b>'
+          +'<span style="color:#64748b;"> · Folio '+r.folio+(r.rut?' · '+r.rut:'')+'</span>'
+        +'</span>'
+        +'<button onclick="vincularCruceBCI(\''+c.id+'\',\''+r.folio+'\')" style="flex:0 0 auto;background:#16a34a;color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;'+aten+'">Vincular ✓</button>'
         +'</div>';
     });
     html += '</td></tr>';

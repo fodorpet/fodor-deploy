@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-21_13:24</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-24_08:42</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-21_13:24</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-24_08:42</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -4762,6 +4762,17 @@ function renderCruceDiario(){
       p.st=cands[0].sc>=100?'PROBABLE':'POSIBLE';p.allC=cands.slice(0,3);
     }else{p.mScore=0;p.mFact=null;p.mRaz=[];p.st='SIN_CRUZAR';p.allC=[];}
   });
+  /* UX 2026-08-25: nivel de confianza derivado de p.mRaz (scoring ya existente).
+     No cambia la asignación de pagos: solo clasifica para poder agrupar y colorear.
+     0=ya cuadrado  1=seguro  2=mira antes  3=dudoso  4=sin factura */
+  pagos.forEach(function(p){
+    var R=(p.mRaz||[]).join('|');
+    if(p.st==='CRUZADO') p.conf=0;
+    else if(p.st==='SIN_CRUZAR') p.conf=4;
+    else if(R.indexOf('Folio en glosa')>=0 || (R.indexOf('RUT ✓')>=0 && R.indexOf('Monto exacto')>=0)) p.conf=1;
+    else if(R.indexOf('RUT ✓')>=0 || R.indexOf('Monto exacto')>=0) p.conf=2;
+    else p.conf=3;
+  });
   var totM=pagos.reduce(function(s,p){return s+p.monto;},0);
   var cruz=pagos.filter(function(p){return p.st==='CRUZADO';});
   var sinC=pagos.filter(function(p){return p.st==='SIN_CRUZAR';});
@@ -4771,10 +4782,10 @@ function renderCruceDiario(){
   var mProb=prob.reduce(function(s,p){return s+p.monto;},0);
   var kpisEl=document.getElementById('cruceKpis');
   if(kpisEl)kpisEl.innerHTML=[
-    {lb:'💰 Total Recibido',v:fmt(totM),n:pagos.length+' pagos',col:'#1d4ed8',bg:'#eff6ff'},
-    {lb:'✅ Cruzados',v:fmt(mCruz),n:cruz.length+' pagos',col:'#15803d',bg:'#f0fdf4'},
-    {lb:'⚠️ Por confirmar',v:fmt(mProb),n:prob.length+' candidatos',col:'#d97706',bg:'#fffbeb'},
-    {lb:'🚨 Sin cruzar',v:fmt(mSinC),n:sinC.length+' pagos',col:'#dc2626',bg:'#fef2f2'}
+    {lb:'💰 Me llegó este día',v:fmt(totM),n:pagos.length+' pagos en total',col:'#1d4ed8',bg:'#eff6ff'},
+    {lb:'✅ Ya lo cuadré',v:fmt(mCruz),n:cruz.length+' de '+pagos.length+' listos',col:'#15803d',bg:'#f0fdf4'},
+    {lb:'✋ Me falta revisar',v:fmt(mProb),n:prob.length+' esperando que confirmes',col:'#d97706',bg:'#fffbeb'},
+    {lb:'🚨 Sin factura',v:fmt(mSinC),n:(sinC.length?sinC.length+' sin dueño':'ninguno — todo bien'),col:'#dc2626',bg:'#fef2f2'}
   ].map(function(k){
     return '<div style="background:'+k.bg+';border-radius:10px;padding:14px 16px;">'
       +'<div style="font-size:11px;font-weight:700;color:'+k.col+';margin-bottom:4px;">'+k.lb+'</div>'
@@ -4810,10 +4821,34 @@ function renderCruceDiario(){
     'GN':'<span style="background:#fef3c7;color:#b45309;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">🏧 GetNet</span>',
     'MP':'<span style="background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">🟢 MP</span>'
   };
-  pagos.sort(function(a,b){var ord={SIN_CRUZAR:0,POSIBLE:1,PROBABLE:2,CRUZADO:3};return(ord[a.st]||0)-(ord[b.st]||0)||b.monto-a.monto;});
+  /* UX 2026-08-25: orden por confianza — primero lo que exige decisión, al final lo resuelto */
+  var _ordConf={4:0,1:1,2:2,3:3,0:4};
+  pagos.sort(function(a,b){return (_ordConf[a.conf]-_ordConf[b.conf])||(b.monto-a.monto);});
+  var _gc={},_gm={};
+  pagos.forEach(function(p){_gc[p.conf]=(_gc[p.conf]||0)+1;_gm[p.conf]=(_gm[p.conf]||0)+p.monto;});
+  var GRUPO={
+    4:{t:'🚨 SIN FACTURA',s:'No calzan con ninguna factura. Hay que buscarlas a mano.',bg:'#fee2e2',col:'#991b1b'},
+    1:{t:'🟢 SEGUROS',s:'Calza el RUT y calza el monto. Puedes confirmar de corrido.',bg:'#dcfce7',col:'#166534'},
+    2:{t:'🟡 MIRA ANTES DE CONFIRMAR',s:'Calza una sola cosa. Revisa el nombre de la empresa.',bg:'#fef3c7',col:'#92400e'},
+    3:{t:'🟠 DUDOSOS',s:'Solo se parece el monto. Necesitan que decidas tú.',bg:'#ffedd5',col:'#9a3412'},
+    0:{t:'✅ YA CUADRADOS',s:'Nada que hacer aquí.',bg:'#f1f5f9',col:'#475569'}
+  };
+  var _lastConf=null;
+  var _COLCONF={4:'#dc2626',1:'#16a34a',2:'#f59e0b',3:'#ea580c',0:''};
+  var _BGCONF={4:'#fff5f5',1:'#f6fdf8',2:'#fffdf2',3:'#fff8f2',0:''};
   var html='';
   pagos.forEach(function(p){
-    var rowBg=p.st==='CRUZADO'?'':p.st==='SIN_CRUZAR'?'background:#3b1219;border-left:4px solid #dc2626;':'background:#fffdf0;border-left:4px solid #f59e0b;';
+    if(p.conf!==_lastConf){
+      var _G=GRUPO[p.conf]||{t:'',s:'',bg:'#f1f5f9',col:'#475569'};
+      var _n=_gc[p.conf]||0;
+      html+='<tr><td colspan="7" style="background:'+_G.bg+';color:'+_G.col+';padding:10px 14px;border-top:3px solid '+_G.col+';">'
+        +'<span style="font-size:13px;font-weight:900;">'+_G.t+'</span>'
+        +'<span style="font-size:12px;font-weight:800;margin-left:8px;">'+_n+' pago'+(_n!==1?'s':'')+' · '+fmt(_gm[p.conf]||0)+'</span>'
+        +'<span style="font-size:11px;font-weight:600;opacity:.85;margin-left:10px;">'+_G.s+'</span>'
+        +'</td></tr>';
+      _lastConf=p.conf;
+    }
+    var rowBg=p.conf===0?'':'border-left:5px solid '+_COLCONF[p.conf]+';background:'+_BGCONF[p.conf]+';';
     var stCell='';
     if(p.st==='CRUZADO'){
       stCell='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -4835,9 +4870,11 @@ function renderCruceDiario(){
       var _kCor=(_kt&&_kt.correo)?_kt.correo:(p.mFact&&p.mFact.correo?p.mFact.correo:'');
       stCell='<div>'
         +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">'
-        +'<span style="background:#fef3c7;color:#d97706;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:800;">'+(p.st==='PROBABLE'?'⚠️ Probable':'🔍 Posible')+'</span>'
-        +'<span style="font-weight:800;color:#1d4ed8;font-size:12px;">Folio '+(p.mFact?p.mFact.folio:'—')+'</span>'
-        +(p.mFact?'<span style="font-size:11px;color:#374151;">'+p.mFact.empresa+'</span>':'')
+        +'<span style="background:'+_COLCONF[p.conf]+';color:#fff;padding:3px 11px;border-radius:8px;font-size:11px;font-weight:900;">'
+          +(p.conf===1?'🟢 Calza RUT y monto':p.conf===2?'🟡 Calza una sola cosa':'🟠 Solo se parece el monto')+'</span>'
+        +'<span style="font-size:12px;color:#475569;font-weight:700;">es de →</span>'
+        +(p.mFact?'<span style="font-size:13px;font-weight:900;color:#0f172a;">'+p.mFact.empresa+'</span>':'<span style="font-size:12px;color:#94a3b8;">sin empresa</span>')
+        +'<span style="font-weight:700;color:#64748b;font-size:11px;">Folio '+(p.mFact?p.mFact.folio:'—')+'</span>'
         +'</div>'
         +(_kTel||_kNom||_kCor?'<div style="margin-bottom:4px;font-size:10px;display:flex;gap:8px;flex-wrap:wrap;">'
           +(_kTel?'<span style="color:#15803d;font-weight:800;font-size:11px;">📞 '+_kTel+'</span>':'')

@@ -418,6 +418,42 @@ reduce ese tamaño. Si `EST` sigue creciendo, en algún momento el `once('value'
 función hace por su cuenta también podría volverse lento o costoso — no es urgente hoy,
 pero es la misma causa de fondo.
 
+### ✅ RESUELTO EL 26-08-2026 — migración parcial a IndexedDB (deuda técnica mayor)
+
+**Causa raíz medida:** `localStorage` tiene un techo de ~5MB **por origen** (compartido
+entre TODAS las claves, no por clave). Separar en más claves (hecho en agosto) no lo
+resolvía — la suma total seguía topando igual. Llegó a 5081/5120 KB (99%).
+
+**Arreglo aplicado:** se creó `LS`, un reemplazo de `localStorage` con la misma forma
+(`getItem`/`setItem`/`removeItem`) respaldado por `IndexedDB` (sin ese techo). Se migraron
+los ~13 bloques de datos "pesados" que sí se podían mover sin riesgo: TRF_DATA, BITACORA,
+COT_DATA, CARTOLA_DATA, WEBPAY_DATA, GETNET_DATA, MP_DATA, PROV_DATA, FACTCL_DATA,
+OT_DATA, FF_DATA e inventario (~59 puntos de código, reemplazo mecánico verificado).
+
+**Deliberadamente NO migrado:** `fodorspa_crypt_v1` (donde vive `EST`, el bloque más
+grande y crítico) y todas las claves de login/candado (`fodorspa_bode_v1`,
+`fodorspa_user`, salt de cifrado) — se leen de forma síncrona durante la pantalla de
+contraseña, antes de que IndexedDB (asíncrono) pueda estar listo. Tocarlas ahí arriesgaba
+trabar el acceso al Panel. Quedan en `localStorage` tal como estaban.
+
+**Resultado medido:** espacio usado bajó de 5081 KB (99%) a 2077 KB (41%) — liberó ~3 MB.
+
+**Primer intento tuvo un bug, corregido antes de publicar:** la primera versión dejaba
+una copia de respaldo en `localStorage` real ADEMÁS de guardar en IndexedDB — eso anulaba
+el objetivo (el espacio nunca se liberaba). Corregido: ahora la copia vieja se borra de
+`localStorage` apenas queda a salvo en IndexedDB (más lo que ya respalda Firebase aparte).
+
+**Deuda técnica que queda pendiente:** `EST` sigue en `localStorage` (2077 KB de los
+5120 KB disponibles). Con el crecimiento actual del negocio hay mucho más margen que
+antes, pero el techo de 5 MB para `EST` en particular sigue sin resolverse de raíz —
+es la migración de la pantalla de login la que falta, con más cuidado por el timing
+síncrono. Anotado para retomar cuando corresponda, no urgente hoy.
+
+**Efecto colateral menor, sin riesgo:** `salud.html` todavía compara algunas cifras
+(ej. "WebPay en este navegador") contra `localStorage` directo, no contra `IndexedDB` —
+por eso puede mostrar "0" para claves ya migradas aunque el Panel real las lea bien.
+Pendiente actualizar esa pantalla de diagnóstico para que también consulte IndexedDB.
+
 ### 🟡 RIESGOS ABIERTOS
 1. **TRF_DATA blob 4MB:** Guardado futuro puede fallar sin aviso (mitigado, no resuelto)
 2. **CARTOLA_DATA huérfano:** Se escribe en Firebase, listener no lo lee (deuda técnica anotada)

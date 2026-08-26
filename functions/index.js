@@ -386,11 +386,20 @@ exports.notificarAlertaWhatsapp = functions
 // snapAArray (que ya evita el problema real de fondo).
 const CONFIG_MEMORIA = { memory: '1GB', timeoutSeconds: 120 };
 
-// Se dispara sola cada vez que el Panel guarda /estado/EST
+// FIX 25-08-2026 — antes se disparaba con onWrite en /estado/EST. Gen1
+// entrega el nodo /estado/EST COMPLETO (antes+después) como payload del
+// evento, y ese nodo ya creció tanto que superó el límite duro de Google
+// para triggers de RTDB: toda escritura a /estado empezó a rechazarse con
+// TRIGGER_PAYLOAD_TOO_LARGE (bloqueaba el guardado de CUALQUIER pago en el
+// Panel, no solo el que se estuviera probando). La función nunca usó el
+// contenido del evento — calcularYPublicarDeudaPorRut() lee los datos
+// directo de la base — así que pasar a horario elimina el problema de raíz
+// sin cambiar el resultado ni el contrato de salida (deuda_por_rut).
+// Contrapartida aceptada: hasta 3 min de desfase en vez de instantáneo.
 exports.recalcularDeudaPorRut = functions
   .runWith(CONFIG_MEMORIA)
-  .database.ref('/estado/EST')
-  .onWrite(async (change, context) => {
+  .pubsub.schedule('every 3 minutes')
+  .onRun(async (context) => {
     const r = await calcularYPublicarDeudaPorRut();
     console.log(`deuda_por_rut recalculada: ${r.clientes_con_deuda} clientes con deuda pendiente.`);
     return null;

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-26_12:30</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-26_13:21</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-26_12:30</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-26_13:21</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8481,7 +8481,10 @@ function importarFacturasExcel(event){
         }
         alert('ℹ️ '+totalRows+' filas leídas en el Excel.\nNinguna factura NUEVA se agregó (los folios ya estaban).'
           +_avisoCompletadas+_avisoFechas);
-        try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
+        // DESACTIVADO 2026-08-26 a pedido de Deborah: el aviso de "facturas
+        // eliminadas en Facturación.cl" generaba preocupación innecesaria.
+        // La función sigue definida más abajo por si se quiere reactivar.
+        // try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
         return;
       }
       // Ordenar nuevas de más reciente a más antigua antes de agregar
@@ -8506,7 +8509,8 @@ function importarFacturasExcel(event){
       if(msg) msg.textContent='✅ '+nuevas.length+' facturas cargadas';
       var _avisoPagadas = pagNuevas ? '\n\n💰 '+pagNuevas+' factura(s) nueva(s) cargadas ya como PAGADAS (columna PAGADO=SI).' : '';
       alert('✅ '+nuevas.length+' facturas nuevas cargadas!\nMeses: '+Object.keys(mesesNuevos).join(', ')+_avisoPagadas+_avisoCompletadas+_avisoFechas);
-      try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
+      // DESACTIVADO 2026-08-26 a pedido de Deborah — ver nota igual arriba.
+      // try{ detectarFolliosEliminadosFCL(excelFolios); }catch(e){ console.error('[ELIMINADOS-FCL]',e); }
     } catch(err){ if(msg) msg.textContent='❌ '+err.message; alert('Error al leer el archivo: '+err.message); }
   };
   reader.readAsArrayBuffer(file);

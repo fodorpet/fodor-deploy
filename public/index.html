@@ -804,17 +804,70 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- ==================== TAB CONCILIACIÓN BANCARIA ==================== -->
 
 <div class="tab-content active" id="t2026">
-  <div class="kpi-row">
-    <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26total')"><label>Total Pendiente 2026 <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26total">—</div><div class="sub" id="k26n">—</div></div>
-    <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26urg')"><label>🔴 Urgentes (+30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26urg">—</div><div class="sub" id="k26urgm">—</div></div>
-    <div class="kpi amarillo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26med')"><label>🟡 En proceso (8–30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26med">—</div><div class="sub" id="k26medm">—</div></div>
-    <div class="kpi azul" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26rec')"><label>🟢 Recientes (≤7d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26rec">—</div><div class="sub" id="k26recm">—</div></div>
+
+  <!-- PLEGABLE-ESTADISTICAS 25-08-2026: antes las 4 tarjetas + las 3 franjas de
+       alerta ocupaban toda la parte de arriba de la pantalla siempre visibles.
+       Se pidió sacarlas de la vista principal sin perderlas — quedan agrupadas
+       acá, cerradas por defecto. Ningún id ni cálculo cambió: el JS que las
+       llena (renderAlertas, checkAlarmas, etc.) sigue escribiendo en los mismos
+       elementos, solo que ahora están dentro de un contenedor que se
+       muestra/oculta con toggleStatsPanel(). -->
+  <div style="background:white;border-radius:10px;box-shadow:var(--sombra);margin-bottom:10px;overflow:hidden;">
+    <div onclick="toggleStatsPanel('statsCobranza')" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <span style="font-size:12px;font-weight:800;color:#374151;">📊 Ver estadísticas y alertas</span>
+      <span id="statsCobranzaIcon" style="font-size:14px;color:#888;">▸</span>
+    </div>
+    <div id="statsCobranza" style="display:none;padding:0 16px 14px;">
+      <div class="kpi-row">
+        <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26total')"><label>Total Pendiente 2026 <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26total">—</div><div class="sub" id="k26n">—</div></div>
+        <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26urg')"><label>🔴 Urgentes (+30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26urg">—</div><div class="sub" id="k26urgm">—</div></div>
+        <div class="kpi amarillo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26med')"><label>🟡 En proceso (8–30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26med">—</div><div class="sub" id="k26medm">—</div></div>
+        <div class="kpi azul" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26rec')"><label>🟢 Recientes (≤7d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26rec">—</div><div class="sub" id="k26recm">—</div></div>
+      </div>
+      <!-- KPI Detalles desplegables -->
+      <div id="kpiDet26total" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26totalContent"></div></div>
+      <div id="kpiDet26urg" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26urgContent"></div></div>
+      <div id="kpiDet26med" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--amarillo)"><div id="kpiDet26medContent"></div></div>
+      <div id="kpiDet26rec" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--azul)"><div id="kpiDet26recContent"></div></div>
+
+      <!-- ALERTA-TRFDUP 2026-07-24: franja de aviso, clic lleva al detector -->
+      <div id="trfDupBanner" onclick="var b=document.getElementById('cruceDiarioBtn');showTab('tCruceDiario',b);setCruceVista('alertas');"
+           style="display:none;margin-bottom:12px;border-radius:12px;padding:12px 16px;cursor:pointer;background:linear-gradient(135deg,#b91c1c,#7f1d1d);color:white;font-size:13px;font-weight:700;box-shadow:0 2px 16px rgba(185,28,28,0.25);"></div>
+
+      <!-- LATIDO-KOMMO 2026-07-25 -->
+      <div id="kommoSyncAviso" style="display:none;margin-bottom:12px;border-radius:12px;padding:10px 16px;background:#7f1d1d;color:white;font-size:12px;font-weight:600;box-shadow:0 2px 12px rgba(127,29,29,0.25);"></div>
+
+      <!-- ── BLOQUE ALARMA +30 DÍAS ── -->
+      <div id="bloqueUrgente" style="display:none;margin-bottom:12px;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(220,38,38,0.18);border:2px solid #dc2626;">
+        <div onclick="toggleBloqueUrgente()" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:white;padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px">🚨</span>
+            <div>
+              <div style="font-weight:800;font-size:14px" id="urgTitulo">ALARMA — facturas con más de 30 días sin cobrar</div>
+              <div style="font-size:11px;opacity:0.85" id="urgSubtitulo">—</div>
+            </div>
+          </div>
+          <span id="urgToggleIcon" style="font-size:18px;font-weight:700">▼</span>
+        </div>
+        <div id="urgBody" style="background:#fff5f5;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:700px;">
+            <thead>
+              <tr style="background:#fee2e2;color:#991b1b;">
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Folio</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Empresa</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Fecha</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:700">Monto</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Días</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Estado</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="urgTabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
-  <!-- KPI Detalles desplegables -->
-  <div id="kpiDet26total" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26totalContent"></div></div>
-  <div id="kpiDet26urg" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26urgContent"></div></div>
-  <div id="kpiDet26med" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--amarillo)"><div id="kpiDet26medContent"></div></div>
-  <div id="kpiDet26rec" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--azul)"><div id="kpiDet26recContent"></div></div>
 
   <!-- ── Importar Facturas Excel ── -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08);padding:10px 16px;">
@@ -6456,6 +6509,19 @@ function seleccionarWP(tr) {
 
 var _kpiData = { total: [], urg: [], med: [], rec: [] };
 
+// PLEGABLE-ESTADISTICAS 25-08-2026: abre/cierra el contenedor de tarjetas +
+// alertas en Cobranza (#statsCobranza) y Transferencias (#statsTrf). No
+// recalcula ni toca datos — solo muestra/oculta lo que el resto del código
+// ya venía llenando en esos mismos ids.
+function toggleStatsPanel(id) {
+  var box = document.getElementById(id);
+  var icon = document.getElementById(id + 'Icon');
+  if (!box) return;
+  var abierto = box.style.display !== 'none';
+  box.style.display = abierto ? 'none' : 'block';
+  if (icon) icon.textContent = abierto ? '▸' : '▾';
+}
+
 function toggleKpiDetalle(id) {
   var det = document.getElementById(id);
   if (!det) return;
@@ -9648,12 +9714,20 @@ function renderGetnet(){
 </script>
 <!-- ==================== TAB TRANSFERENCIAS ==================== -->
 <div class="tab-content" id="tTrf">
-  <!-- KPIs -->
-  <div class="kpi-row">
-    <div class="kpi azul"><label>Total transferencias</label><div class="val" id="trfTotal">—</div><div class="sub" id="trfSub">registros</div></div>
-    <div class="kpi verde"><label>Identificadas</label><div class="val" id="trfId">—</div><div class="sub">con folio asignado</div></div>
-    <div class="kpi rojo"><label>Sin identificar</label><div class="val" id="trfNoId">—</div><div class="sub">pendiente de cruzar</div></div>
-    <div class="kpi amarillo"><label>Monto sin identificar</label><div class="val" id="trfNoIdMonto">—</div><div class="sub">a revisar</div></div>
+  <!-- PLEGABLE-ESTADISTICAS 25-08-2026: ver nota igual en #t2026. -->
+  <div style="background:white;border-radius:10px;box-shadow:var(--sombra);margin-bottom:10px;overflow:hidden;">
+    <div onclick="toggleStatsPanel('statsTrf')" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <span style="font-size:12px;font-weight:800;color:#374151;">📊 Ver estadísticas</span>
+      <span id="statsTrfIcon" style="font-size:14px;color:#888;">▸</span>
+    </div>
+    <div id="statsTrf" style="display:none;padding:0 16px 14px;">
+      <div class="kpi-row">
+        <div class="kpi azul"><label>Total transferencias</label><div class="val" id="trfTotal">—</div><div class="sub" id="trfSub">registros</div></div>
+        <div class="kpi verde"><label>Identificadas</label><div class="val" id="trfId">—</div><div class="sub">con folio asignado</div></div>
+        <div class="kpi rojo"><label>Sin identificar</label><div class="val" id="trfNoId">—</div><div class="sub">pendiente de cruzar</div></div>
+        <div class="kpi amarillo"><label>Monto sin identificar</label><div class="val" id="trfNoIdMonto">—</div><div class="sub">a revisar</div></div>
+      </div>
+    </div>
   </div>
   <!-- BARRA ACCIONES -->
   <div style="background:white;border-radius:10px;box-shadow:var(--sombra);padding:10px 14px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">

@@ -369,6 +369,55 @@ Requiere análisis previo, plan de migración de los datos existentes y reversi�
 - Búsqueda real 10-08-2026: `grep -rn "deuda_por_rut" ~/fodor-deploy-sanitizado` → sin resultados. No contiene código relacionado a la investigación de `deuda_por_rut`.
 - Los cambios de `fodor-deploy` (el repo activo) están **commiteados** (`e82089f`), así que un `restore` los recupera en vez de borrarlos. Antes se perdieron justamente por estar sin commitear.
 
+### ✅ RESUELTO EL 25-08-2026 — bloqueo total de guardado de pagos (`TRIGGER_PAYLOAD_TOO_LARGE`)
+
+**Qué pasó:** desde el 25-08 dejó de guardarse CUALQUIER pago/transferencia aplicada en
+el Panel (no un folio puntual — todo el sistema). El estado cambiaba en pantalla pero
+al recargar volvía a "Pendiente".
+
+**Causa raíz confirmada** (con consola del navegador, no supuesta): la Cloud Function
+`recalcularDeudaPorRut` estaba declarada como `onWrite` sobre `/estado/EST`. Ese tipo de
+trigger (Gen1) recibe el nodo `EST` COMPLETO como payload del evento — y `EST` ya creció
+tanto (miles de folios) que superó el límite duro de Google para triggers de RTDB.
+Firebase rechazaba entonces CUALQUIER escritura a `/estado` con:
+```
+FIREBASE WARNING: update at /estado failed: trigger_payload_too_large
+TRIGGER_PAYLOAD_TOO_LARGE: This request would cause a function payload exceeding the maximum size allowed.
+```
+La función nunca usaba el contenido del evento — lee los datos ella misma con
+`db.ref(...).once('value')` — así que el trigger cargaba un payload gigante que ni
+siquiera consumía.
+
+**Arreglo aplicado (definitivo, no workaround):** se cambió el trigger de
+`functions.database.ref('/estado/EST').onWrite(...)` a
+`functions.pubsub.schedule('every 3 minutes').onRun(...)`. Mismo cuerpo, mismo resultado
+en `deuda_por_rut`, mismos consumidores (`notificarAlertaWhatsapp`, `alertaCobranza`) sin
+tocarlos. Elimina el límite de payload de raíz porque un trigger programado no recibe
+datos de evento. Contrapartida aceptada: hasta 3 min de desfase en la alerta de deuda
+vencida por WhatsApp, en vez de instantánea.
+
+**Archivo modificado:** solo `functions/index.js` (declaración de `recalcularDeudaPorRut`,
+~8 líneas). No se tocó `index.html`, `public/index.html`, ni ninguna estructura de datos.
+
+**Deploy:** hubo que borrar la función vieja primero (Google no permite cambiar el tipo
+de trigger in-place) con `firebase functions:delete recalcularDeudaPorRut --region us-central1 --force`,
+y luego `firebase deploy --only functions:recalcularDeudaPorRut`. Confirmado con
+"Deploy complete!" y prueba real: se marcó una transferencia, se recargó la página, y
+quedó guardada.
+
+**Nota lateral:** durante el deploy, Firebase pidió el secreto `TRELLO_KEY` (nunca se
+había corrido `guardar-token-trello.command`). Se dejó un valor provisorio `"pendiente"`
+en Secret Manager para destrabar el deploy — Trello sigue sin token real, no cambia su
+estado (ya estaba roto/sin usar). Cuando se consiga el token real, `guardar-token-trello.command`
+lo reemplaza sin problema.
+
+**Deuda técnica que sigue abierta y motivó este bloqueo:** el tamaño de `EST`/`TRF_DATA`
+sigue creciendo sin límite (ver "DEUDA TÉCNICA MAYOR — persistencia local" arriba). Este
+arreglo evita que el tamaño de `EST` vuelva a tumbar la función programada, pero no
+reduce ese tamaño. Si `EST` sigue creciendo, en algún momento el `once('value')` que la
+función hace por su cuenta también podría volverse lento o costoso — no es urgente hoy,
+pero es la misma causa de fondo.
+
 ### 🟡 RIESGOS ABIERTOS
 1. **TRF_DATA blob 4MB:** Guardado futuro puede fallar sin aviso (mitigado, no resuelto)
 2. **CARTOLA_DATA huérfano:** Se escribe en Firebase, listener no lo lee (deuda técnica anotada)

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-25_17:38</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-25_22:48</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-25_17:38</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-25_22:48</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -804,17 +804,70 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- ==================== TAB CONCILIACIÓN BANCARIA ==================== -->
 
 <div class="tab-content active" id="t2026">
-  <div class="kpi-row">
-    <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26total')"><label>Total Pendiente 2026 <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26total">—</div><div class="sub" id="k26n">—</div></div>
-    <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26urg')"><label>🔴 Urgentes (+30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26urg">—</div><div class="sub" id="k26urgm">—</div></div>
-    <div class="kpi amarillo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26med')"><label>🟡 En proceso (8–30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26med">—</div><div class="sub" id="k26medm">—</div></div>
-    <div class="kpi azul" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26rec')"><label>🟢 Recientes (≤7d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26rec">—</div><div class="sub" id="k26recm">—</div></div>
+
+  <!-- PLEGABLE-ESTADISTICAS 25-08-2026: antes las 4 tarjetas + las 3 franjas de
+       alerta ocupaban toda la parte de arriba de la pantalla siempre visibles.
+       Se pidió sacarlas de la vista principal sin perderlas — quedan agrupadas
+       acá, cerradas por defecto. Ningún id ni cálculo cambió: el JS que las
+       llena (renderAlertas, checkAlarmas, etc.) sigue escribiendo en los mismos
+       elementos, solo que ahora están dentro de un contenedor que se
+       muestra/oculta con toggleStatsPanel(). -->
+  <div style="background:white;border-radius:10px;box-shadow:var(--sombra);margin-bottom:10px;overflow:hidden;">
+    <div onclick="toggleStatsPanel('statsCobranza')" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+      <span style="font-size:12px;font-weight:800;color:#374151;">📊 Ver estadísticas y alertas</span>
+      <span id="statsCobranzaIcon" style="font-size:14px;color:#888;">▸</span>
+    </div>
+    <div id="statsCobranza" style="display:none;padding:0 16px 14px;">
+      <div class="kpi-row">
+        <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26total')"><label>Total Pendiente 2026 <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26total">—</div><div class="sub" id="k26n">—</div></div>
+        <div class="kpi rojo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26urg')"><label>🔴 Urgentes (+30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26urg">—</div><div class="sub" id="k26urgm">—</div></div>
+        <div class="kpi amarillo" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26med')"><label>🟡 En proceso (8–30d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26med">—</div><div class="sub" id="k26medm">—</div></div>
+        <div class="kpi azul" style="cursor:pointer;transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.18)'" onmouseleave="this.style.boxShadow=''" onclick="toggleKpiDetalle('kpiDet26rec')"><label>🟢 Recientes (≤7d) <span style="float:right;font-size:9px;color:#aaa">▼</span></label><div class="val" id="k26rec">—</div><div class="sub" id="k26recm">—</div></div>
+      </div>
+      <!-- KPI Detalles desplegables -->
+      <div id="kpiDet26total" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26totalContent"></div></div>
+      <div id="kpiDet26urg" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26urgContent"></div></div>
+      <div id="kpiDet26med" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--amarillo)"><div id="kpiDet26medContent"></div></div>
+      <div id="kpiDet26rec" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--azul)"><div id="kpiDet26recContent"></div></div>
+
+      <!-- ALERTA-TRFDUP 2026-07-24: franja de aviso, clic lleva al detector -->
+      <div id="trfDupBanner" onclick="var b=document.getElementById('cruceDiarioBtn');showTab('tCruceDiario',b);setCruceVista('alertas');"
+           style="display:none;margin-bottom:12px;border-radius:12px;padding:12px 16px;cursor:pointer;background:linear-gradient(135deg,#b91c1c,#7f1d1d);color:white;font-size:13px;font-weight:700;box-shadow:0 2px 16px rgba(185,28,28,0.25);"></div>
+
+      <!-- LATIDO-KOMMO 2026-07-25 -->
+      <div id="kommoSyncAviso" style="display:none;margin-bottom:12px;border-radius:12px;padding:10px 16px;background:#7f1d1d;color:white;font-size:12px;font-weight:600;box-shadow:0 2px 12px rgba(127,29,29,0.25);"></div>
+
+      <!-- ── BLOQUE ALARMA +30 DÍAS ── -->
+      <div id="bloqueUrgente" style="display:none;margin-bottom:12px;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(220,38,38,0.18);border:2px solid #dc2626;">
+        <div onclick="toggleBloqueUrgente()" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:white;padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px">🚨</span>
+            <div>
+              <div style="font-weight:800;font-size:14px" id="urgTitulo">ALARMA — facturas con más de 30 días sin cobrar</div>
+              <div style="font-size:11px;opacity:0.85" id="urgSubtitulo">—</div>
+            </div>
+          </div>
+          <span id="urgToggleIcon" style="font-size:18px;font-weight:700">▼</span>
+        </div>
+        <div id="urgBody" style="background:#fff5f5;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:700px;">
+            <thead>
+              <tr style="background:#fee2e2;color:#991b1b;">
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Folio</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Empresa</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700">Fecha</th>
+                <th style="padding:8px 12px;text-align:right;font-weight:700">Monto</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Días</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Estado</th>
+                <th style="padding:8px 12px;text-align:center;font-weight:700">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="urgTabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
-  <!-- KPI Detalles desplegables -->
-  <div id="kpiDet26total" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26totalContent"></div></div>
-  <div id="kpiDet26urg" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--rojo)"><div id="kpiDet26urgContent"></div></div>
-  <div id="kpiDet26med" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--amarillo)"><div id="kpiDet26medContent"></div></div>
-  <div id="kpiDet26rec" style="display:none;background:white;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--azul)"><div id="kpiDet26recContent"></div></div>
 
   <!-- ── Importar Facturas Excel ── -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08);padding:10px 16px;">

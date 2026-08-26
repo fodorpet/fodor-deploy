@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-26_11:01</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-26_11:53</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -450,7 +450,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn" onclick="showTab('tMercadoPago',this)">🟢 MercadoPago</button>
   <button class="tab-btn" onclick="showTab('tTrf',this)">💸 Transferencias</button>
   <button class="tab-btn" onclick="showTab('tCartola',this);renderCartola()">🏦 Cartola BCI</button>
-  <button class="tab-btn" onclick="showTab('tCotiz',this);(function(){if(typeof COT_DATA!=='undefined'&&!COT_DATA.length){try{var _r=localStorage.getItem('fodorspa_cot_v1');if(_r){var _p=JSON.parse(_r);if(_p&&_p.length)COT_DATA=_p;}}catch(e){}}})();renderCotiz()">📝 Cotizaciones <span id="cotBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
+  <button class="tab-btn" onclick="showTab('tCotiz',this);(function(){if(typeof COT_DATA!=='undefined'&&!COT_DATA.length){try{var _r=LS.getItem('fodorspa_cot_v1');if(_r){var _p=JSON.parse(_r);if(_p&&_p.length)COT_DATA=_p;}}catch(e){}}})();renderCotiz()">📝 Cotizaciones <span id="cotBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tOT',this);renderOT()">🔧 Órd. Trabajo <span id="otBadge" style="display:none;background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tVentas',this)">📊 Ventas</button>
   <button class="tab-btn" onclick="showTab('tFactCL',this);renderFactCL()">🧾 Facturación.cl</button>
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-26_11:01</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-26_11:53</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -1780,6 +1780,114 @@ var HOY = (function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
 // BITACORA = [{ts, tipo, autor, folio, empresa, nota, compromisoFecha}]
 // CONC_DATA = [{fecha, desc, monto, matchFolio, estado}]  ('auto'|'manual'|'none')
 // ──────────────────────────────────────────────────────────────────────────────
+// ─── MIGRACION-INDEXEDDB 2026-08-26 ──────────────────────────────────────────
+// localStorage tiene un techo duro de ~5MB POR ORIGEN (compartido entre TODAS
+// las claves, no por clave) y el Panel ya lo alcanzó (5075/5120 KB, 99%).
+// Separar en más claves (hecho en agosto) no lo soluciona: la suma total sigue
+// topando igual. LS es un reemplazo con la misma forma que localStorage
+// (getItem/setItem/removeItem) pero respaldado por IndexedDB (sin ese techo)
+// + una copia en memoria para seguir siendo síncrono, sin tocar los puntos
+// que ya lo usan.
+//
+// ALCANCE DELIBERADAMENTE ACOTADO: solo se migran los ~13 bloques de datos
+// "pesados" (TRF_DATA, BITACORA, COT_DATA, CARTOLA_DATA, WEBPAY_DATA,
+// GETNET_DATA, MP_DATA, PROV_DATA, FACTCL_DATA, OT_DATA, FF_DATA, inventario).
+// NO se toca fodorspa_crypt_v1 (EST) ni ninguna clave de login/candado
+// (fodorspa_bode_v1, fodorspa_user, salt de cifrado) porque esas se leen de
+// forma SÍNCRONA durante la pantalla de contraseña, antes de que IndexedDB
+// (asíncrono) pueda estar listo — tocarlas ahí arriesgaba trabar el acceso.
+// localStorage real NO se borra ni se toca: sigue como respaldo en paralelo.
+var LS = (function(){
+  var _cache = {};
+  var _db = null;
+  var DB_NAME = 'fodorspa_idb_v1', STORE = 'kv';
+
+  function _openDb(){
+    return new Promise(function(resolve){
+      if(!window.indexedDB){ resolve(null); return; }
+      try{
+        var req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = function(e){
+          var db = e.target.result;
+          if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+        };
+        req.onsuccess = function(e){ resolve(e.target.result); };
+        req.onerror = function(){ console.error('[LS] No se pudo abrir IndexedDB'); resolve(null); };
+      }catch(e){ console.error('[LS] Error abriendo IndexedDB:',e); resolve(null); }
+    });
+  }
+  function _loadAll(db){
+    return new Promise(function(resolve){
+      if(!db){ resolve(); return; }
+      try{
+        var store = db.transaction(STORE,'readonly').objectStore(STORE);
+        var req = store.openCursor();
+        req.onsuccess = function(e){
+          var cur = e.target.result;
+          if(cur){ _cache[cur.key] = cur.value; cur.continue(); } else resolve();
+        };
+        req.onerror = function(){ resolve(); };
+      }catch(e){ resolve(); }
+    });
+  }
+  // FIX 2026-08-26 (mismo día, antes de publicar): la primera versión de esto
+  // dejaba una copia de cada clave TAMBIÉN en localStorage "por las dudas".
+  // Con eso el espacio nunca se liberaba — exactamente el problema que se
+  // quería resolver. Corregido: si IndexedDB está disponible, la copia en
+  // localStorage se borra apenas queda a salvo en IndexedDB (que es la fuente
+  // real ahora, más lo que ya se respalda aparte en Firebase). Si IndexedDB
+  // NO está disponible en el navegador (caso raro), no se borra nada y sigue
+  // funcionando como localStorage normal — sin liberar espacio, pero sin
+  // arriesgar perder datos tampoco.
+  function _migrarDesdeLocalStorageSiVacio(){
+    if(Object.keys(_cache).length) return; // ya migrado en una sesión anterior
+    if(!_db) return; // sin IndexedDB no hay a dónde migrar; se sigue usando localStorage tal cual
+    try{
+      var claves = ['fodorspa_trf_v1','fodorspa_trf_delta_v1','fodorspa_cart_v1',
+        'fodorspa_wp_v1','fodorspa_gn_v1','fodorspa_mp_v1','fodorspa_prov_v1',
+        'fodorspa_fcl_v1','fodorspa_ot_v1','fodorspa_ff_v1','fodorspa_bit_v1',
+        'fodorspa_cot_v1','_fsp_inv_bk'];
+      var migradas = 0;
+      claves.forEach(function(k){
+        var v = localStorage.getItem(k);
+        if(v!=null){
+          _cache[k]=v; _persist(k,v);
+          try{ localStorage.removeItem(k); }catch(e){} // libera el espacio ahora
+          migradas++;
+        }
+      });
+      console.log('[LS] Migración inicial a IndexedDB:', migradas, 'de', claves.length, 'claves — espacio liberado en localStorage');
+    }catch(e){ console.error('[LS] Error migrando desde localStorage:',e); }
+  }
+  function _persist(key,val){
+    if(!_db) return;
+    try{ _db.transaction(STORE,'readwrite').objectStore(STORE).put(val,key); }
+    catch(e){ console.error('[LS] Error guardando en IndexedDB:',key,e); }
+  }
+
+  var _ready = _openDb().then(function(db){ _db=db; return _loadAll(db); })
+    .then(_migrarDesdeLocalStorageSiVacio)
+    .catch(function(e){ console.error('[LS] init error:',e); });
+
+  return {
+    ready: function(){ return _ready; },
+    getItem: function(key){ return (key in _cache) ? _cache[key] : (_db ? null : localStorage.getItem(key)); },
+    setItem: function(key,val){
+      if(!_db){ try{ localStorage.setItem(key,val); }catch(e){} return; } // sin IndexedDB, comportamiento normal
+      _cache[key] = String(val);
+      _persist(key, _cache[key]);
+      // Ya no se duplica en localStorage — si había una copia vieja de una
+      // sesión anterior, se borra para no volver a ocupar espacio de más.
+      try{ localStorage.removeItem(key); }catch(e){}
+    },
+    removeItem: function(key){
+      delete _cache[key];
+      if(_db){ try{ _db.transaction(STORE,'readwrite').objectStore(STORE).delete(key); }catch(e){} }
+      try{ localStorage.removeItem(key); }catch(e){}
+    }
+  };
+})();
+
 // ─── PERSISTENCIA localStorage ───────────────────────────────────────────────
 var STORAGE_KEY = 'fodorspa_cobranza_v1';
 
@@ -1796,26 +1904,26 @@ function cargarEstado(){
     if(saved.D26_EXTRA && saved.D26_EXTRA.length){ saved.D26_EXTRA.forEach(function(r){if(!D26_EXTRA.find(function(x){return String(x.folio)===String(r.folio);})&&!D26.find(function(x){return String(x.folio)===String(r.folio);})){D26_EXTRA.push(r);D26.push(r);}}); }
     if(saved.GETNET_ELIMINADO) GETNET_ELIMINADO = saved.GETNET_ELIMINADO;
     // Cargar arrays desde sus claves dedicadas (más fiables que el main key)
-    try{var _trfBk=localStorage.getItem('fodorspa_trf_v1');if(_trfBk){var _trfBkP=JSON.parse(_trfBk);if(_trfBkP&&_trfBkP.length>TRF_DATA.length){TRF_DATA=_trfBkP.filter(function(t){return (t.monto||0)>=100;});TRF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});repararTrfIds();}}}catch(e_trf){}
-    try{var _cartBk=localStorage.getItem('fodorspa_cart_v1');if(_cartBk){var _cartBkP=JSON.parse(_cartBk);if(_cartBkP&&_cartBkP.length>CARTOLA_DATA.length)CARTOLA_DATA=_cartBkP;}}catch(e){}
-    try{var _wpBk=localStorage.getItem('fodorspa_wp_v1');if(_wpBk){var _wpBkP=JSON.parse(_wpBk);if(_wpBkP&&_wpBkP.length>WEBPAY_DATA.length)WEBPAY_DATA=_wpBkP;}}catch(e){}
-    try{var _gnBk=localStorage.getItem('fodorspa_gn_v1');if(_gnBk){var _gnBkP=JSON.parse(_gnBk);if(_gnBkP&&_gnBkP.length>GETNET_DATA.length)GETNET_DATA=_gnBkP;}}catch(e){}
-    try{var _mpBk=localStorage.getItem('fodorspa_mp_v1');if(_mpBk){var _mpBkP=JSON.parse(_mpBk);if(_mpBkP&&_mpBkP.length>MP_DATA.length)MP_DATA=_mpBkP;}}catch(e){}
+    try{var _trfBk=LS.getItem('fodorspa_trf_v1');if(_trfBk){var _trfBkP=JSON.parse(_trfBk);if(_trfBkP&&_trfBkP.length>TRF_DATA.length){TRF_DATA=_trfBkP.filter(function(t){return (t.monto||0)>=100;});TRF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});repararTrfIds();}}}catch(e_trf){}
+    try{var _cartBk=LS.getItem('fodorspa_cart_v1');if(_cartBk){var _cartBkP=JSON.parse(_cartBk);if(_cartBkP&&_cartBkP.length>CARTOLA_DATA.length)CARTOLA_DATA=_cartBkP;}}catch(e){}
+    try{var _wpBk=LS.getItem('fodorspa_wp_v1');if(_wpBk){var _wpBkP=JSON.parse(_wpBk);if(_wpBkP&&_wpBkP.length>WEBPAY_DATA.length)WEBPAY_DATA=_wpBkP;}}catch(e){}
+    try{var _gnBk=LS.getItem('fodorspa_gn_v1');if(_gnBk){var _gnBkP=JSON.parse(_gnBk);if(_gnBkP&&_gnBkP.length>GETNET_DATA.length)GETNET_DATA=_gnBkP;}}catch(e){}
+    try{var _mpBk=LS.getItem('fodorspa_mp_v1');if(_mpBk){var _mpBkP=JSON.parse(_mpBk);if(_mpBkP&&_mpBkP.length>MP_DATA.length)MP_DATA=_mpBkP;}}catch(e){}
     // FIX-PROV-PERSIST 2026-08-21: antes el respaldo dedicado SOLO se leia si PROV_DATA
     // habia quedado vacio. Si la clave maestra traia una version vieja y no vacia, ganaba
     // ella y tapaba para siempre los registros buenos de 'fodorspa_prov_v1'. Ahora gana
     // la fuente con MAS registros, igual que ya se hacia con TRF_DATA/CARTOLA/WEBPAY.
     if(saved.PROV_DATA && saved.PROV_DATA.length > PROV_DATA.length) PROV_DATA = saved.PROV_DATA;
-    try{var _provBk=localStorage.getItem('fodorspa_prov_v1');if(_provBk){var _provBkP=JSON.parse(_provBk);if(_provBkP&&_provBkP.length>PROV_DATA.length)PROV_DATA=_provBkP;}}catch(e){}
+    try{var _provBk=LS.getItem('fodorspa_prov_v1');if(_provBk){var _provBkP=JSON.parse(_provBk);if(_provBkP&&_provBkP.length>PROV_DATA.length)PROV_DATA=_provBkP;}}catch(e){}
     if(saved.COT_DATA && saved.COT_DATA.length) COT_DATA = saved.COT_DATA;
-    if(!COT_DATA.length){try{var _cotBk=localStorage.getItem('fodorspa_cot_v1');if(_cotBk){var _cotBkP=JSON.parse(_cotBk);if(_cotBkP.length)COT_DATA=_cotBkP;}}catch(e){}}
+    if(!COT_DATA.length){try{var _cotBk=LS.getItem('fodorspa_cot_v1');if(_cotBk){var _cotBkP=JSON.parse(_cotBk);if(_cotBkP.length)COT_DATA=_cotBkP;}}catch(e){}}
     // FIX-PERSISTENCIA-FCL 2026-08-19: FACTCL_DATA (Facturación.cl) se importaba y
     // nunca se guardaba en ningún lado — vivía solo en memoria de esa pestaña y se
     // perdía al recargar. Se agrega su clave dedicada, igual que las demás fuentes.
-    if(typeof FACTCL_DATA!=='undefined' && !FACTCL_DATA.length){try{var _fclBk=localStorage.getItem('fodorspa_fcl_v1');if(_fclBk){var _fclBkP=JSON.parse(_fclBk);if(_fclBkP&&_fclBkP.length)FACTCL_DATA=_fclBkP;}}catch(e){}}
+    if(typeof FACTCL_DATA!=='undefined' && !FACTCL_DATA.length){try{var _fclBk=LS.getItem('fodorspa_fcl_v1');if(_fclBk){var _fclBkP=JSON.parse(_fclBk);if(_fclBkP&&_fclBkP.length)FACTCL_DATA=_fclBkP;}}catch(e){}}
     // PERF-BLOB 2026-08-19: ver misma nota en cargarEstado() cifrado.
-    if(typeof BITACORA!=='undefined' && !BITACORA.length){try{var _bitBk=localStorage.getItem('fodorspa_bit_v1');if(_bitBk){var _bitBkP=JSON.parse(_bitBk);if(_bitBkP&&_bitBkP.length)BITACORA=_bitBkP;}}catch(e){}}
-    if(typeof OT_DATA!=='undefined' && !OT_DATA.length){try{var _otBk=localStorage.getItem('fodorspa_ot_v1');if(_otBk){var _otBkP=JSON.parse(_otBk);if(_otBkP&&_otBkP.length)OT_DATA=_otBkP;}}catch(e){}}
+    if(typeof BITACORA!=='undefined' && !BITACORA.length){try{var _bitBk=LS.getItem('fodorspa_bit_v1');if(_bitBk){var _bitBkP=JSON.parse(_bitBk);if(_bitBkP&&_bitBkP.length)BITACORA=_bitBkP;}}catch(e){}}
+    if(typeof OT_DATA!=='undefined' && !OT_DATA.length){try{var _otBk=LS.getItem('fodorspa_ot_v1');if(_otBk){var _otBkP=JSON.parse(_otBk);if(_otBkP&&_otBkP.length)OT_DATA=_otBkP;}}catch(e){}}
     try{var _ktBk=localStorage.getItem('_fsp_kommo_tel');if(_ktBk){var _ktBkP=JSON.parse(_ktBk);if(_ktBkP&&typeof _ktBkP==='object')KOMMO_TEL=_ktBkP;}}catch(e){}
     if(saved.METAS) METAS = Object.assign({recMensual:0,contactosDiarios:0,ventaPorVendedor:{}}, saved.METAS);
     if(saved.TRF_DESCARTES) TRF_DESCARTES = saved.TRF_DESCARTES;
@@ -1852,8 +1960,8 @@ function guardarEstado(){
     // GETNET_DATA y MP_DATA se dejan: no tienen otro punto de guardado propio
     // (GetNet se modifica en 3 lugares distintos — import, borrar, reparar — y este
     // es el único punto común a los tres).
-    try{if(typeof GETNET_DATA!=='undefined'&&GETNET_DATA.length)localStorage.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
-    try{if(typeof MP_DATA!=='undefined'&&MP_DATA.length)localStorage.setItem('fodorspa_mp_v1',JSON.stringify(MP_DATA));}catch(e){}
+    try{if(typeof GETNET_DATA!=='undefined'&&GETNET_DATA.length)LS.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
+    try{if(typeof MP_DATA!=='undefined'&&MP_DATA.length)LS.setItem('fodorspa_mp_v1',JSON.stringify(MP_DATA));}catch(e){}
     // Guardar TRF_DATA delta (solo IDs nuevos, no los hardcodeados) en clave propia
     try{
       var _hardIds=new Set(_R26 ? [] : []);
@@ -1864,7 +1972,7 @@ function guardarEstado(){
       if(typeof _TRF_BASE_COUNT!=='undefined' && TRF_DATA.length>_TRF_BASE_COUNT){
         _trfDelta=TRF_DATA.slice(0,TRF_DATA.length-_TRF_BASE_COUNT);
       }
-      if(_trfDelta.length>0) localStorage.setItem('fodorspa_trf_delta_v1',JSON.stringify(_trfDelta));
+      if(_trfDelta.length>0) LS.setItem('fodorspa_trf_delta_v1',JSON.stringify(_trfDelta));
     }catch(e){}
     // ── NÚCLEO DEL ESTADO ────────────────────────────────────────────────
     // Acá viven las decisiones del usuario: EST, BORRADAS, TRF_DESCARTES, METAS.
@@ -1888,8 +1996,8 @@ function guardarEstado(){
       _cuotaLlena = true;
       try{
         // La caché TRF es solo velocidad: el listener la recupera de Firebase.
-        localStorage.removeItem('fodorspa_trf_v1');
-        localStorage.removeItem('fodorspa_trf_delta_v1');
+        LS.removeItem('fodorspa_trf_v1');
+        LS.removeItem('fodorspa_trf_delta_v1');
         localStorage.setItem(STORAGE_KEY, _nucleo);
         _nucleoOk = true;
         console.warn('[FODOR] Cuota de localStorage llena: se liberó la caché de transferencias para poder guardar el estado.');
@@ -1901,9 +2009,9 @@ function guardarEstado(){
     // Caché de transferencias — solo si el núcleo cupo y no venimos de liberar espacio.
     // Si acabamos de liberar para que entrara el núcleo, reescribirla lo volvería a llenar.
     if(_nucleoOk && !_cuotaLlena){
-      try{if(TRF_DATA.length>0)localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e_trf){
+      try{if(TRF_DATA.length>0)LS.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e_trf){
         // Si TRF_DATA es demasiado grande, guardar solo los primeros 2000 registros
-        try{localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}
+        try{LS.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}
       }
     }
 
@@ -5752,7 +5860,13 @@ var _provSort = {key:'fecha', dir:-1};
 var CARTOLA_DATA = [];
 
 // INIT — deferido hasta después del unlock
-window._appInit = function(){
+// MIGRACION-INDEXEDDB 2026-08-26: se espera LS.ready() antes de cargar datos
+// para que TRF_DATA/BITACORA/COT_DATA/etc. (ya migrados a IndexedDB) estén
+// disponibles en memoria antes de que cargarEstado() los lea. La demora es de
+// milisegundos (abrir IndexedDB + leer), no afecta la pantalla de login (que
+// ya pasó antes de que esto se llame) ni ningún otro comportamiento visible.
+window._appInit = async function(){
+  try{ await LS.ready(); }catch(e){ console.error('LS.ready():',e); }
   // VERSION-CHIP 2026-07-25: el chip toma la versión real del título, nunca se desactualiza
   try{ var _cv=document.getElementById('chipVersion'), _m=(document.title||'').match(/v20\d\d-[\d-]+[A-Z]?/); if(_cv&&_m) _cv.textContent=_m[0]; }catch(e){}
   try { cargarEstado(); } catch(e){ console.error('cargarEstado:',e); }
@@ -8754,7 +8868,7 @@ function _fbSetEstado(campos, opciones){
         if(_fcl&&_fcl.length>0){
           if(FACTCL_DATA.length===0){ FACTCL_DATA=_fcl; }
           else{ var _fclSet=new Set(FACTCL_DATA.map(function(r){return r.id;})); _fcl.forEach(function(r){if(!_fclSet.has(r.id))FACTCL_DATA.push(r);}); }
-          try{localStorage.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(e){}
+          try{LS.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(e){}
         }
       }catch(e){} }
       // FIX-D26: Cargar facturas D26 desde Firebase (incluye 16-30 junio, 1368 items)
@@ -8792,7 +8906,7 @@ function _fbSetEstado(campos, opciones){
         var _pv=JSON.parse(data.PROV_DATA);
         if(_pv&&_pv.length>PROV_DATA.length){
           PROV_DATA=_pv;
-          try{localStorage.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));}catch(e){}
+          try{LS.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));}catch(e){}
           try{ if(typeof renderProveedores==='function'&&document.getElementById('provBody')) renderProveedores(); }catch(e){}
         }
       }catch(e){} }
@@ -8804,7 +8918,7 @@ function _fbSetEstado(campos, opciones){
         if(_ot&&_ot.length>0){
           if(OT_DATA.length===0){ OT_DATA=_ot; }
           else{ var _otSet=new Set(OT_DATA.map(function(r){return r.id;})); _ot.forEach(function(r){if(!_otSet.has(r.id))OT_DATA.push(r);}); }
-          try{localStorage.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
+          try{LS.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
         }
       }catch(e){} }
       // FF_DATA: Sincronizar envíos Fodor Fast desde Firebase
@@ -8814,7 +8928,7 @@ function _fbSetEstado(campos, opciones){
           if(FF_DATA.length===0){FF_DATA=_ff;}
           else{var _ffSet=new Set(FF_DATA.map(function(r){return r.id;}));_ff.forEach(function(r){if(!_ffSet.has(r.id))FF_DATA.push(r);});}
           FF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});
-          try{localStorage.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
+          try{LS.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
         }
       }catch(e){}}
       // FIX-TRF-EST-SYNC: Reconciliar TRF vinculadas con estado pagado en EST
@@ -9934,7 +10048,7 @@ function renderGetnet(){
       <button onclick="exportarCotizXls()" style="background:#166534;color:white;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700;">📥 Exportar Excel</button>
       <button onclick="document.getElementById('cotXlsInput').click()" style="background:#7c3aed;color:white;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700;">📂 Importar Excel</button>
       <input type="file" id="cotXlsInput" accept=".xlsx,.xls" style="display:none" onchange="importarCotizXls(event)">
-      <button onclick="if(confirm('¿Eliminar TODAS las cotizaciones? Esto no se puede deshacer.')){COT_DATA=[];guardarEstado();try{localStorage.removeItem('fodorspa_cot_v1');}catch(e){}renderCotiz();}" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px;" title="Eliminar todos los datos de cotizaciones">🗑 Limpiar</button>
+      <button onclick="if(confirm('¿Eliminar TODAS las cotizaciones? Esto no se puede deshacer.')){COT_DATA=[];guardarEstado();try{LS.removeItem('fodorspa_cot_v1');}catch(e){}renderCotiz();}" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px;" title="Eliminar todos los datos de cotizaciones">🗑 Limpiar</button>
       <button onclick="abrirNuevaCot()" style="background:var(--verde);color:white;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:700;">+ Nueva Cotización</button>
     </div>
   </div>
@@ -10670,7 +10784,7 @@ function importarCartolaBanco(event){
       }
       CARTOLA_DATA.sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
       guardarEstado();
-      try{localStorage.setItem('fodorspa_cart_v1',JSON.stringify(CARTOLA_DATA));}catch(ex){}
+      try{LS.setItem('fodorspa_cart_v1',JSON.stringify(CARTOLA_DATA));}catch(ex){}
       try{ if(_fbDb&&CARTOLA_DATA.length) _fbSetEstado({CARTOLA_DATA:JSON.stringify(CARTOLA_DATA)}); }catch(ex){}
       renderCartola();
       alert('✅ '+nuevas+' movimientos importados.\nTotal en cartola: '+CARTOLA_DATA.length);
@@ -10865,7 +10979,7 @@ function importarFacturacionCL(event){
       FACTCL_DATA.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
       // FIX-PERSISTENCIA-FCL 2026-08-19: antes esto solo quedaba en memoria y se
       // perdía al recargar la página o abrir el Panel en otra pestaña.
-      try{localStorage.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
+      try{LS.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
       try{ if(_fbDb) _fbSetEstado({FACTCL_DATA:JSON.stringify(FACTCL_DATA)}); }catch(ex){}
       renderFactCL();
       alert('✅ '+nuevos+' documentos cargados'+(skip?' ('+skip+' ya existían)':''));
@@ -11146,7 +11260,7 @@ function agregarFactCLIndividual(folio){
 function limpiarFactCL(){
   if(!confirm('¿Limpiar todos los documentos cargados de Facturación.cl?')) return;
   FACTCL_DATA=[];
-  try{localStorage.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
+  try{LS.setItem('fodorspa_fcl_v1',JSON.stringify(FACTCL_DATA));}catch(ex){}
   try{ if(_fbDb) _fbSetEstado({FACTCL_DATA:JSON.stringify(FACTCL_DATA)}); }catch(ex){}
   renderFactCL();
 }
@@ -11957,8 +12071,8 @@ function mantenimientoLimpiarPagos(){
     // ── 4. RECIÉN AHORA memoria y localStorage ──
     WEBPAY_DATA = wpNuevo;
     MP_DATA = mpNuevo;
-    try{ localStorage.setItem('fodorspa_wp_v1', JSON.stringify(WEBPAY_DATA)); }catch(e){}
-    try{ localStorage.removeItem('fodorspa_mp_v1'); }catch(e){}
+    try{ LS.setItem('fodorspa_wp_v1', JSON.stringify(WEBPAY_DATA)); }catch(e){}
+    try{ LS.removeItem('fodorspa_mp_v1'); }catch(e){}
     if(typeof BITACORA!=='undefined'){
       BITACORA.unshift({ts:new Date().toISOString(),tipo:'🧹',autor:CURRENT_USER||'Sistema',folio:'',empresa:'',
         nota:'Mantenimiento: '+c.wpElim+' duplicados WebPay y '+c.mpCorruptos+' registros corruptos de MercadoPago eliminados',compromisoFecha:''});
@@ -12333,9 +12447,9 @@ function sortProv(key){
 // ══════════════════════════════════════════════════════════════════════════
 function _provGuardarLocal(){
   try{
-    localStorage.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));
+    LS.setItem('fodorspa_prov_v1',JSON.stringify(PROV_DATA));
     // Releer: setItem puede fallar de formas que no lanzan en todos los navegadores.
-    var _v=JSON.parse(localStorage.getItem('fodorspa_prov_v1')||'[]');
+    var _v=JSON.parse(LS.getItem('fodorspa_prov_v1')||'[]');
     if(_v.length!==PROV_DATA.length){
       console.error('[FODOR] PROV: el respaldo local quedo incompleto ('+_v.length+' de '+PROV_DATA.length+')');
       return false;
@@ -12449,7 +12563,7 @@ function limpiarProveedores(){
   if(!confirm('¿Eliminar todos los registros de proveedores?')) return;
   PROV_DATA = [];
   guardarEstado();
-  try{localStorage.removeItem('fodorspa_prov_v1');}catch(e){}
+  try{LS.removeItem('fodorspa_prov_v1');}catch(e){}
   renderProveedores();
 }
 
@@ -12903,7 +13017,7 @@ function _procesarFilasCot(rows){
     nuevas++;
   }
   guardarEstado();
-  try{localStorage.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
+  try{LS.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
   renderCotiz();
   var det='Cabeceras detectadas en fila '+(hdrIdx+1)+':\n'+hdrs.filter(function(h){return h;}).slice(0,8).join(' | ');
   var mapeo='\nMapeo: Cliente=col'+(iCli+1)+' Fecha=col'+(iFecha+1)+' Monto=col'+(iMonto+1)+' Estado=col'+(iEst+1);
@@ -13625,7 +13739,7 @@ function _renderDetectorInconsistencias(contenedor) {
 
 function renderFodorFast(){
   // Cargar desde localStorage si vacío
-  if(!FF_DATA.length){try{var r=localStorage.getItem('fodorspa_ff_v1');if(r){var p=JSON.parse(r);if(p&&p.length)FF_DATA=p;}}catch(e){}}
+  if(!FF_DATA.length){try{var r=LS.getItem('fodorspa_ff_v1');if(r){var p=JSON.parse(r);if(p&&p.length)FF_DATA=p;}}catch(e){}}
   var hoy=_localHoy();
   var mes=hoy.slice(0,7);
   var busq=(document.getElementById('ffBusq')||{}).value||'';
@@ -13729,7 +13843,7 @@ function ffGuardarEnvio(){
   } else {
     FF_DATA.unshift(envio);
   }
-  try{localStorage.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
+  try{LS.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
   try{if(_fbDb)_fbSetEstado({FF_DATA:JSON.stringify(FF_DATA)});}catch(e){}
   guardarEstado();
   // Si vino de Kommo, señalar reset de ENVÍOS para que kommo-sync.js lo desmarque
@@ -13760,7 +13874,7 @@ function ffEditarEnvio(id){
 function ffEliminarEnvio(id){
   if(!confirm('¿Eliminar este envío?'))return;
   FF_DATA=FF_DATA.filter(function(e){return e.id!==id;});
-  try{localStorage.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
+  try{LS.setItem('fodorspa_ff_v1',JSON.stringify(FF_DATA));}catch(e){}
   try{if(_fbDb)_fbSetEstado({FF_DATA:JSON.stringify(FF_DATA)});}catch(e){}
   guardarEstado();
   renderFodorFast();
@@ -13920,7 +14034,7 @@ function guardarCot(){
     COT_DATA.push({id:'COT-'+Date.now(),numero:numero,fecha:fecha,monto:monto,cliente:cliente,rut:rut,contacto:contacto,email:email,estado:estado,descripcion:desc,notas:notas,fechaEstado:fecha,ts:new Date().toISOString()});
   }
   guardarEstado();
-  try{localStorage.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
+  try{LS.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
   cerrarModalCot();
   renderCotiz();
 }
@@ -13929,7 +14043,7 @@ function eliminarCot(id){
   if(!confirm('¿Eliminar esta cotización?')) return;
   COT_DATA=COT_DATA.filter(function(x){return x.id!==id;});
   guardarEstado();
-  try{localStorage.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
+  try{LS.setItem('fodorspa_cot_v1',JSON.stringify(COT_DATA));}catch(e){}
   renderCotiz();
 }
 
@@ -14496,7 +14610,7 @@ var _INV_INICIAL = [
 
 function invCargarDesdeBackup(){
   try{
-    var _bk=localStorage.getItem('_fsp_inv_bk');
+    var _bk=LS.getItem('_fsp_inv_bk');
     if(!_bk){alert('No hay datos guardados en este dispositivo.\n\nCarga el stock desde Excel para comenzar.');return;}
     var _bkP=JSON.parse(_bk);
     if(!_bkP.INV_DATA||!_bkP.INV_DATA.length){alert('El backup está vacío.');return;}
@@ -14511,7 +14625,7 @@ function _invInit(){
   if(!INV_DATA||!INV_DATA.length){
     // Intentar recuperar desde localStorage antes de resetear a 0
     try{
-      var _bk=localStorage.getItem('_fsp_inv_bk');
+      var _bk=LS.getItem('_fsp_inv_bk');
       if(_bk){
         var _bkP=JSON.parse(_bk);
         if(_bkP.INV_DATA&&_bkP.INV_DATA.length){
@@ -14582,7 +14696,7 @@ function invGuardarEdicion(id){
     INV_HIST.unshift({ts:new Date().toISOString(),prod:nombre,tipo:'Edición',cant:cant,anterior:0,nota:cambios.join(' | ')});
   }
   guardarEstado();
-  try{localStorage.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
+  try{LS.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
   document.getElementById('invModalEditar').remove();
   renderInventario();
 }
@@ -14634,7 +14748,7 @@ function invGuardarNuevoProducto(){
     INV_HIST.unshift({ts:new Date().toISOString(),prod:nombre,tipo:'Alta producto',cant:cant,anterior:0,nota:'Producto creado'});
   }
   guardarEstado();
-  try{localStorage.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
+  try{LS.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
   document.getElementById('invModalNuevo').remove();
   renderInventario();
 }
@@ -14776,7 +14890,7 @@ function invMovimiento(id,tipo){
   else p.cant=Math.max(0,p.cant-cant);
   INV_HIST.unshift({fecha:new Date().toISOString(),tipo:tipo,id:id,nombre:p.nombre,cantidad:cant,ref:ref});
   guardarEstado();
-  try{localStorage.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
+  try{LS.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
   renderInventario();
   alert('✅ '+cant.toLocaleString('es-CL')+' uds '+(tipo==='entrada'?'ingresadas a':'descontadas de')+' '+p.nombre+'\nNuevo stock: '+p.cant.toLocaleString('es-CL'));
 }
@@ -14874,7 +14988,7 @@ function invCargarVentas(event){
               INV_HIST.unshift({fecha:new Date().toISOString(),tipo:'venta',id:m.p.id,nombre:m.p.nombre,cantidad:m.cant,ref:'Informe ventas'});
             });
             guardarEstado();
-            try{localStorage.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
+            try{LS.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
             if(msg)msg.textContent='✅ '+movs.length+' productos descontados';
           }
         }
@@ -14933,7 +15047,7 @@ function invGuardarMapeo(){
       INV_HIST.unshift({fecha:new Date().toISOString(),tipo:'venta',id:m.p.id,nombre:m.p.nombre,cantidad:m.cant,ref:'Informe ventas (mapeado)'});
     });
     guardarEstado();
-    try{localStorage.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
+    try{LS.setItem('_fsp_inv_bk',JSON.stringify({INV_DATA:INV_DATA,INV_HIST:INV_HIST,INV_MAPEO:INV_MAPEO}));}catch(e){}
     alert('✅ '+movs.length+' productos descontados. Mapeo guardado para el próximo informe.');
   }
   modal.style.display='none';
@@ -15682,7 +15796,7 @@ cargarEstado = function(){
     if(s.BORRADAS25)   BORRADAS25   = s.BORRADAS25;
     if(s.TRF_DATA&&s.TRF_DATA.length){ TRF_DATA=s.TRF_DATA.filter(function(t){return(t.monto||0)>=100;});TRF_DATA.sort(function(a,b){return(b.fecha||'').localeCompare(a.fecha||'');});}
     // FIX-TRF-CRYPT 2026-07-24: el cache cifrado no incluye TRF_DATA; cargar respaldo dedicado si es mayor
-    try{var _trfC=localStorage.getItem('fodorspa_trf_v1');if(_trfC){var _trfCP=JSON.parse(_trfC);if(_trfCP&&_trfCP.length>TRF_DATA.length){TRF_DATA=_trfCP.filter(function(t){return (t.monto||0)>=100;});TRF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});repararTrfIds();}}}catch(e){}
+    try{var _trfC=LS.getItem('fodorspa_trf_v1');if(_trfC){var _trfCP=JSON.parse(_trfC);if(_trfCP&&_trfCP.length>TRF_DATA.length){TRF_DATA=_trfCP.filter(function(t){return (t.monto||0)>=100;});TRF_DATA.sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'');});repararTrfIds();}}}catch(e){}
     if(s.D26_EXTRA&&s.D26_EXTRA.length){ s.D26_EXTRA.forEach(function(r){if(!D26_EXTRA.find(function(x){return String(x.folio)===String(r.folio);})&&!D26.find(function(x){return String(x.folio)===String(r.folio);})){D26_EXTRA.push(r);D26.push(r);}});}
     if(s.WEBPAY_DATA&&s.WEBPAY_DATA.length)   WEBPAY_DATA      = s.WEBPAY_DATA;
     if(s.GETNET_DATA&&s.GETNET_DATA.length)    GETNET_DATA      = s.GETNET_DATA;
@@ -15697,19 +15811,19 @@ cargarEstado = function(){
     if(s.INV_DATA && s.INV_DATA.length) INV_DATA = s.INV_DATA;
     if(s.INV_HIST) INV_HIST = s.INV_HIST;
     if(s.INV_MAPEO) INV_MAPEO = s.INV_MAPEO;
-    if(!COT_DATA.length){try{var _cotBk2=localStorage.getItem('fodorspa_cot_v1');if(_cotBk2){var _cotBk2P=JSON.parse(_cotBk2);if(_cotBk2P.length)COT_DATA=_cotBk2P;}}catch(e){}}
+    if(!COT_DATA.length){try{var _cotBk2=LS.getItem('fodorspa_cot_v1');if(_cotBk2){var _cotBk2P=JSON.parse(_cotBk2);if(_cotBk2P.length)COT_DATA=_cotBk2P;}}catch(e){}}
     // ── Fallback a claves dedicadas si cache cifrado no las tiene ──
-    if(!WEBPAY_DATA.length){try{var _wpC=localStorage.getItem('fodorspa_wp_v1');if(_wpC){var _wpCP=JSON.parse(_wpC);if(_wpCP&&_wpCP.length)WEBPAY_DATA=_wpCP;}}catch(e){}}
-    if(!CARTOLA_DATA.length){try{var _caC=localStorage.getItem('fodorspa_cart_v1');if(_caC){var _caCP=JSON.parse(_caC);if(_caCP&&_caCP.length)CARTOLA_DATA=_caCP;}}catch(e){}}
+    if(!WEBPAY_DATA.length){try{var _wpC=LS.getItem('fodorspa_wp_v1');if(_wpC){var _wpCP=JSON.parse(_wpC);if(_wpCP&&_wpCP.length)WEBPAY_DATA=_wpCP;}}catch(e){}}
+    if(!CARTOLA_DATA.length){try{var _caC=LS.getItem('fodorspa_cart_v1');if(_caC){var _caCP=JSON.parse(_caC);if(_caCP&&_caCP.length)CARTOLA_DATA=_caCP;}}catch(e){}}
     // FIX-PERSISTENCIA-FCL 2026-08-19: ver misma nota en cargarEstado() plano.
-    if(!FACTCL_DATA.length){try{var _fclC=localStorage.getItem('fodorspa_fcl_v1');if(_fclC){var _fclCP=JSON.parse(_fclC);if(_fclCP&&_fclCP.length)FACTCL_DATA=_fclCP;}}catch(e){}}
-    if(!GETNET_DATA.length){try{var _gnC=localStorage.getItem('fodorspa_gn_v1');if(_gnC){var _gnCP=JSON.parse(_gnC);if(_gnCP&&_gnCP.length)GETNET_DATA=_gnCP;}}catch(e){}}
+    if(!FACTCL_DATA.length){try{var _fclC=LS.getItem('fodorspa_fcl_v1');if(_fclC){var _fclCP=JSON.parse(_fclC);if(_fclCP&&_fclCP.length)FACTCL_DATA=_fclCP;}}catch(e){}}
+    if(!GETNET_DATA.length){try{var _gnC=LS.getItem('fodorspa_gn_v1');if(_gnC){var _gnCP=JSON.parse(_gnC);if(_gnCP&&_gnCP.length)GETNET_DATA=_gnCP;}}catch(e){}}
     // FIX-PROV-PERSIST 2026-08-21: se quita el candado !PROV_DATA.length (tapaba el respaldo bueno).
-    try{var _pvC=localStorage.getItem('fodorspa_prov_v1');if(_pvC){var _pvCP=JSON.parse(_pvC);if(_pvCP&&_pvCP.length>PROV_DATA.length)PROV_DATA=_pvCP;}}catch(e){}
+    try{var _pvC=LS.getItem('fodorspa_prov_v1');if(_pvC){var _pvCP=JSON.parse(_pvC);if(_pvCP&&_pvCP.length>PROV_DATA.length)PROV_DATA=_pvCP;}}catch(e){}
     // PERF-BLOB 2026-08-19: BITACORA y OT_DATA salen del blob cifrado (crecían sin
     // límite / nunca se guardaban aparte) — ver nota completa junto a guardarEstado.
-    if(!BITACORA.length){try{var _bitC=localStorage.getItem('fodorspa_bit_v1');if(_bitC){var _bitCP=JSON.parse(_bitC);if(_bitCP&&_bitCP.length)BITACORA=_bitCP;}}catch(e){}}
-    if(!OT_DATA.length){try{var _otC=localStorage.getItem('fodorspa_ot_v1');if(_otC){var _otCP=JSON.parse(_otC);if(_otCP&&_otCP.length)OT_DATA=_otCP;}}catch(e){}}
+    if(!BITACORA.length){try{var _bitC=LS.getItem('fodorspa_bit_v1');if(_bitC){var _bitCP=JSON.parse(_bitC);if(_bitCP&&_bitCP.length)BITACORA=_bitCP;}}catch(e){}}
+    if(!OT_DATA.length){try{var _otC=LS.getItem('fodorspa_ot_v1');if(_otC){var _otCP=JSON.parse(_otC);if(_otCP&&_otCP.length)OT_DATA=_otCP;}}catch(e){}}
     var el=document.getElementById('lastSave');
     if(el&&s.ts) el.textContent='Última actualización: '+new Date(s.ts).toLocaleString('es-CL');
     (function(){
@@ -15729,14 +15843,14 @@ guardarEstado = function(){
   // realmente se modifica), así que repetirlo en cada una de las 96 llamadas a
   // guardarEstado() de toda la app era trabajo duplicado, no una protección real.
   // GETNET_DATA y TRF_DATA se dejan: no tienen otro punto de guardado propio.
-  try{if(GETNET_DATA&&GETNET_DATA.length)localStorage.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
+  try{if(GETNET_DATA&&GETNET_DATA.length)LS.setItem('fodorspa_gn_v1',JSON.stringify(GETNET_DATA));}catch(e){}
   // FIX-TRF-CRYPT 2026-07-24: guardar TRF_DATA en su clave dedicada también en modo cifrado
-  try{if(TRF_DATA&&TRF_DATA.length)localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e){try{localStorage.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}}
+  try{if(TRF_DATA&&TRF_DATA.length)LS.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA));}catch(e){try{LS.setItem('fodorspa_trf_v1',JSON.stringify(TRF_DATA.slice(0,2000)));}catch(e2){}}
   // PERF-BLOB 2026-08-19: BITACORA y OT_DATA salen del bloque cifrado (ver nota completa
   // más abajo) — igual que GETNET_DATA/TRF_DATA arriba, no tienen otro punto de guardado
   // local propio, así que se guardan acá en su propia clave dedicada.
-  try{if(BITACORA&&BITACORA.length)localStorage.setItem('fodorspa_bit_v1',JSON.stringify(BITACORA));}catch(e){}
-  try{if(OT_DATA&&OT_DATA.length)localStorage.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
+  try{if(BITACORA&&BITACORA.length)LS.setItem('fodorspa_bit_v1',JSON.stringify(BITACORA));}catch(e){}
+  try{if(OT_DATA&&OT_DATA.length)LS.setItem('fodorspa_ot_v1',JSON.stringify(OT_DATA));}catch(e){}
   // ── TRF_DATA NO se incluye en cifrado (está hardcodeado en HTML = 2MB innecesarios) ──
   //
   // ── D26_EXTRA TAMPOCO, DESDE EL 04-08-2026 ─────────────────────────────────
@@ -15836,7 +15950,7 @@ guardarEstado = function(){
       try{ _motivo += '  ·  intentaba guardar ' + Math.round(cipher.length/1024) + ' KB'; }catch(e){}
     }
 
-    try{if(data.COT_DATA&&data.COT_DATA.length)localStorage.setItem('fodorspa_cot_v1',JSON.stringify(data.COT_DATA));}catch(e){}
+    try{if(data.COT_DATA&&data.COT_DATA.length)LS.setItem('fodorspa_cot_v1',JSON.stringify(data.COT_DATA));}catch(e){}
 
     var el=document.getElementById('lastSave');
     if(_guardoOk){

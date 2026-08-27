@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-27_10:18</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-27_16:10</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-27_10:18</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-27_16:10</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -2454,7 +2454,7 @@ function notaRowHtml(folio, ncols, obsFactura){
     var nota=last.nota||'';
     var fecha=last.ts?last.ts.substring(0,10):'';
     var comp=last.compromisoFecha?' | 💰 Paga: '+last.compromisoFecha:'';
-    lines.push('<span style="display:inline-block;background:#d32f2f;color:#fff;font-weight:800;font-size:13px;letter-spacing:0.3px;padding:4px 12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.25);text-transform:uppercase">📋 '+tipo+(nota?' — '+nota:'')+(fecha?' ('+fecha+')':'')+comp+'</span>');
+    lines.push('<span style="color:#c62828;font-weight:700">📋 '+tipo+(nota?' — '+nota:'')+(fecha?' ('+fecha+')':'')+comp+'</span>');
   }
   // Observación del Excel (siempre si existe)
   if(obsFactura && obsFactura.trim().length>0){
@@ -2463,8 +2463,8 @@ function notaRowHtml(folio, ncols, obsFactura){
     lines.push('<span style="color:#546e7a;">💳 '+obs+'</span>');
   }
   if(lines.length===0) return '';
-  return '<tr><td colspan="'+ncols+'" style="background:#ffe9e9;padding:9px 14px 10px 22px;border-left:6px solid #d32f2f;border-bottom:2px solid #ffb3b3;">'
-    +'<div style="font-size:11px;line-height:2">'+lines.join('<br>')+'</div>'
+  return '<tr><td colspan="'+ncols+'" style="background:#fff8f8;padding:5px 14px 6px 28px;border-bottom:2px solid #ffd0d0;">'
+    +'<div style="font-size:10px;line-height:1.6">'+lines.join('<br>')+'</div>'
     +'</td></tr>';
 }
 function f26(){
@@ -2479,12 +2479,13 @@ function f26(){
     var notaHtml='';
     if(r.nota&&r.nota.length>0&&r.nota.indexOf('Fodor Spa Rut')<0&&r.nota.indexOf('76515816')<0){
       var esPago=r.nota.indexOf('Pago registrado')>=0||r.nota.indexOf('TRF:')>=0||r.nota.indexOf('WebPay')>=0;
-      var notaCorta=r.nota.length>42?r.nota.substring(0,42)+'…':r.nota;
+      var notaCorta=r.nota.length>120?r.nota.substring(0,120)+'…':r.nota;
       var notaFull=r.nota.replace(/"/g,'&quot;');
-      var bg=esPago?'#dbeafe':'#fef3c7';
-      var color=esPago?'#1d4ed8':'#92400e';
+      var bg=esPago?'#dbeafe':'#fde68a';
+      var color=esPago?'#1d4ed8':'#7c2d12';
+      var bd=esPago?'#3b82f6':'#f59e0b';
       var icono=esPago?'💳':'📋';
-      notaHtml='<br><span title="'+notaFull+'" style="display:inline-block;margin-top:3px;background:'+bg+';color:'+color+';padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;cursor:pointer;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+icono+' '+notaCorta+'</span>';
+      notaHtml='<br><span title="'+notaFull+'" style="display:inline-block;margin-top:5px;background:'+bg+';color:'+color+';border:2px solid '+bd+';padding:5px 10px;border-radius:8px;font-size:13px;line-height:1.45;font-weight:800;cursor:pointer;max-width:380px;white-space:normal;word-break:break-word;box-shadow:0 1px 3px rgba(0,0,0,0.18)">'+icono+' '+notaCorta+'</span>';
     }
     let tr='';
     if(est.urgente){tr='urg';uc++;} else if(d>30) tr='urg'; else if(d>7) tr='med';

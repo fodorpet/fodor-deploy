@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-27_16:33</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-28_12:20</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-27_16:33</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-28_12:20</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -2650,7 +2650,7 @@ function f26(){
           <button onclick="openMod('${r.folio}')" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Gestionar">📝</button>
           <button onclick="event.stopPropagation();handlePagBtn('${r.folio}')" style="background:#16a34a;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Marcar Pagado">✅</button>
           <button onclick="event.stopPropagation();enviarEmailCobranza('${r.folio}')" style="background:#7c3aed;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Email Outlook">📧</button>
-          <button onclick="event.stopPropagation();enviarATrello('${r.folio}')" style="background:#0052cc;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar a Trello">🟦</button>
+          <button onclick="event.stopPropagation();enviarATrello('${r.folio}')" style="background:#0052cc;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar a Trello">🟦</button><button onclick="event.stopPropagation();notaVendedorWsp('${r.folio}')" style="background:#25d366;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Preguntar al vendedor cómo está pagada">🧾</button>
         </div>
       <td><button class="bborra" onclick="borrarFila('${r.folio}')" title="Eliminar">✕</button></td>
     </tr>${notaRowHtml(r.folio,11,r.nota)}`;
@@ -4259,6 +4259,7 @@ function renderDM(){
         <td><div class="accs">
           ${r.correo?`<button class="ba bcorreo" onclick="envC('${r.folio}')">📧</button>`:''}
           <button class="ba bwsp" onclick="abrirWsp('${r.folio}')" title="WhatsApp">💬</button>
+          <button class="ba bwsp" onclick="event.stopPropagation();notaVendedorWsp('${r.folio}')" title="Preguntar al vendedor cómo está pagada">🧾</button>
           <button class="ba bseg" onclick="openMod('${r.folio}')">📝</button>
           <button class="ba bpag" onclick="handlePagBtn('${r.folio}')">✅</button>
         </div></td>
@@ -5377,7 +5378,7 @@ function fmes(m){
       <td class="tv">${shortVend(r.vendedor)}</td>
       <td class="tpago" title="${r.forma_pago}">${r.forma_pago||'—'}</td>
       <td><span class="eg-badge eg-${estGest25.replace(/[^a-zA-Z0-9-]/g,'')}" onclick="abrirEstDrop('${r.folio}',this)" style="cursor:pointer;user-select:none">${ico25} ${estGest25} ▾</span></td>
-      <td><div style="display:flex;gap:4px;align-items:center;justify-content:center;"><button onclick="openMod('${r.folio}')" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Gestionar">📝</button><button onclick="event.stopPropagation();handlePagBtn('${r.folio}')" style="background:#16a34a;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Marcar pagado">✅</button><button onclick="event.stopPropagation();enviarEmailCobranza('${r.folio}')" style="background:#7c3aed;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar email">📧</button><button onclick="event.stopPropagation();enviarATrello('${r.folio}')" style="background:#0052cc;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar a Trello">🟦</button></div></td>
+      <td><div style="display:flex;gap:4px;align-items:center;justify-content:center;"><button onclick="openMod('${r.folio}')" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Gestionar">📝</button><button onclick="event.stopPropagation();handlePagBtn('${r.folio}')" style="background:#16a34a;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Marcar pagado">✅</button><button onclick="event.stopPropagation();enviarEmailCobranza('${r.folio}')" style="background:#7c3aed;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar email">📧</button><button onclick="event.stopPropagation();enviarATrello('${r.folio}')" style="background:#0052cc;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar a Trello">🟦</button><button onclick="event.stopPropagation();notaVendedorWsp('${r.folio}')" style="background:#25d366;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Preguntar al vendedor cómo está pagada">🧾</button></div></td>
     </tr>${notaRowHtml(r.folio,8,r.nota||r.forma_pago)}`;
   });
   document.getElementById('tb'+m).innerHTML=html;
@@ -16499,5 +16500,81 @@ setTimeout(_initPanelBtns, 600);
 
 
 <!-- BLOQUE VISTA DIFERENCIAS ELIMINADO 2026-08-28 (solicitud usuario). Respaldo: backups/index.html.pre-quitar-tabs-* -->
+
+<script>
+/* ==== NOTA AL VENDEDOR POR WHATSAPP - 2026-08-28 - ADITIVO, SOLO LECTURA ====
+   Abre WhatsApp con el numero fijo configurado y el mensaje ya escrito.
+   El envio lo confirma la persona (wa.me no envia solo).
+   Clic normal: usa el numero guardado (lo pide la 1a vez).
+   Alt/Option + clic: permite cambiar el numero.
+   No modifica datos, contratos ni funciones existentes.                     */
+(function(){
+  var LSKEY = 'fodorspa_wsp_vendedor_v1';
+  var NUM_DEFECTO = '56984798382';
+  function _lee(){
+    try{ return (window.LS&&LS.getItem?LS.getItem(LSKEY):localStorage.getItem(LSKEY)) || NUM_DEFECTO; }catch(e){ return NUM_DEFECTO; }
+  }
+  function _guarda(v){
+    try{ if(window.LS&&LS.setItem){LS.setItem(LSKEY,v);} else {localStorage.setItem(LSKEY,v);} }catch(e){}
+  }
+  function _limpia(n){ return String(n||'').replace(/[^0-9]/g,''); }
+  function _pideNumero(actual){
+    var txt = prompt('WhatsApp de destino para las notas al vendedor.\nFormato con codigo de pais, sin + ni espacios. Ejemplo: 56912345678', actual||'56');
+    if(txt===null) return null;
+    var n = _limpia(txt);
+    if(n.length < 8){ alert('Numero invalido. Debe incluir codigo de pais, ej: 56912345678'); return null; }
+    _guarda(n); return n;
+  }
+  window.configWspVendedor = function(){ return _pideNumero(_lee()); };
+  window.notaVendedorWsp = function(folio){
+    try{
+      var ev = window.event;
+      var num = _lee();
+      if(!num || (ev && ev.altKey)){ num = _pideNumero(num); }
+      if(!num) return;
+      var lista = [];
+      if(typeof D26!=='undefined' && D26) lista = lista.concat(D26);
+      if(typeof D25!=='undefined' && D25) lista = lista.concat(D25);
+      var r = lista.filter(function(x){ return x && String(x.folio)===String(folio); })[0];
+      if(!r){ alert('Factura no encontrada: '+folio); return; }
+      var empresa  = r.empresa || 'sin empresa';
+      var fecha    = r.fecha || (r.fecha_iso ? r.fecha_iso.split('-').reverse().join('-') : 'sin fecha');
+      var monto    = (typeof fmt==='function') ? fmt(r.saldo||0) : '$'+(Number(r.saldo)||0).toLocaleString('es-CL');
+      var vendedor = r.vendedor || 'sin vendedor asignado';
+      var msg = 'Hola, la factura N\u00b0 '+folio+' \u2014 '+empresa
+              + ', emitida el '+fecha + ', saldo '+monto+'.'
+              + ' Vendedor: '+vendedor+'.'
+              + ' \u00bfMe puedes confirmar c\u00f3mo est\u00e1 pagada?';
+      window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg), '_blank');
+    }catch(e){ alert('No se pudo abrir WhatsApp: '+e.message); }
+  };
+
+  /* Boton dentro del modal de seguimiento. Envuelve openMod sin modificarla. */
+  function _montaBotonModal(folio){
+    try{
+      var emp = document.getElementById('mEmp');
+      if(!emp || !emp.parentNode) return;
+      var b = document.getElementById('btnNotaWspModal');
+      if(!b){
+        b = document.createElement('button');
+        b.id = 'btnNotaWspModal';
+        b.type = 'button';
+        b.style.cssText = 'background:#25d366;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px;';
+        b.textContent = '\ud83e\uddfe Preguntar al vendedor por WhatsApp';
+        emp.parentNode.insertBefore(b, emp.nextSibling);
+      }
+      b.onclick = function(e){ if(e) e.stopPropagation(); window.notaVendedorWsp(folio); };
+    }catch(e){}
+  }
+  var _origOpenMod = window.openMod;
+  if(typeof _origOpenMod === 'function'){
+    window.openMod = function(folio){
+      var out = _origOpenMod.apply(this, arguments);
+      try{ _montaBotonModal(folio); }catch(e){}
+      return out;
+    };
+  }
+})();
+</script>
 </body>
 </html>

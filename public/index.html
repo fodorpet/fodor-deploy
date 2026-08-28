@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-28_12:20</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-28_12:21</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-28_12:20</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-28_12:21</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -4268,6 +4268,7 @@ function renderDM(){
     }).join('');
 
     const mailmasivo=correos?`<button class="ba bcorreo" onclick="envMasivo('${gi}')" title="Correo a todos">📧 Masivo</button>`:'';
+    const wspmasivo=`<button class="ba bwsp" onclick="event.stopPropagation();notaVendedorWspLoteDM('${gi}')" title="Preguntar por TODAS las facturas de este cliente en un solo mensaje">🧾 Todas</button>`;
     html+=`<div class="dm-card">
       <div class="dm-head" onclick="toggleDM(${gi})" id="dmh${gi}">
         <div style="flex:1;min-width:0">
@@ -4282,7 +4283,7 @@ function renderDM(){
           <span class="dm-badge-total">${fmt(total)}</span>
           <span style="font-size:11px;color:${barColor};font-weight:700">${maxDias}d máx</span>
         </div>
-        <div class="dm-accs">${mailmasivo}</div>
+        <div class="dm-accs">${mailmasivo}${wspmasivo}</div>
         <span style="color:var(--gris);font-size:14px">▼</span>
       </div>
       <div class="dm-body" id="dmb${gi}">
@@ -16549,6 +16550,65 @@ setTimeout(_initPanelBtns, 600);
     }catch(e){ alert('No se pudo abrir WhatsApp: '+e.message); }
   };
 
+  /* ---- Envio agrupado: un solo mensaje con varias facturas ---- */
+  var MAX_LOTE = 30;   // tope para no romper el largo de la URL de wa.me
+
+  function _todas(){
+    var l = [];
+    if(typeof D26!=='undefined' && D26) l = l.concat(D26);
+    if(typeof D25!=='undefined' && D25) l = l.concat(D25);
+    return l.filter(function(x){ return x && x.folio; });
+  }
+  function _estaPendiente(f){
+    try{
+      var fb = String(f.folio);
+      if(typeof BORRADAS!=='undefined' && BORRADAS && (BORRADAS.indexOf(f.folio)>=0 || BORRADAS.indexOf(fb)>=0)) return false;
+      if(typeof EST!=='undefined' && EST && ((EST[f.folio]&&EST[f.folio].pagado) || (EST[fb]&&EST[fb].pagado))) return false;
+      return true;
+    }catch(e){ return true; }
+  }
+  function _linea(i, f){
+    var monto = (typeof fmt==='function') ? fmt(f.saldo||0) : '$'+(Number(f.saldo)||0).toLocaleString('es-CL');
+    var fecha = f.fecha || (f.fecha_iso ? f.fecha_iso.split('-').reverse().join('-') : 's/f');
+    return i+'. N\u00b0 '+f.folio+' \u2014 '+(f.empresa||'sin empresa')+', '+fecha+', '+monto;
+  }
+  function _enviaLote(facturas, encabezado){
+    var num = _lee();
+    var ev = window.event;
+    if(!num || (ev && ev.altKey)){ num = _pideNumero(num); }
+    if(!num) return;
+    var pend = (facturas||[]).filter(_estaPendiente);
+    if(!pend.length){ alert('No hay facturas pendientes para enviar.'); return; }
+    var recortado = false;
+    if(pend.length > MAX_LOTE){ pend = pend.slice(0, MAX_LOTE); recortado = true; }
+    var msg = encabezado.replace('{n}', String(pend.length)) + '\n';
+    pend.forEach(function(f,i){ msg += _linea(i+1, f) + '\n'; });
+    if(recortado) msg += '(se muestran las primeras '+MAX_LOTE+')\n';
+    msg += '\n\u00bfMe puedes confirmar c\u00f3mo est\u00e1n pagadas?';
+    window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg), '_blank');
+  }
+
+  /* Todas las facturas de un cliente (tarjeta de Deudores Multiples) */
+  window.notaVendedorWspLoteDM = function(gi){
+    try{
+      var g = (window._dmGroups||[])[gi];
+      if(!g || !g.facturas || !g.facturas.length){ alert('No se encontraron facturas de este cliente.'); return; }
+      _enviaLote(g.facturas, 'Hola, necesito confirmar el pago de {n} facturas de '+(g.empresa||'este cliente')+':');
+    }catch(e){ alert('No se pudo armar el mensaje: '+e.message); }
+  };
+
+  /* Todas las facturas pendientes del mismo vendedor que la factura dada */
+  window.notaVendedorWspVendedor = function(folio){
+    try{
+      var r = _todas().filter(function(x){ return String(x.folio)===String(folio); })[0];
+      if(!r){ alert('Factura no encontrada: '+folio); return; }
+      var v = r.vendedor || '';
+      if(!v){ alert('Esta factura no tiene vendedor asignado.'); return; }
+      var lista = _todas().filter(function(x){ return (x.vendedor||'')===v; });
+      _enviaLote(lista, 'Hola, necesito confirmar el pago de {n} facturas de '+v+':');
+    }catch(e){ alert('No se pudo armar el mensaje: '+e.message); }
+  };
+
   /* Boton dentro del modal de seguimiento. Envuelve openMod sin modificarla. */
   function _montaBotonModal(folio){
     try{
@@ -16564,6 +16624,16 @@ setTimeout(_initPanelBtns, 600);
         emp.parentNode.insertBefore(b, emp.nextSibling);
       }
       b.onclick = function(e){ if(e) e.stopPropagation(); window.notaVendedorWsp(folio); };
+      var b2 = document.getElementById('btnNotaWspVendModal');
+      if(!b2){
+        b2 = document.createElement('button');
+        b2.id = 'btnNotaWspVendModal';
+        b2.type = 'button';
+        b2.style.cssText = 'background:#0d9488;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px;margin-left:6px;';
+        b2.textContent = '\ud83e\uddfe Todas las de este vendedor';
+        b.parentNode.insertBefore(b2, b.nextSibling);
+      }
+      b2.onclick = function(e){ if(e) e.stopPropagation(); window.notaVendedorWspVendedor(folio); };
     }catch(e){}
   }
   var _origOpenMod = window.openMod;

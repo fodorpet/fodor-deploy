@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-27_16:16</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-27_16:33</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -444,7 +444,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 
 
   <div class="sidebar-sep">Pagos</div>
-  <button class="tab-btn" onclick="showTab('tCruceDiario',this);setCruceVista('diario')" id="cruceDiarioBtn" style="background:#1e3a5f;color:#fff;font-weight:800;">🔀 Cruce Diario <span id="cruceBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
+<!-- OCULTO 2026-08-28 (solicitud usuario):   <button class="tab-btn" onclick="showTab('tCruceDiario',this);setCruceVista('diario')" id="cruceDiarioBtn" style="background:#1e3a5f;color:#fff;font-weight:800;">🔀 Cruce Diario <span id="cruceBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button> -->
   <button class="tab-btn" onclick="showTab('tWebpay',this)">💳 WebPay</button>
   <button class="tab-btn" onclick="showTab('tGetnet',this)">🏧 GetNet</button>
   <button class="tab-btn" onclick="showTab('tMercadoPago',this)">🟢 MercadoPago</button>
@@ -455,8 +455,8 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn" onclick="showTab('tVentas',this)">📊 Ventas</button>
   <button class="tab-btn" onclick="showTab('tFactCL',this);renderFactCL()">🧾 Facturación.cl</button>
   <button class="tab-btn" onclick="showTab('tCruceBCI',this);renderCruceBCI()">🔀 Cruce Facturación-Banco</button>
-  <button class="tab-btn" onclick="showTab('tBit',this)">📋 Bitácora</button>
-  <button class="tab-btn" onclick="showTab('tAlm',this)">⏰ Alertas</button>
+<!-- OCULTO 2026-08-28 (solicitud usuario):   <button class="tab-btn" onclick="showTab('tBit',this)">📋 Bitácora</button> -->
+<!-- OCULTO 2026-08-28 (solicitud usuario):   <button class="tab-btn" onclick="showTab('tAlm',this)">⏰ Alertas</button> -->
   <div class="sidebar-sep" id="invSidebarSep">Bodega</div>
   <button class="tab-btn" id="invTabBtn" onclick="showTab('tInventario',this);renderInventario()">📦 Inventario</button>
   <div class="sidebar-sep" style="background:linear-gradient(90deg,#1e3a5f,#0ea5e9);color:#fff;">🚀 Fodor Fast</div>
@@ -499,7 +499,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-27_16:16</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-27_16:33</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -16498,126 +16498,6 @@ setTimeout(_initPanelBtns, 600);
 </script>
 
 
-<script>
-/* ==== VISTA DIFERENCIAS (OEGS CUADRE-001) — SOLO LECTURA, ADITIVA ==== */
-/* No modifica datos ni funciones existentes. Tolerancia de calce: $1 (supuesto a validar). */
-function renderDiferencias(){
-  var TOL=1; // pesos de tolerancia para "monto exacto"
-  var mesEl=document.getElementById('difMes');
-  var mes=mesEl?mesEl.value:'';
-  function nR(r){return (r||'').replace(/[.\s-]/g,'').toUpperCase();}
-  var facts=(D26||[]).filter(function(f){
-    return (typeof BORRADAS==='undefined')||(BORRADAS.indexOf(f.folio)<0&&BORRADAS.indexOf(String(f.folio))<0);
-  });
-  var pend=facts.filter(function(f){var e=(typeof EST!=='undefined'&&EST[f.folio])||{};return !e.pagado;});
-  var pagos=[];
-  var invalidos=[];
-  function add(src,fecha,monto,quien,folio,id,rut){
-    fecha=(fecha||'').slice(0,10);
-    if(!(monto>0))return;
-    if(!fecha||monto>=1e9){invalidos.push({src:src,monto:monto});return;} // registro corrupto: sin fecha o monto absurdo
-    if(mes&&fecha.slice(0,7)!==mes)return;
-    pagos.push({src:src,fecha:fecha,monto:monto,quien:quien||'—',folio:folio||null,id:id,rut:nR(rut||'')});
-  }
-  var _trfK={};(typeof TRF_DATA!=='undefined'?TRF_DATA:[]).forEach(function(t){_trfK[((t.fecha||'')+'').slice(0,10)+'|'+(Number(t.monto)||0)]=1;});
-  var dupBCI=0;
-  (typeof TRF_DATA!=='undefined'?TRF_DATA:[]).forEach(function(t){add('TRF',t.fecha,Number(t.monto)||0,t.origen||t.obs,t.folio,t.id,(function(){var m=((t.obs||'')+'').match(/RUT[:\s]*([\d.]+[-][\dKk])/i);return m?m[1]:'';})());});
-  (typeof WEBPAY_DATA!=='undefined'?WEBPAY_DATA:[]).forEach(function(w){add('WebPay',w.fecha,Number(w.monto)||0,w.nombre,w.folio,w.id||w.codAut,w.rut);});
-  (typeof GETNET_DATA!=='undefined'?GETNET_DATA:[]).forEach(function(g){add('GetNet',g.fecha,Number(g.monto||g.total)||0,g.nombre||g.comercio,g.folio,g.id||g.codAut,g.rut);});
-  (typeof MP_DATA!=='undefined'?MP_DATA:[]).forEach(function(m){add('MP',m.fecha,Number(m.monto)||0,m.cliente,m.folio,m.nOp);});
-  (typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:[]).forEach(function(c){var ab=Number(c.monto_abono)||0;if(ab<=0)return;if(_trfK[((c.fecha||'')+'').slice(0,10)+'|'+ab]){dupBCI++;return;}add('BCI',c.fecha,ab,c.desc,c.folio,c.ndoc);});
-  var okC=[],sinF=[],noCalza=[],comision=[];
-  pagos.forEach(function(p){
-    var f=null;
-    if(p.folio){f=facts.find(function(x){return String(x.folio)===String(p.folio);});}
-    if(!f&&p.id){f=facts.find(function(x){var e=(typeof EST!=='undefined'&&EST[x.folio])||{};return e.pagoId&&String(e.pagoId)===String(p.id);});}
-    if(f){
-      var ref=Number(f.saldo||f.total||0);
-      var d=Math.abs(ref-p.monto);
-      if(d<=TOL){okC.push(p);}
-      else{
-        var pctR=ref>0?d/ref:1;
-        var it={p:p,f:f,diff:d,pct:Math.round(pctR*1000)/10};
-        if((p.src==='WebPay'||p.src==='GetNet'||p.src==='MP')&&p.monto<ref&&pctR>=0.005&&pctR<=0.045){comision.push(it);}
-        else{noCalza.push(it);}
-      }
-      return;
-    }
-    var cand=pend.find(function(x){
-      return (p.rut&&nR(x.rut)===p.rut)||Math.abs(Number(x.saldo||x.total||0)-p.monto)<=TOL;
-    });
-    p.cand=cand||null;
-    sinF.push(p);
-  });
-  var fmt2=(typeof fmt==='function')?fmt:function(n){return '$'+(Number(n)||0).toLocaleString('es-CL');};
-  var sum=function(a,k){return a.reduce(function(s,x){return s+(k?x[k]:(x.monto||(x.p&&x.p.monto)||0));},0);};
-  var mPend=pend.reduce(function(s,f){return s+(Number(f.saldo||f.total)||0);},0);
-  var k=document.getElementById('difKpis');
-  if(k)k.innerHTML=[
-    {t:'💰 Pagos analizados',v:fmt2(sum(pagos)),n:pagos.length+' pagos'+(mes?' · '+mes:' · todo'),c:'#1d4ed8',b:'#eff6ff'},
-    {t:'✅ Cruzados OK',v:fmt2(sum(okC)),n:okC.length+' pagos',c:'#15803d',b:'#f0fdf4'},
-    {t:'🚨 Pagos sin factura',v:fmt2(sum(sinF)),n:sinF.length+' pagos · riesgo tributario',c:'#dc2626',b:'#fef2f2'},
-    {t:'⚠️ Montos que no calzan',v:fmt2(sum(noCalza.map(function(x){return x.p;}))),n:noCalza.length+' pares pago↔factura',c:'#d97706',b:'#fffbeb'},
-    {t:'✔ Calza con comisión',v:fmt2(sum(comision,'diff')),n:comision.length+' pagos · costo de pasarelas del período',c:'#0d9488',b:'#f0fdfa'},
-    {t:'📄 Facturas sin pago',v:fmt2(mPend),n:pend.length+' facturas · cobranza',c:'#7c3aed',b:'#f5f3ff'},
-    {t:'🗑️ Registros inválidos',v:String(invalidos.length),n:'excluidos de totales'+(dupBCI?' · '+dupBCI+' abonos BCI ya contados como TRF':'')+'',c:'#64748b',b:'#f1f5f9'}
-  ].map(function(x){return '<div style="background:'+x.b+';border-radius:10px;padding:14px 16px;min-width:170px;flex:1;"><div style="font-size:11px;font-weight:700;color:'+x.c+';">'+x.t+'</div><div style="font-size:19px;font-weight:900;color:'+x.c+';margin-top:3px;">'+x.v+'</div><div style="font-size:10px;color:#64748b;margin-top:2px;">'+x.n+'</div></div>';}).join('');
-  var SB={TRF:'🏦',WebPay:'💳',GetNet:'🏧',MP:'🟢',BCI:'🏛️'};
-  function fila(cols){return '<tr>'+cols.map(function(c){return '<td style="padding:6px 8px;border-bottom:1px solid #1e293b33;font-size:12px;">'+c+'</td>';}).join('')+'</tr>';}
-  var a=document.getElementById('difA');
-  if(a)a.innerHTML=sinF.length? '<table style="width:100%;border-collapse:collapse;">'+
-    '<tr><th align="left" style="padding:6px 8px;font-size:11px;">Fecha</th><th align="left" style="font-size:11px;">Vía</th><th align="left" style="font-size:11px;">Monto</th><th align="left" style="font-size:11px;">Quién</th><th align="left" style="font-size:11px;">Candidata</th></tr>'+
-    sinF.sort(function(x,y){return y.monto-x.monto;}).slice(0,100).map(function(p){
-      return fila([p.fecha,SB[p.src]+' '+p.src,'<b>'+fmt2(p.monto)+'</b>',(p.quien+'').slice(0,38),p.cand?('Posible: Folio '+p.cand.folio+' — '+p.cand.empresa):'<span style="color:#dc2626;font-weight:700;">ninguna</span>']);
-    }).join('')+'</table>'+(sinF.length>100?'<div style="color:#94a3b8;font-size:11px;padding:6px;">…y '+(sinF.length-100)+' más</div>':'')
-    :'<div style="color:#16a34a;font-weight:700;padding:14px;">✅ Todos los pagos del período tienen factura</div>';
-  var c=document.getElementById('difC');
-  if(c)c.innerHTML=noCalza.length? '<table style="width:100%;border-collapse:collapse;">'+
-    '<tr><th align="left" style="font-size:11px;padding:6px 8px;">Fecha</th><th align="left" style="font-size:11px;">Vía</th><th align="left" style="font-size:11px;">Pago</th><th align="left" style="font-size:11px;">Folio</th><th align="left" style="font-size:11px;">Saldo fact.</th><th align="left" style="font-size:11px;">Dif.</th></tr>'+
-    noCalza.sort(function(x,y){return y.diff-x.diff;}).slice(0,100).map(function(x){
-      return fila([x.p.fecha,SB[x.p.src]+' '+x.p.src,fmt2(x.p.monto),'<b>'+x.f.folio+'</b> '+(x.f.empresa+'').slice(0,24),fmt2(Number(x.f.saldo||x.f.total||0)),'<b style="color:#d97706;">'+fmt2(x.diff)+' ('+x.pct+'%)</b>']);
-    }).join('')+'</table>'
-    :'<div style="color:#16a34a;font-weight:700;padding:14px;">✅ Sin diferencias de monto en pagos vinculados</div>';
-  var dd=document.getElementById('difD');
-  if(dd)dd.innerHTML=comision.length? '<table style="width:100%;border-collapse:collapse;">'+
-    '<tr><th align="left" style="font-size:11px;padding:6px 8px;">Fecha</th><th align="left" style="font-size:11px;">Vía</th><th align="left" style="font-size:11px;">Pago</th><th align="left" style="font-size:11px;">Folio</th><th align="left" style="font-size:11px;">Saldo fact.</th><th align="left" style="font-size:11px;">Comisión</th></tr>'+
-    comision.sort(function(x,y){return y.diff-x.diff;}).slice(0,100).map(function(x){
-      return fila([x.p.fecha,SB[x.p.src]+' '+x.p.src,fmt2(x.p.monto),'<b>'+x.f.folio+'</b> '+(x.f.empresa+'').slice(0,24),fmt2(Number(x.f.saldo||x.f.total||0)),'<b style="color:#0d9488;">'+fmt2(x.diff)+' ('+x.pct+'%)</b>']);
-    }).join('')+'</table>'
-    :'<div style="color:#94a3b8;font-size:12px;padding:10px;">Sin pagos de pasarela con comisión en el período</div>';
-  var b=document.getElementById('difB');
-  if(b)b.innerHTML=pend.length? '<table style="width:100%;border-collapse:collapse;">'+
-    '<tr><th align="left" style="font-size:11px;padding:6px 8px;">Folio</th><th align="left" style="font-size:11px;">Empresa</th><th align="left" style="font-size:11px;">Fecha</th><th align="left" style="font-size:11px;">Saldo</th></tr>'+
-    pend.sort(function(x,y){return (Number(y.saldo)||0)-(Number(x.saldo)||0);}).slice(0,100).map(function(f){
-      return fila(['<b>'+f.folio+'</b>',(f.empresa+'').slice(0,40),f.fecha||'—','<b>'+fmt2(Number(f.saldo||f.total||0))+'</b>']);
-    }).join('')+'</table>'+(pend.length>100?'<div style="color:#94a3b8;font-size:11px;padding:6px;">…y '+(pend.length-100)+' más</div>':'')
-    :'<div style="color:#16a34a;font-weight:700;padding:14px;">✅ No hay facturas pendientes de pago</div>';
-}
-window.addEventListener('DOMContentLoaded',function(){
-  try{
-    var sec=document.createElement('div');
-    sec.id='tDiferencias'; sec.className='tab-content';
-    sec.innerHTML='<h2 style="margin:6px 0 2px;">⚖️ Diferencias — Cuadre global <span style="font-size:11px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 8px;vertical-align:middle;">SOLO LECTURA</span></h2>'
-      +'<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">Cruza TODAS las fuentes contra facturas 2026. TRF/BCI: calce exacto ($1). Pasarelas: dif. 0,5%–4,5% se clasifica como comisión. Abonos BCI idénticos a una TRF se cuentan una sola vez. Solo lectura.</div>'
-      +'<div style="margin-bottom:10px;"><label style="font-size:11px;font-weight:700;">Mes: </label><input type="month" id="difMes" onchange="renderDiferencias()" style="padding:4px 8px;border-radius:6px;border:1px solid #334155;background:transparent;color:inherit;"> <button onclick="document.getElementById(\'difMes\').value=\'\';renderDiferencias()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #334155;background:transparent;color:inherit;cursor:pointer;">Todo</button></div>'
-      +'<div id="difKpis" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>'
-      +'<h3 style="margin:12px 0 4px;color:#dc2626;">🚨 Pagos sin factura</h3><div id="difA"></div>'
-      +'<h3 style="margin:16px 0 4px;color:#d97706;">⚠️ Montos que no calzan (pago vinculado ≠ saldo factura)</h3><div id="difC"></div>'
-      +'<h3 style="margin:16px 0 4px;color:#0d9488;">✔ Calza con comisión de pasarela (dif. 0,5%–4,5%)</h3><div id="difD"></div>'
-      +'<h3 style="margin:16px 0 4px;color:#7c3aed;">📄 Facturas sin pago (cobranza)</h3><div id="difB"></div>';
-    var ref=document.querySelector('.tab-content');
-    if(ref&&ref.parentNode) ref.parentNode.appendChild(sec); else document.body.appendChild(sec);
-    try{var _mEl=document.getElementById('difMes');if(_mEl){var _d=new Date();_mEl.value=_d.getFullYear()+'-'+('0'+(_d.getMonth()+1)).slice(-2);}}catch(e){}
-    var btnCr=document.getElementById('cruceDiarioBtn');
-    if(btnCr){
-      var nb=document.createElement('button');
-      nb.className='tab-btn'; nb.textContent='⚖️ Diferencias';
-      nb.onclick=function(){ if(typeof showTab==='function') showTab('tDiferencias',nb); renderDiferencias(); };
-      btnCr.parentNode.insertBefore(nb, btnCr.nextSibling);
-    }
-  }catch(e){ console.error('Diferencias init:',e); }
-});
-
-</script>
+<!-- BLOQUE VISTA DIFERENCIAS ELIMINADO 2026-08-28 (solicitud usuario). Respaldo: backups/index.html.pre-quitar-tabs-* -->
 </body>
 </html>

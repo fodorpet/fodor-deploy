@@ -2371,7 +2371,8 @@ function renderAlertas(){
   var diasAlerta=parseInt((document.getElementById('almDias')||{}).value)||3;
   var urgentes=[],vencidos=[],proximos=[];
   var HOY_DATE=new Date(); HOY_DATE.setHours(0,0,0,0);
-  var activas=D26.filter(function(r){return BORRADAS.indexOf(r.folio)<0&&!(EST[r.folio]&&EST[r.folio].pagado);});
+  // FIX 2026-08-31: se excluyen del pendiente las pagadas y las ANULADAS (nota de credito).
+  var activas=D26.filter(function(r){return BORRADAS.indexOf(r.folio)<0&&!(EST[r.folio]&&EST[r.folio].pagado)&&!(EST[r.folio]&&EST[r.folio].estadoGest==='ANULADA');});
   activas.forEach(function(r){
     var d=dias(r.fecha_iso);
     var hist=(EST[r.folio]&&EST[r.folio].historial)||[];
@@ -2653,11 +2654,14 @@ function f26(){
   // KPI pendiente: SIEMPRE desde D26 completo (sin filtros de búsqueda) para mostrar el total real
   const kpiData=D26.filter(r=>{
     var fb=String(r.folio);
+    // FIX 2026-08-31: tambien se excluyen del pendiente las ANULADAS (nota de credito),
+    // que ahora quedan a la vista en vez de esconderse en BORRADAS.
     return BORRADAS.indexOf(r.folio)<0 && BORRADAS.indexOf(fb)<0 &&
-           !(EST[r.folio]&&EST[r.folio].pagado) && !(EST[fb]&&EST[fb].pagado);
+           !(EST[r.folio]&&EST[r.folio].pagado) && !(EST[fb]&&EST[fb].pagado) &&
+           !(EST[fb]&&EST[fb].estadoGest==='ANULADA');
   });
   const tot=kpiData.reduce((s,r)=>s+(Number(r.saldo)||0),0);
-  const n=data.filter(r=>!(EST[r.folio]&&EST[r.folio].pagado)&&BORRADAS.indexOf(r.folio)<0&&BORRADAS.indexOf(String(r.folio))<0).length;
+  const n=data.filter(r=>!(EST[r.folio]&&EST[r.folio].pagado)&&!(EST[String(r.folio)]&&EST[String(r.folio)].estadoGest==='ANULADA')&&BORRADAS.indexOf(r.folio)<0&&BORRADAS.indexOf(String(r.folio))<0).length;
   const totalPag=Math.ceil(data.length/PER_PAG);
   if(pag26>=totalPag) pag26=Math.max(0,totalPag-1);
   const pageData=data.slice(pag26*PER_PAG, (pag26+1)*PER_PAG);
@@ -3797,8 +3801,11 @@ function actualizarHdr(){
   // Total pendiente 2026 = D26 - borradas - pagadas
   const pendiente=D26.filter(r=>{
     var fb=String(r.folio);
+    // FIX 2026-08-31: tambien se excluyen del pendiente las ANULADAS (nota de credito),
+    // que ahora quedan a la vista en vez de esconderse en BORRADAS.
     return BORRADAS.indexOf(r.folio)<0 && BORRADAS.indexOf(fb)<0 &&
-           !(EST[r.folio]&&EST[r.folio].pagado) && !(EST[fb]&&EST[fb].pagado);
+           !(EST[r.folio]&&EST[r.folio].pagado) && !(EST[fb]&&EST[fb].pagado) &&
+           !(EST[fb]&&EST[fb].estadoGest==='ANULADA');
   }).reduce((s,r)=>s+(Number(r.saldo)||0),0);
   const el=document.getElementById('hdrBadge26');
   if(el) el.textContent='2026: '+fmt(pendiente)+' pend.';
@@ -4001,9 +4008,12 @@ function borrarDM(folio, gi){
   const monto=r?fmt(r.saldo):'';
   const empresa=r?r.empresa:'';
   if(!confirm('¿Marcar factura N°'+folio+' ('+empresa+') como cobrada/resuelta?\n'+monto+'\nSe descontará del total pendiente.')){return;}
-  if(BORRADAS.indexOf(folio)<0) BORRADAS.push(folio);
+  // FIX 2026-08-31: ya NO se mete el folio en BORRADAS. La factura queda A LA VISTA,
+  // marcada como PAGADA (tachada y agrupada al final por getSort26).
+  _sacarDeBorradas(folio);
   if(!EST[folio]) EST[folio]={};
   EST[folio].pagado=true;
+  if(!EST[folio].estadoGest) EST[folio].estadoGest='PAGADO';
   guardarEstado();
   try{if(_fbDb)_fbSetEstado({BORRADAS:JSON.stringify(BORRADAS),EST:JSON.stringify(EST)});}catch(e){}
   renderDM(); f26(); actualizarHdr();
@@ -4095,9 +4105,12 @@ function borrarFila(folio){
   const r=D26.find(x=>x.folio===folio);
   const monto=r?fmt(r.saldo):'';
   if(!confirm('¿Marcar factura N°'+folio+(r?' ('+r.empresa+')':'')+' como cobrada/resuelta?\n'+monto+'\nSe descontará del total pendiente.')){return;}
-  if(BORRADAS.indexOf(folio)<0) BORRADAS.push(folio);
+  // FIX 2026-08-31: ya NO se mete el folio en BORRADAS. La factura queda A LA VISTA,
+  // marcada como PAGADA (tachada y agrupada al final por getSort26).
+  _sacarDeBorradas(folio);
   if(!EST[folio]) EST[folio]={};
   EST[folio].pagado=true;
+  if(!EST[folio].estadoGest) EST[folio].estadoGest='PAGADO';
   guardarEstado();
   try{if(_fbDb)_fbSetEstado({BORRADAS:JSON.stringify(BORRADAS),EST:JSON.stringify(EST)});}catch(e){}
   f26(); renderDM(); renderAlertas(); actualizarHdr();
@@ -5956,6 +5969,28 @@ window._appInit = async function(){
   // VERSION-CHIP 2026-07-25: el chip toma la versión real del título, nunca se desactualiza
   try{ var _cv=document.getElementById('chipVersion'), _m=(document.title||'').match(/v20\d\d-[\d-]+[A-Z]?/); if(_cv&&_m) _cv.textContent=_m[0]; }catch(e){}
   try { cargarEstado(); } catch(e){ console.error('cargarEstado:',e); }
+  // ══════════════════════════════════════════════════════════════════════
+  // MIGRACION 2026-08-31 — NINGUNA FACTURA BORRADA.
+  // Decision de negocio: no debe existir factura oculta. Las cobradas se ven
+  // marcadas PAGADA; las anuladas se ven con badge ANULADA. Esta migracion corre
+  // UNA sola vez: guarda la lista historica en BORRADAS_HISTORICO (auditoria, no
+  // afecta la vista) y deja BORRADAS vacio.
+  // ══════════════════════════════════════════════════════════════════════
+  try{
+    if(BORRADAS && BORRADAS.length){
+      var _bh=[]; try{_bh=JSON.parse(LS.getItem('fodorspa_borradas_historico')||'[]');}catch(_e){}
+      BORRADAS.forEach(function(f){ if(_bh.indexOf(f)<0) _bh.push(f); });
+      try{LS.setItem('fodorspa_borradas_historico',JSON.stringify(_bh));}catch(_e){}
+      console.log('[FODOR] MIGRACION-BORRADAS: '+BORRADAS.length+' folios liberados; historico='+_bh.length);
+      var _n=BORRADAS.length;
+      BORRADAS.length=0;
+      try{guardarEstado();}catch(_e){console.error('[FODOR] MIGRACION-BORRADAS guardarEstado:',_e);}
+      try{if(_fbDb)_fbSetEstado({BORRADAS:JSON.stringify(BORRADAS)});}catch(_e){}
+      try{BITACORA.unshift({ts:new Date().toISOString(),tipo:'♻️ Sistema',autor:'Sistema',folio:'',empresa:'',
+        nota:_n+' factura(s) dejaron de estar borradas y volvieron a la vista (migración 31-08-2026)',compromisoFecha:''});}catch(_e){}
+    }
+  }catch(e0){ console.error('[FODOR] MIGRACION-BORRADAS error:',e0); }
+
   // FIX-INIT-RECONCILE: reconciliar TRF→EST después de cargarEstado.
   // cargarEstado() puede sobrescribir EST con datos de localStorage (sin pagado:true)
   // si el Firebase listener corrió ANTES del unlock y ya había seteado EST correctamente.
@@ -8627,15 +8662,19 @@ function detectarFolliosEliminadosFCL(excelFolios){
   var lista = candidatos.slice(0,15).map(function(r){
     return '   · folio '+r.folio+' — '+(r.empresa||'(sin razón social)')+' — '+fmt(r.saldo||0);
   }).join('\n');
-  var msg = '🗑 '+candidatos.length+' factura(s) que antes venían de Facturación.cl ya NO están en este Excel:\n\n'
+  // FIX 2026-08-31 — CAUSA RAIZ DEL INCIDENTE DEL 26-08-2026.
+  // Esta funcion comparaba TODO D26 contra los folios del Excel recien cargado. Con un
+  // export PARCIAL (315 folios en vez de 737) considero "eliminadas" a 1.320 facturas
+  // vivas y las marco BORRADAS de un solo clic. Ya NO marca nada: solo informa, para
+  // que una persona revise en Facturacion.cl y decida caso a caso.
+  alert('ℹ️ '+candidatos.length+' factura(s) que venian de Facturación.cl no aparecen en este Excel:\n\n'
     + lista + (candidatos.length>15?'\n   · ...y '+(candidatos.length-15)+' más':'')
-    + '\n\nProbablemente se eliminaron o anularon en Facturación.cl.\n'
-    + '¿Las marco como BORRADAS acá también? (se pueden restaurar después con "↩ Restaurar factura borrada")';
-  if(!confirm(msg)) return;
+    + '\n\nOJO: si cargaste un export PARCIAL esto es normal y NO significa que se hayan eliminado.\n'
+    + 'No se modificó ninguna factura. Revisá en Facturación.cl antes de anular alguna.');
+  return;
   var marcadas=0;
   candidatos.forEach(function(r){
     var fo=r.folio;
-    if(BORRADAS.indexOf(fo)<0) BORRADAS.push(fo);
     var entry={ts:new Date().toISOString(),tipo:'🗑 Eliminada FCL',autor:CURRENT_USER||'Sistema',
       folio:fo,empresa:r.empresa||'',nota:'Ya no aparece en el Excel de Facturación.cl — marcada BORRADA (revisar/restaurar si corresponde)',compromisoFecha:''};
     if(!EST[fo]) EST[fo]={};
@@ -12238,7 +12277,9 @@ function importarAnuladas(event){
         if(EST[fo].anulada){ yaEstaban++; continue; }
         EST[fo].anulada={nc:nc, fecha:fec, razon:razon, ts:new Date().toISOString(), autor:CURRENT_USER||'Sistema'};
         EST[fo].estadoGest='ANULADA';
-        if(BORRADAS.indexOf(fo)<0) BORRADAS.push(fo);
+        // FIX 2026-08-31: una anulada queda A LA VISTA con su badge ANULADA.
+        // No se esconde en BORRADAS; se excluye del pendiente por su estado.
+        _sacarDeBorradas(fo);
         var r26=_buscarFactura(fo);
         marcadas.push({folio:fo, empresa:r26?r26.empresa:'', monto:r26?(r26.saldo||0):0, razon:razon, nc:nc});
         BITACORA.unshift({ts:new Date().toISOString(),tipo:'🚫',autor:CURRENT_USER||'Sistema',folio:fo,

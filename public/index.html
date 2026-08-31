@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-08-28_12:32</title>
+<title>Fodor Spa — Panel de Facturación v2026-08-28_13:02</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -477,6 +477,8 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn year-2026" onclick="showTab('t16',this)">Abr 2026</button>
   <button class="tab-btn year-2026" onclick="showTab('t17',this)">May 2026</button>
   <button class="tab-btn year-2026" onclick="showTab('t18',this);fmes26('2026-06','18')">Jun 2026</button>
+  <button class="tab-btn year-2026" onclick="showTab('t19',this);fmes26('2026-07','19')">Jul 2026</button>
+  <button class="tab-btn year-2026" onclick="showTab('t20',this);fmes26('2026-08','20')">Ago 2026</button>
   <div class="sidebar-sep">Histórico 2025</div>
   <button class="tab-btn" onclick="showTab('tResumen',this)">📈 Resumen 2025</button>
   <button class="tab-btn" onclick="showTab('t1',this)">Ene 2025</button>
@@ -499,7 +501,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-28_12:32</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-08-28_13:02</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -1232,6 +1234,64 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <div class="footer">
     <span>Mostrando: <strong id="fn18">—</strong></span>|
     <span>Subtotal: <strong id="fm18">—</strong></span>
+  </div>
+</div>
+
+<!-- ==================== TAB JUL 2026 ==================== -->
+<div class="tab-content" id="t19">
+  <div class="month-header">
+    <div>
+      <h2>📅 Jul 2026</h2>
+      <div style="font-size:11px;color:var(--gris);margin-top:3px" id="hdr19sub">Cargando...</div>
+    </div>
+    <div class="stats">
+      <div><span>Total pendiente</span><br><strong style="font-size:15px;color:var(--verde)" id="hdr19total">—</strong></div>
+      <div><span>Facturas</span><br><strong id="hdr19cnt">—</strong></div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <div class="search-w"><label>Buscar</label><input type="text" id="bus19" placeholder="Empresa, folio, RUT..." oninput="fmes26('2026-07','19')"></div>
+    <div><label>Vendedor</label><select id="vend19" onchange="fmes26('2026-07','19')"><option value="">Todos</option><option>Framir Jesus Zapata Linares</option><option>Martin Oliva Quintanella</option><option>ROBERTO FODOR PRIEWER</option><option>Roberto Fodor</option><option>Marcelo Fodor</option><option>Regina Priewer</option><option>Sabrina Maureira</option></select></div>
+    <div><label>Monto mín.</label><select id="monto19" onchange="fmes26('2026-07','19')"><option value="0">Todos</option><option value="500000">+$500k</option><option value="1000000">+$1M</option><option value="5000000">+$5M</option></select></div>
+    <button class="btn-r" onclick="limpiarMes26('2026-07','19')">✕</button>
+    <span class="cnt" id="cnt19">—</span>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th>Folio</th><th onclick="sFmes26('fecha_iso','2026-07','19')" style="cursor:pointer">Fecha ↕</th><th>Empresa</th>
+    <th onclick="sFmes26('saldo','2026-07','19')" style="cursor:pointer;text-align:right">Monto ↕</th><th>Vendedor</th><th>Estado</th><th>📋 Notas</th><th></th>
+  </tr></thead><tbody id="tb19"></tbody></table></div>
+  <div class="footer">
+    <span>Mostrando: <strong id="fn19">—</strong></span>|
+    <span>Subtotal: <strong id="fm19">—</strong></span>
+  </div>
+</div>
+
+<!-- ==================== TAB AGO 2026 ==================== -->
+<div class="tab-content" id="t20">
+  <div class="month-header">
+    <div>
+      <h2>📅 Ago 2026</h2>
+      <div style="font-size:11px;color:var(--gris);margin-top:3px" id="hdr20sub">Cargando...</div>
+    </div>
+    <div class="stats">
+      <div><span>Total pendiente</span><br><strong style="font-size:15px;color:var(--verde)" id="hdr20total">—</strong></div>
+      <div><span>Facturas</span><br><strong id="hdr20cnt">—</strong></div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <div class="search-w"><label>Buscar</label><input type="text" id="bus20" placeholder="Empresa, folio, RUT..." oninput="fmes26('2026-08','20')"></div>
+    <div><label>Vendedor</label><select id="vend20" onchange="fmes26('2026-08','20')"><option value="">Todos</option><option>Framir Jesus Zapata Linares</option><option>Martin Oliva Quintanella</option><option>ROBERTO FODOR PRIEWER</option><option>Roberto Fodor</option><option>Marcelo Fodor</option><option>Regina Priewer</option><option>Sabrina Maureira</option></select></div>
+    <div><label>Monto mín.</label><select id="monto20" onchange="fmes26('2026-08','20')"><option value="0">Todos</option><option value="500000">+$500k</option><option value="1000000">+$1M</option><option value="5000000">+$5M</option></select></div>
+    <button class="btn-r" onclick="limpiarMes26('2026-08','20')">✕</button>
+    <span class="cnt" id="cnt20">—</span>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th>Folio</th><th onclick="sFmes26('fecha_iso','2026-08','20')" style="cursor:pointer">Fecha ↕</th><th>Empresa</th>
+    <th onclick="sFmes26('saldo','2026-08','20')" style="cursor:pointer;text-align:right">Monto ↕</th><th>Vendedor</th><th>Estado</th><th>📋 Notas</th><th></th>
+  </tr></thead><tbody id="tb20"></tbody></table></div>
+  <div class="footer">
+    <span>Mostrando: <strong id="fn20">—</strong></span>|
+    <span>Subtotal: <strong id="fm20">—</strong></span>
   </div>
 </div>
 
@@ -2078,6 +2138,7 @@ function toggleMostrarPagadas(){
   if(btn) btn.style.background = MOSTRAR_PAGADAS ? '#16a34a' : '#64748b';
   if(btn) btn.textContent = MOSTRAR_PAGADAS ? '👁 Ocultar pagadas/borradas' : '👁 Ver pagadas/borradas';
   f26();
+  try{ if(typeof _refreshMesActivo==='function') _refreshMesActivo(); }catch(e){}
 }
 
 // ─── USUARIO ACTIVO ──────────────────────────────────────────────────────────
@@ -5790,6 +5851,8 @@ function _refreshMesActivo(){
   else if(id==='t16') fmes26('2026-04','16');
   else if(id==='t17') fmes26('2026-05','17');
   else if(id==='t18') fmes26('2026-06','18');
+  else if(id==='t19') fmes26('2026-07','19');
+  else if(id==='t20') fmes26('2026-08','20');
   else { var m=parseInt(id.replace('t','')); if(m>=1&&m<=12) fmes(m); }
 }
 function almCfgHtml(){
@@ -7149,6 +7212,7 @@ function fmes26(mesIso, num){
       +'<button onclick="event.stopPropagation();handlePagBtn(\''+r.folio+'\')" style="background:#16a34a;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Marcar pagado">✅</button>'
       +'<button onclick="event.stopPropagation();enviarEmailCobranza(\''+r.folio+'\')" style="background:#7c3aed;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar email">📧</button>'
       +'<button onclick="event.stopPropagation();enviarATrello(\''+r.folio+'\')" style="background:#0052cc;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Enviar a Trello">🟦</button>'
+      +'<button onclick="event.stopPropagation();notaVendedorWsp(\''+r.folio+'\')" style="background:#25d366;color:white;border:none;border-radius:6px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer" title="Preguntar a Framir c\u00f3mo est\u00e1 pagada">🧾</button>'
       +'</div></td>'
       +'</tr>'
       +notaRowHtml(r.folio,8,r.nota);
@@ -16510,13 +16574,12 @@ setTimeout(_initPanelBtns, 600);
    No modifica datos, contratos ni funciones existentes.                     */
 (function(){
   var LSKEY = 'fodorspa_wsp_vendedor_v1';
-  var NUM_DEFECTO = '56939244504';   // Framir - destino unico de las notas
+  var NUM_DEFECTO = '56939244504';   // Framir (+56 9 3924 4504) - destino unico y fijo de las notas
   function _lee(){
-    try{
-      var v = (window.LS&&LS.getItem?LS.getItem(LSKEY):localStorage.getItem(LSKEY)) || '';
-      if(v && v !== '56984798382') return v;   // numero anterior queda invalidado
-      return NUM_DEFECTO;
-    }catch(e){ return NUM_DEFECTO; }
+    /* FIJO: siempre Framir. Se ignora cualquier numero guardado en el navegador,
+       que era la causa de que el mensaje saliera al destinatario equivocado. */
+    try{ if(window.LS&&LS.removeItem){LS.removeItem(LSKEY);} else {localStorage.removeItem(LSKEY);} }catch(e){}
+    return NUM_DEFECTO;
   }
   function _guarda(v){
     try{ if(window.LS&&LS.setItem){LS.setItem(LSKEY,v);} else {localStorage.setItem(LSKEY,v);} }catch(e){}
@@ -16532,9 +16595,7 @@ setTimeout(_initPanelBtns, 600);
   window.configWspVendedor = function(){ return _pideNumero(_lee()); };
   window.notaVendedorWsp = function(folio){
     try{
-      var ev = window.event;
       var num = _lee();
-      if(!num || (ev && ev.altKey)){ num = _pideNumero(num); }
       if(!num) return;
       var lista = [];
       if(typeof D26!=='undefined' && D26) lista = lista.concat(D26);
@@ -16552,6 +16613,117 @@ setTimeout(_initPanelBtns, 600);
       window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg), '_blank');
     }catch(e){ alert('No se pudo abrir WhatsApp: '+e.message); }
   };
+
+  /* ==== MEJORAS PESTAÑAS DE MES (Ene..Ago 2026) — 2026-08-28 ====
+     a) Rellena el filtro Vendedor con los vendedores REALES de ese mes.
+     b) Agrega a la barra un boton para ver/ocultar pagadas y otro de envio a Framir.
+     Todo por DOM, sin tocar fmes26 ni el HTML existente.                      */
+  var MESES26 = {'13':'2026-01','14':'2026-02','15':'2026-03','16':'2026-04',
+                 '17':'2026-05','18':'2026-06','19':'2026-07','20':'2026-08'};
+
+  function _vendedoresDelMes(mesIso){
+    var set = {};
+    (typeof D26!=='undefined'?D26:[]).forEach(function(r){
+      if(!r || !r.fecha_iso || r.fecha_iso.indexOf(mesIso)!==0) return;
+      if(typeof BORRADAS!=='undefined' && BORRADAS && BORRADAS.indexOf(r.folio)>=0) return;
+      var v = (r.vendedor||'').trim();
+      if(v) set[v] = (set[v]||0) + 1;
+    });
+    return Object.keys(set).sort().map(function(v){ return {v:v, n:set[v]}; });
+  }
+
+  function _montaFiltrosMes(num){
+    try{
+      var mesIso = MESES26[num];
+      if(!mesIso) return;
+
+      // (a) poblar el select de vendedor con lo que realmente hay en el mes
+      var sel = document.getElementById('vend'+num);
+      if(sel){
+        var actual = sel.value;
+        var vs = _vendedoresDelMes(mesIso);
+        var h = '<option value="">Todos</option>';
+        vs.forEach(function(x){
+          h += '<option value="'+x.v.replace(/"/g,'&quot;')+'">'+x.v+' ('+x.n+')</option>';
+        });
+        sel.innerHTML = h;
+        if(actual){ sel.value = actual; }
+      }
+
+      // (b) botones extra en la barra de herramientas del mes
+      var cnt = document.getElementById('cnt'+num);
+      if(cnt && cnt.parentNode){
+        var barra = cnt.parentNode;
+
+        if(!document.getElementById('btnPagMes'+num)){
+          var bp = document.createElement('button');
+          bp.id = 'btnPagMes'+num;
+          bp.type = 'button';
+          bp.style.cssText = 'border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;margin-left:6px;';
+          bp.onclick = function(){
+            if(typeof toggleMostrarPagadas==='function') toggleMostrarPagadas();
+            _pintaBtnPag(num);
+          };
+          barra.insertBefore(bp, cnt);
+          _pintaBtnPag(num);
+        } else { _pintaBtnPag(num); }
+
+        if(!document.getElementById('btnWspMes'+num)){
+          var bw = document.createElement('button');
+          bw.id = 'btnWspMes'+num;
+          bw.type = 'button';
+          bw.style.cssText = 'background:#25d366;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:6px;';
+          bw.textContent = '\ud83e\uddfe Preguntar a Framir';
+          bw.title = 'Manda a Framir la lista de facturas que se ven ahora en pantalla';
+          bw.onclick = function(e){ if(e) e.stopPropagation(); _wspMes(num); };
+          barra.insertBefore(bw, cnt);
+        }
+      }
+    }catch(e){}
+  }
+
+  function _pintaBtnPag(num){
+    var b = document.getElementById('btnPagMes'+num);
+    if(!b) return;
+    var ver = (typeof MOSTRAR_PAGADAS!=='undefined') ? MOSTRAR_PAGADAS : true;
+    b.style.background = ver ? '#16a34a' : '#64748b';
+    b.textContent = ver ? '\ud83d\udc41 Ocultar pagadas' : '\ud83d\udc41 Ver pagadas';
+  }
+
+  /* Manda a Framir las facturas visibles del mes, respetando los filtros puestos */
+  function _wspMes(num){
+    try{
+      var mesIso = MESES26[num]; if(!mesIso) return;
+      var b  = (document.getElementById('bus'+num)||{}).value || '';
+      var v  = (document.getElementById('vend'+num)||{}).value || '';
+      var mn = parseInt((document.getElementById('monto'+num)||{}).value) || 0;
+      b = b.toLowerCase();
+      var sub = (typeof D26!=='undefined'?D26:[]).filter(function(r){
+        if(!r || !r.fecha_iso || r.fecha_iso.indexOf(mesIso)!==0) return false;
+        if(typeof BORRADAS!=='undefined' && BORRADAS && BORRADAS.indexOf(r.folio)>=0) return false;
+        var okb = (r.empresa||'').toLowerCase().indexOf(b)>=0 || String(r.folio).indexOf(b)>=0 || (r.rut||'').indexOf(b)>=0;
+        var okv = !v || r.vendedor===v;
+        return okb && okv && (r.saldo||0) >= mn;
+      });
+      var etiqueta = v ? v : 'de '+mesIso;
+      _enviaLote(sub, 'Hola, necesito confirmar el pago de {n} facturas '+etiqueta+':');
+    }catch(e){ alert('No se pudo armar el mensaje: '+e.message); }
+  }
+
+  /* Montar al abrir cualquier pestaña de mes */
+  (function(){
+    var _origShowTab = window.showTab;
+    if(typeof _origShowTab === 'function'){
+      window.showTab = function(id, btn){
+        var out = _origShowTab.apply(this, arguments);
+        try{
+          var n = String(id||'').replace('t','');
+          if(MESES26[n]) setTimeout(function(){ _montaFiltrosMes(n); }, 60);
+        }catch(e){}
+        return out;
+      };
+    }
+  })();
 
   /* ---- Envio agrupado: un solo mensaje con varias facturas ---- */
   var MAX_LOTE = 30;   // tope para no romper el largo de la URL de wa.me
@@ -16577,8 +16749,6 @@ setTimeout(_initPanelBtns, 600);
   }
   function _enviaLote(facturas, encabezado){
     var num = _lee();
-    var ev = window.event;
-    if(!num || (ev && ev.altKey)){ num = _pideNumero(num); }
     if(!num) return;
     var pend = (facturas||[]).filter(_estaPendiente);
     if(!pend.length){ alert('No hay facturas pendientes para enviar.'); return; }

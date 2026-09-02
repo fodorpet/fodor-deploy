@@ -22,13 +22,32 @@ cd "$DEPLOY" || exit 1
 KEY=$(grep -oE 'apiKey: *"[^"]+"' index.html | head -1 | sed 's/.*"\(.*\)"/\1/')
 if [ -z "$KEY" ]; then echo "ERROR: no encontre la apiKey en index.html"; exit 1; fi
 
-# TODO Fase 1: cuando exista la cuenta real, cambiar por signInWithPassword
-# con credenciales leidas de un archivo fuera del repositorio.
-TOKEN=$(curl -s --max-time 30 -H 'Content-Type: application/json' \
-  -d '{"returnSecureToken":true}' \
-  "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$KEY" \
-  | grep -oE '"idToken": *"[^"]+"' | sed 's/.*"\(.*\)"/\1/')
-if [ -z "$TOKEN" ]; then echo "ERROR: no pude autenticarme contra Firebase"; exit 1; fi
+# Credenciales: archivo fuera del repositorio (esta en .gitignore).
+# Formato, dos lineas:
+#   correo
+#   contrasena
+CRED="$DEPLOY/.credenciales-panel"
+if [ ! -f "$CRED" ]; then
+  echo "ERROR: falta el archivo de credenciales."
+  echo "Crealo en: $CRED"
+  echo "con dos lineas: el correo en la primera y la contrasena en la segunda."
+  exit 1
+fi
+CORREO=$(sed -n '1p' "$CRED" | tr -d '\r\n')
+CLAVE=$(sed -n '2p' "$CRED" | tr -d '\r\n')
+if [ -z "$CORREO" ] || [ -z "$CLAVE" ]; then echo "ERROR: credenciales incompletas en $CRED"; exit 1; fi
+
+TOKEN=$(python3 -c "
+import json,urllib.request,sys
+d=json.dumps({'email':sys.argv[1],'password':sys.argv[2],'returnSecureToken':True}).encode()
+r=urllib.request.Request('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+sys.argv[3],
+                         data=d, headers={'Content-Type':'application/json'})
+try:
+    print(json.load(urllib.request.urlopen(r,timeout=30)).get('idToken',''))
+except Exception:
+    print('')
+" "$CORREO" "$CLAVE" "$KEY")
+if [ -z "$TOKEN" ]; then echo "ERROR: no pude autenticarme. Revisa el correo y la contrasena en $CRED"; exit 1; fi
 
 ARCHIVO="$DESTINO/estado_$(date '+%Y-%m-%d_%H-%M').json"
 curl -s --max-time 180 "$DB/estado.json?auth=$TOKEN" -o "$ARCHIVO"

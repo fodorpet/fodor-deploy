@@ -43,3 +43,6 @@ backups-firebase/
 
 # Notas locales con datos de acceso
 LEEME-SEGURIDAD-*.md
+
+# Credenciales del respaldo (NUNCA al repositorio)
+.credenciales-panel

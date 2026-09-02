@@ -8983,6 +8983,14 @@ function _fbSetEstado(campos, opciones){
           var off = auth.onAuthStateChanged(function(u){ off(); res(u); });
         });
       }).then(function(u){
+        // Una sesion ANONIMA heredada no vale: es justo lo que estamos
+        // eliminando. Firebase la conserva por origen, asi que aqui puede
+        // aparecer una de antes del cambio. Se cierra y se pide login real.
+        if(u && u.isAnonymous){
+          return auth.signOut().catch(function(){}).then(function(){
+            return _fbFormularioLogin();
+          });
+        }
         return u ? u : _fbFormularioLogin();
       });
     }

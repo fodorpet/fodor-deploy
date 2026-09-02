@@ -6,7 +6,7 @@
 // con la apiKey publica y leia /estado, /usuarios y /bode_pass.
 // Verificado el 2026-09-02 sin credencial previa.
 //
-// Ahora solo entra el UID de Deborah. Para agregar a alguien hay
+// Ahora solo entra el UID de panel@fodor.cl (la cuenta de Deborah). Para agregar a alguien hay
 // que editar este archivo y volver a desplegar.
 //
 // Los procesos Node (kommo-sync, envia-sync, monday-sync) usan el
@@ -22,87 +22,87 @@
     ".write": false,
 
     "estado": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "usuarios": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "_avisos_login": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "email_tracking": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "kommo_notas_pago": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "kommo_pagos_descartadas": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "alertas_whatsapp_deborah": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "kommo_reset_pago": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "kommo_reset_envio": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "envia_pending": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "envia_rate_pending": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
-      ".write": "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'"
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
     },
 
     "kommo_pagos_alertas": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 
     "kommo_envios": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 
     "kommo_sync_estado": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 
     "envia_shipments": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 
     "envia_rate_result": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 
     "monday_production": {
-      ".read":  "auth != null && auth.uid === 'fxB2t28x9pfGKdwGpRY0KlwghYJ3'",
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": false
     },
 

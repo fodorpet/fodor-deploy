@@ -37,3 +37,6 @@ kommo-widget-fodor 2/
 
 # Archivo vacío accidental
 ....
+
+# Respaldos de Firebase (contienen datos de clientes)
+backups-firebase/

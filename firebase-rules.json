@@ -21,6 +21,16 @@
     ".read": false,
     ".write": false,
 
+    "retiros_wa": {
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
+    },
+
+    "grafica1_msgs": {
+      ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
+      ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"
+    },
+
     "estado": {
       ".read":  "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'",
       ".write": "auth != null && auth.uid === 'Tbt6tsdODoXvbaPRnlQS7uuZ7hB2'"

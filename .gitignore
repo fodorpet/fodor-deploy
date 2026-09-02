@@ -40,3 +40,6 @@ kommo-widget-fodor 2/
 
 # Respaldos de Firebase (contienen datos de clientes)
 backups-firebase/
+
+# Notas locales con datos de acceso
+LEEME-SEGURIDAD-*.md

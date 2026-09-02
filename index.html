@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-09-02_14:11</title>
+<title>Fodor Spa — Panel de Facturación v2026-09-02_14:57</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -501,7 +501,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-02_14:11</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-02_14:57</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8879,8 +8879,93 @@ function _fbSetEstado(campos, opciones){
     if(!firebase.apps.length) firebase.initializeApp(cfg);
     _fbDb = firebase.database();
 
-    // AUTH ANÓNIMA: iniciar listeners solo tras auth para evitar "Permission Denied"
-    firebase.auth().signInAnonymously().then(function(){
+    // ═══════════════════════════════════════════════════════════════════
+    // LOGIN REAL (Fase 1) — reemplaza signInAnonymously.
+    //
+    // Por que: la auth anonima permitia a cualquiera obtener un token
+    // valido con la apiKey publica y leer/escribir toda la base. Las
+    // reglas basadas en "auth != null" no protegian nada.
+    //
+    // Principio de confiabilidad: si Firebase falla o no hay red, el
+    // Panel DEBE seguir usable sobre localStorage. Por eso el formulario
+    // ofrece "Trabajar sin sincronizar", que rechaza la promesa y deja
+    // que corra el .catch() existente (marca _FB_LOADED y sigue).
+    // ═══════════════════════════════════════════════════════════════════
+    function _fbFormularioLogin(){
+      return new Promise(function(resolve, reject){
+        var w = document.createElement('div');
+        w.id = '_fbLoginWrap';
+        w.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;';
+        w.innerHTML =
+          '<div style="background:#fff;border-radius:16px;padding:32px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">' +
+            '<div style="text-align:center;font-size:34px;margin-bottom:8px">&#128274;</div>' +
+            '<h2 style="margin:0 0 4px;font-size:19px;color:#1e293b;text-align:center">Panel Fodor SpA</h2>' +
+            '<p style="margin:0 0 22px;font-size:13px;color:#64748b;text-align:center">Inicia sesion para sincronizar</p>' +
+            '<input id="_fbEmail" type="email" placeholder="Correo" autocomplete="username" ' +
+              'style="width:100%;box-sizing:border-box;padding:11px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px">' +
+            '<input id="_fbPass" type="password" placeholder="Contrasena" autocomplete="current-password" ' +
+              'style="width:100%;box-sizing:border-box;padding:11px;margin-bottom:14px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px">' +
+            '<div id="_fbErr" style="color:#dc2626;font-size:12.5px;min-height:18px;margin-bottom:10px"></div>' +
+            '<button id="_fbEntrar" style="width:100%;padding:12px;background:#7c3aed;color:#fff;border:0;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer">Entrar</button>' +
+            '<button id="_fbOffline" style="width:100%;padding:10px;margin-top:9px;background:transparent;color:#64748b;border:0;font-size:12.5px;cursor:pointer;text-decoration:underline">Trabajar sin sincronizar</button>' +
+          '</div>';
+        document.body.appendChild(w);
+
+        var email = w.querySelector('#_fbEmail');
+        var pass  = w.querySelector('#_fbPass');
+        var err   = w.querySelector('#_fbErr');
+        var btn   = w.querySelector('#_fbEntrar');
+        setTimeout(function(){ email.focus(); }, 60);
+
+        function entrar(){
+          var e = (email.value || '').trim();
+          var p = pass.value || '';
+          if(!e || !p){ err.textContent = 'Ingresa correo y contrasena.'; return; }
+          btn.disabled = true; btn.textContent = 'Verificando...'; err.textContent = '';
+          firebase.auth().signInWithEmailAndPassword(e, p).then(function(cred){
+            w.remove();
+            resolve(cred);
+          }).catch(function(ex){
+            btn.disabled = false; btn.textContent = 'Entrar';
+            var m = 'No se pudo entrar.';
+            if(ex.code === 'auth/wrong-password' || ex.code === 'auth/invalid-credential') m = 'Correo o contrasena incorrectos.';
+            else if(ex.code === 'auth/user-not-found') m = 'Ese correo no esta registrado.';
+            else if(ex.code === 'auth/too-many-requests') m = 'Demasiados intentos. Espera unos minutos.';
+            else if(ex.code === 'auth/network-request-failed') m = 'Sin conexion. Puedes trabajar sin sincronizar.';
+            else m = 'No se pudo entrar (' + ex.code + ').';
+            err.textContent = m;
+            pass.select();
+          });
+        }
+
+        btn.addEventListener('click', entrar);
+        [email, pass].forEach(function(campo){
+          campo.addEventListener('keydown', function(ev){ if(ev.key === 'Enter') entrar(); });
+        });
+        w.querySelector('#_fbOffline').addEventListener('click', function(){
+          w.remove();
+          reject(new Error('modo-sin-sincronizar'));
+        });
+      });
+    }
+
+    function _fbLoginReal(){
+      var auth = firebase.auth();
+      var LOCAL = (firebase.auth.Auth && firebase.auth.Auth.Persistence)
+                  ? firebase.auth.Auth.Persistence.LOCAL : 'local';
+      // La sesion queda guardada en el navegador: no pide clave cada vez.
+      return auth.setPersistence(LOCAL).catch(function(){}).then(function(){
+        return new Promise(function(res){
+          // onAuthStateChanged resuelve tras restaurar la sesion guardada.
+          var off = auth.onAuthStateChanged(function(u){ off(); res(u); });
+        });
+      }).then(function(u){
+        return u ? u : _fbFormularioLogin();
+      });
+    }
+
+    // AUTH REAL: iniciar listeners solo tras login (evita "Permission Denied")
+    _fbLoginReal().then(function(){
 
     // Escuchar cambios remotos
     _fbDb.ref('estado').on('value', function(snap){
@@ -9462,7 +9547,7 @@ function _fbSetEstado(campos, opciones){
     _FB_LOADED = true;
     var _authInd = document.getElementById('fbSyncInd');
     if(_authInd){ _authInd.textContent='❌ Error sync'; _authInd.style.color='#dc2626'; }
-  }); // fin signInAnonymously().then()
+  }); // fin _fbLoginReal().then()
 
   } catch(err){
     console.error('Firebase init error:', err);

@@ -42,26 +42,28 @@ const C = {
 // ── Firebase helpers ───────────────────────────────────────────────
 
 function fbGet(path) {
-  return new Promise((resolve, reject) => {
-    https.get({ hostname: FIREBASE_DB, path }, res => {
+  // Antes iba sin auth: las reglas del 2026-09-02 ya no lo permiten.
+  return fbAuthToken().then(token => new Promise((resolve, reject) => {
+    const sep = path.includes('?') ? '&' : '?';
+    https.get({ hostname: FIREBASE_DB, path: `${path}${sep}auth=${token}` }, res => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve(null); } });
     }).on('error', reject);
-  });
+  }));
 }
 
 function fbPut(fbPath, data) {
-  return new Promise((resolve, reject) => {
+  return fbAuthToken().then(token => new Promise((resolve, reject) => {
     const buf = Buffer.from(JSON.stringify(data));
     const req = https.request({
-      hostname: FIREBASE_DB, path: fbPath, method: 'PUT',
+      hostname: FIREBASE_DB, path: `${fbPath}?auth=${token}`, method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Content-Length': buf.length }
     }, res => { res.resume(); resolve(res.statusCode); });
     req.on('error', reject);
     req.write(buf);
     req.end();
-  });
+  }));
 }
 
 // ── Autenticación anónima (solo para /alertas_whatsapp_deborah, que sí
@@ -72,10 +74,21 @@ let _authTokenExp = 0;
 function fbAuthToken() {
   return new Promise((resolve, reject) => {
     if (_authToken && Date.now() < _authTokenExp) return resolve(_authToken);
-    const buf = Buffer.from(JSON.stringify({ returnSecureToken: true }));
+    // Cuenta real. La anonima dejo de servir el 2026-09-02: las reglas
+    // solo aceptan el UID de panel@fodor.cl. Credenciales en un archivo
+    // fuera del repositorio.
+    let _cred;
+    try {
+      const lineas = fs.readFileSync(path.join(__dirname, 'credenciales-panel.txt'), 'utf8').split('\n');
+      _cred = { email: (lineas[0]||'').trim(), password: (lineas[1]||'').trim() };
+      if (!_cred.email || !_cred.password) throw new Error('incompleto');
+    } catch (e) {
+      return reject(new Error('No pude leer credenciales-panel.txt (dos lineas: correo y contrasena)'));
+    }
+    const buf = Buffer.from(JSON.stringify({ ..._cred, returnSecureToken: true }));
     const req = https.request({
       hostname: 'identitytoolkit.googleapis.com',
-      path: `/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+      path: `/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': buf.length },
     }, res => {
@@ -84,6 +97,7 @@ function fbAuthToken() {
       res.on('end', () => {
         try {
           const j = JSON.parse(data);
+          if (!j.idToken) return reject(new Error('Firebase rechazo el login: ' + (j.error && j.error.message || 'sin idToken')));
           _authToken = j.idToken;
           _authTokenExp = Date.now() + 55 * 60 * 1000; // ~55 min de margen
           resolve(_authToken);

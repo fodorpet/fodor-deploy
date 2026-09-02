@@ -1,0 +1,100 @@
+// ============================================================================
+// REGLAS FASE 1 — Fodor SpA  (proyecto odfor-bae97)
+//
+// POR QUE CAMBIAN
+// Las reglas anteriores usaban "auth != null". Eso no protegia nada: el Panel
+// llama a signInAnonymously(), asi que la autenticacion anonima esta habilitada
+// y cualquiera obtiene un token valido con la apiKey publica del HTML. Se
+// verifico leyendo /usuarios, /estado y /bode_pass sin credencial previa.
+//
+// MODELO NUEVO
+// Acceso = estar en la lista blanca /_acl/<uid>. Para agregar o quitar a alguien
+// se edita ese nodo, no estas reglas. Nadie lee ni escribe /_acl desde el
+// navegador: solo se administra desde Firebase Console o con cuenta de servicio.
+// Si /_acl se borra por accidente, todos pierden acceso (falla cerrado, que es
+// lo correcto) y se restablece desde la consola.
+//
+// PROCESOS NODE (kommo-sync.js, envia-sync.js, monday-sync.js)
+// Usan el Admin SDK con cuenta de servicio, que ignora estas reglas por diseno.
+// Por eso los nodos que solo ellos escriben quedan en ".write": false.
+//
+// PENDIENTE ANTES DE DESPLEGAR: el widget de Kommo lee y borra envia_shipments
+// por REST sin autenticar. Estas reglas lo rompen. Ver nota en el chat.
+//
+// bode_pass DESAPARECE: queda cubierto por el ".read": false de la raiz.
+// ============================================================================
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "_acl": { ".read": false, ".write": false },
+
+    "estado": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "usuarios": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).child('admin').val() === true"
+    },
+    "_avisos_login": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "email_tracking": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "kommo_notas_pago": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "kommo_pagos_descartadas": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "alertas_whatsapp_deborah": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).child('admin').val() === true",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).child('admin').val() === true"
+    },
+
+    "kommo_reset_pago": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "kommo_reset_envio": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "envia_pending": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+    "envia_rate_pending": {
+      ".read":  "auth != null && root.child('_acl').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('_acl').child(auth.uid).exists()"
+    },
+
+    "kommo_pagos_alertas": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+    "kommo_envios": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+    "kommo_sync_estado": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+    "envia_shipments": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+    "envia_rate_result": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+    "monday_production": {
+      ".read": "auth != null && root.child('_acl').child(auth.uid).exists()", ".write": false
+    },
+
+    "kommo_auto_replied": { ".read": false, ".write": false }
+  }
+}

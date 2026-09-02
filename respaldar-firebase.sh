@@ -26,7 +26,7 @@ if [ -z "$KEY" ]; then echo "ERROR: no encontre la apiKey en index.html"; exit 1
 # Formato, dos lineas:
 #   correo
 #   contrasena
-CRED="$DEPLOY/.credenciales-panel"
+CRED="$DEPLOY/credenciales-panel.txt"
 if [ ! -f "$CRED" ]; then
   echo "ERROR: falta el archivo de credenciales."
   echo "Crealo en: $CRED"

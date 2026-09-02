@@ -46,3 +46,4 @@ LEEME-SEGURIDAD-*.md
 
 # Credenciales del respaldo (NUNCA al repositorio)
 .credenciales-panel
+credenciales-panel.txt

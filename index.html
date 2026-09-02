@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-09-02_14:57</title>
+<title>Fodor Spa — Panel de Facturación v2026-09-02_15:03</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -501,7 +501,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-02_14:57</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-02_15:03</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -8817,14 +8817,37 @@ function _fbSetEstado(campos, opciones){
 
   // Agujero 2: local vacío pisando remoto con datos (pasa también si el
   // listener falló y _FB_LOADED se abrió igual, líneas ~7419 y ~7722).
-  var seguros = {}, bloqueados = [];
+  // Agujero 3: escritura REDUCIDA (no vacía) pisando remoto con más contenido.
+  // El 2026-09-02 se perdieron 1.463 folios de EST: una versión podada de
+  // 130.370 caracteres sobrescribió la completa de 1.069.859. No estaba
+  // vacía, así que el Agujero 2 la dejó pasar. Causa probable: dos Paneles
+  // abiertos a la vez contra la misma base.
+  // Se vigilan solo campos grandes, para no estorbar con los chicos.
+  var _MIN_VIGILADO   = 20000;  // caracteres en la nube a partir de los cuales se vigila
+  var _UMBRAL_ENCOGE  = 0.70;   // escribir menos del 70% de lo remoto = sospechoso
+
+  var seguros = {}, bloqueados = [], reducidos = [];
   Object.keys(campos).forEach(function(k){
     if(!o.permitirVacio && _fbEsVacio(campos[k]) && (_FB_REMOTO[k] || 0) > 0){ bloqueados.push(k); return; }
+    var remoto = _FB_REMOTO[k] || 0;
+    var local  = (typeof campos[k] === 'string') ? campos[k].length : 0;
+    if(!o.permitirReduccion && typeof campos[k] === 'string' &&
+       remoto >= _MIN_VIGILADO && local < remoto * _UMBRAL_ENCOGE){
+      reducidos.push(k + ' (' + local + ' vs ' + remoto + ' en la nube, ' +
+                     Math.round(100 - local * 100 / remoto) + '% menos)');
+      return;
+    }
     seguros[k] = campos[k];
   });
 
   if(bloqueados.length){
     _fbAvisoBloqueo('se evitó borrar en Firebase: ' + bloqueados.join(', ') + ' (el panel los tiene vacíos y en la nube sí hay datos)');
+  }
+  if(reducidos.length){
+    _fbAvisoBloqueo('se evitó ENCOGER en Firebase: ' + reducidos.join(' | ') +
+                    '. No se escribió nada. Si tienes el Panel abierto en dos ' +
+                    'pestañas o ventanas, cierra una y recarga. Si la reducción ' +
+                    'es correcta (borraste datos a propósito), avisa antes de forzar.');
   }
   if(!Object.keys(seguros).length){
     return Promise.resolve({ ok:false, motivo:'todo-bloqueado', bloqueados:bloqueados });

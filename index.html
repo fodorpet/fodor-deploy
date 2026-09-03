@@ -9980,7 +9980,15 @@ function importarGetnet(event){
       for(var i=0;i<Math.min(5,rows.length);i++){
         if((rows[i][0]+'').toLowerCase().includes('cod')) { hdrIdx=i; break; }
       }
-      if(hdrIdx<0){ alert('No encontré encabezado en el archivo GetNet'); return; }
+      if(hdrIdx<0){
+        // FIX 2026-09-03: mensaje explicativo cuando se carga el reporte de Abonos en vez de Transacciones.
+        var _c0=rows.slice(0,5).map(function(r){return (r||[]).join(' ').toLowerCase();}).join(' ');
+        var _esAbono=_c0.includes('fecha abono')||_c0.includes('estado abono')||_c0.includes('cant. ventas');
+        alert(_esAbono
+          ? 'Este archivo es el reporte de ABONOS/LIQUIDACIONES de GetNet (columnas Fecha Abono, Valor, Estado Abono).\n\nEl panel necesita el reporte de TRANSACCIONES/VENTAS, que trae las columnas: Cod.Aut, Fecha Venta, Boleta, Marca, Tipo, Valor Transacción, Comisión, Monto Abono, Estado Transacción.\n\nDescarga ese reporte en el portal GetNet y vuelve a cargarlo.'
+          : 'No encontré el encabezado esperado en el archivo GetNet.\n\nEl panel necesita el reporte de TRANSACCIONES/VENTAS de GetNet (columnas: Cod.Aut, Fecha Venta, Boleta, Marca, Tipo, Valor Transacción, Comisión, Monto Abono, Estado Transacción).\n\nVerifica que descargaste ese reporte y no otro (por ejemplo Abonos o Resumen).');
+        return;
+      }
       var hdrs = rows[hdrIdx].map(function(c){return (c+'').toLowerCase().trim();});
       var ci=function(n){return hdrs.indexOf(n);};
       var iFecha=ci('fecha venta'), iMonto=ci('valor transacción'), iAbono=ci('monto abono');

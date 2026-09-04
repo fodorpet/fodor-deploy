@@ -21,6 +21,11 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--texto);font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+#errorLog{position:fixed;bottom:0;right:0;width:400px;max-height:300px;background:#1e1e1e;border:2px solid #dc2626;border-radius:8px;overflow-y:auto;z-index:99999;font-size:11px;color:#fca5a5;padding:10px;display:none;box-shadow:0 20px 60px rgba(0,0,0,0.8);}
+#errorLog.visible{display:block;}
+#errorLog .error-item{padding:8px;border-bottom:1px solid #3f2121;font-family:monospace;word-break:break-all;margin-bottom:5px;}
+#errorLog .error-item.warn{color:#fbbf24;}
+#errorLog .error-item.info{color:#60a5fa;}
 
 /* HEADER */
 .header{background:#0d1421;color:white;padding:12px 20px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;}
@@ -417,6 +422,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+<div id="errorLog"></div>
 
 <div class="header">
   <div>
@@ -9011,6 +9017,12 @@ function _fbSetEstado(campos, opciones){
     }
 
     function _fbLoginReal(){
+      // FIX 2026-09-04: Si estamos en offline mode, no mostrar modal de login
+      if(window._FB_OFFMODE){
+        console.log('[FODOR] Offline mode - saltando login modal');
+        return Promise.resolve(null);
+      }
+
       var auth = firebase.auth();
       var LOCAL = (firebase.auth.Auth && firebase.auth.Auth.Persistence)
                   ? firebase.auth.Auth.Persistence.LOCAL : 'local';
@@ -9033,8 +9045,46 @@ function _fbSetEstado(campos, opciones){
       });
     }
 
+    // DETECCIÓN DE CONECTIVIDAD RÁPIDA (3 segundos) - FIX 2026-09-04
+    // Si Firebase no responde en 3 segundos, pasar automáticamente a offline mode
+    var _fbConnectCheck = setTimeout(function(){
+      console.warn('[FODOR] Firebase no responde en 3s - activando offline mode automático');
+      _FB_LOADED = true;
+      window._FB_OFFMODE = true;
+      var ind = document.getElementById('fbSyncInd');
+      if(ind){ ind.textContent='🔌 Modo offline (sin conexión)'; ind.style.color='#f59e0b'; }
+    }, 3000);
+
+    // Verificar rápidamente si Firebase está conectado
+    if(_fbDb && typeof _fbDb.ref === 'function'){
+      _fbDb.ref('.info/connected').once('value', function(snap){
+        clearTimeout(_fbConnectCheck);
+        if(snap.val() !== true){
+          console.warn('[FODOR] Firebase no está conectado - offline mode');
+          _FB_LOADED = true;
+          window._FB_OFFMODE = true;
+          var ind = document.getElementById('fbSyncInd');
+          if(ind){ ind.textContent='🔌 Modo offline'; ind.style.color='#f59e0b'; }
+        }
+      }, function(err){
+        clearTimeout(_fbConnectCheck);
+        console.error('[FODOR] Error detectando conexión:', err.code);
+        _FB_LOADED = true;
+        window._FB_OFFMODE = true;
+        var ind = document.getElementById('fbSyncInd');
+        if(ind){ ind.textContent='🔌 Offline (error)'; ind.style.color='#ef4444'; }
+      });
+    }
+
     // AUTH REAL: iniciar listeners solo tras login (evita "Permission Denied")
     _fbLoginReal().then(function(){
+
+      // FIX 2026-09-04: Si estamos en offline mode, no configurar listeners
+      if(window._FB_OFFMODE || !_fbDb){
+        console.log('[FODOR] Offline mode o sin _fbDb - listeners no inicializados');
+        _FB_LOADED = true;
+        return;
+      }
 
     // Escuchar cambios remotos
     _fbDb.ref('estado').on('value', function(snap){
@@ -16625,7 +16675,8 @@ function _unlockApp(){
     }catch(e){console.error('bodeguero init:',e);}
     return;
   }
-  (window._appInit ? window._appInit().then(function(){ try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);} }).catch(function(e){console.error('_appInit:',e);}) : (function(){ try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);} })())
+  try{if(typeof window._appInit==='function') window._appInit();}catch(e){console.error('_appInit:',e);}
+  try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);}
   // FIX-D26-REST: Carga facturas D26 vía REST con auth token anónimo (requiere auth != null en Firebase Rules)
   (function(){
     var _d26Unsub = firebase.auth().onAuthStateChanged(function(user){
@@ -17388,6 +17439,53 @@ function renderVenc(){
 
     return r;
   };
+})();
+</script>
+<script>
+// Monitor de errores visible
+(function(){
+  var errorLog = document.getElementById('errorLog');
+  var errorCount = 0;
+
+  // Capturar errores globales
+  window.addEventListener('error', function(event){
+    errorCount++;
+    addErrorLog('❌ ERROR: ' + (event.error?.message || event.message), 'error');
+    if(errorCount === 1) errorLog.classList.add('visible');
+  });
+
+  // Capturar promesas rechazadas
+  window.addEventListener('unhandledrejection', function(event){
+    addErrorLog('⚠️ PROMISE REJECTED: ' + (event.reason?.message || event.reason), 'warn');
+    if(errorLog.children.length === 1) errorLog.classList.add('visible');
+  });
+
+  // Override console.error para capturarlo
+  var consoleError = console.error;
+  console.error = function(){
+    var msg = Array.from(arguments).join(' ');
+    addErrorLog('🔴 ' + msg, 'error');
+    if(errorLog.children.length === 1) errorLog.classList.add('visible');
+    return consoleError.apply(console, arguments);
+  };
+
+  var consoleWarn = console.warn;
+  console.warn = function(){
+    var msg = Array.from(arguments).join(' ');
+    addErrorLog('⚠️ ' + msg, 'warn');
+    return consoleWarn.apply(console, arguments);
+  };
+
+  function addErrorLog(msg, type){
+    var item = document.createElement('div');
+    item.className = 'error-item ' + (type || 'info');
+    item.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+    errorLog.appendChild(item);
+    errorLog.scrollTop = errorLog.scrollHeight;
+  }
+
+  // Mostrar estado inicial
+  addErrorLog('[Panel iniciando...]', 'info');
 })();
 </script>
 </body>

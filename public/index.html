@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-09-02_15:03</title>
+<title>Fodor Spa — Panel de Facturación v2026-09-03_14:18</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -441,6 +441,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <div class="sidebar-sep">Principal</div>
   <button class="tab-btn year-2026 active" onclick="showTab('t2026',this)">🚨 Cobranza 2026</button>
   <button class="tab-btn" onclick="showTab('tDM',this)">👥 Deudores Múltiples</button>
+  <button class="tab-btn" onclick="showTab('tVenc',this);renderVenc()">📅 Vencimientos por mes</button>
 
 
   <div class="sidebar-sep">Pagos</div>
@@ -501,7 +502,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-02_15:03</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-03_14:18</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -609,6 +610,43 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 </div>
 
 <!-- ==================== TAB DEUDORES MÚLTIPLES ==================== -->
+<!-- VISTA VENCIMIENTOS POR MES (agregada 2026-09-03) — SOLO LECTURA -->
+<div class="tab-content" id="tVenc">
+  <div style="padding:14px 16px 6px">
+    <div style="font-size:16px;font-weight:800;color:var(--texto)">📅 Vencimientos por mes</div>
+    <div style="font-size:11px;color:var(--gris);margin-top:2px">
+      Facturas pendientes agrupadas por el mes en que vencen. Sirve para preparar el mes que viene.
+      Las marcadas <b>≈</b> no traen fecha de vencimiento: se estima a 30 días desde la emisión.
+    </div>
+  </div>
+  <div id="vencChips" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px"></div>
+  <div class="toolbar" style="margin:2px 16px 0">
+    <div class="search-w"><label>Buscar</label><input type="text" id="vencBus" placeholder="Empresa, folio, RUT..." oninput="renderVenc()"></div>
+    <div><label>Vendedor</label><select id="vencVend" onchange="renderVenc()"><option value="">Todos</option></select></div>
+    <div><label>Gestión</label><select id="vencEst" onchange="renderVenc()">
+      <option value="">Todas</option>
+      <option value="__SIN__">🆕 Sin gestión aún</option>
+      <option value="PENDIENTE">⏳ PENDIENTE</option>
+      <option value="CONTACTADO">📞 CONTACTADO</option>
+      <option value="COMPROMETIDO">🤝 COMPROMETIDO</option>
+      <option value="SIN-RESPUESTA">🔕 SIN-RESPUESTA</option>
+      <option value="EN-TRELLO">🟦 EN-TRELLO</option>
+      <option value="FALTA-50%">⚡ FALTA-50%</option>
+      <option value="DICOM">⚠️ DICOM</option>
+      <option value="INCOBRABLE">❌ INCOBRABLE</option>
+    </select></div>
+    <div><label>Monto mín.</label><select id="vencMonto" onchange="renderVenc()">
+      <option value="0">Todos</option><option value="100000">+$100k</option>
+      <option value="500000">+$500k</option><option value="1000000">+$1M</option>
+      <option value="3000000">+$3M</option>
+    </select></div>
+    <button class="btn-r" onclick="_vencLimpiar()" title="Limpiar filtros">✕</button>
+    <button id="vencBtnPag" onclick="_vencTogglePagadas()" title="Mostrar también las facturas ya pagadas, para poder desmarcarlas" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">👁 Ver pagadas</button>
+    <span class="cnt" id="vencCnt">— reg.</span>
+  </div>
+  <div id="vencResumen" style="padding:4px 16px 8px;font-size:12px;font-weight:700;color:var(--texto)"></div>
+  <div id="vencTabla" style="padding:0 16px 24px"></div>
+</div>
 <div class="tab-content" id="tDM">
   <div class="kpi-row">
     <div class="kpi rojo"><label>Clientes con deuda múltiple</label><div class="val" id="dmCnt">—</div><div class="sub" id="dmSub">—</div></div>
@@ -17006,6 +17044,351 @@ setTimeout(_initPanelBtns, 600);
       return out;
     };
   }
+})();
+</script>
+
+<!-- ==========================================================================
+     VISTA VENCIMIENTOS POR MES — Fodor SpA (agregada 2026-09-03)
+
+     Por que existe: el Panel ya guarda fecha_venc_iso por factura, pero las
+     vistas mensuales (t13..t17 / fmes26) filtran por fecha_iso, que es la
+     fecha de EMISION. No habia forma de ver "que vence en septiembre".
+
+     Que hace: agrupa las facturas PENDIENTES por mes de vencimiento.
+     Cuando la factura no trae fecha de vencimiento (43% de los casos
+     medidos en agosto 2026), la estima como emision + 30 dias y la marca
+     con "≈" para no mezclar un dato real con uno estimado.
+
+     Que NO hace: no escribe nada. No toca EST, BORRADAS, D26, D25,
+     D26_EXTRA, Firebase ni ninguna funcion existente. Es solo lectura.
+     ========================================================================== -->
+<script>
+var _VENC_PLAZO_DEF = 30;   // dias asumidos cuando la factura no trae vencimiento
+var _vencMesSel = null;
+var _vencVerPagadas = false;   // por defecto la vista muestra solo lo que falta cobrar
+
+function _vencEsBorrada(folio){
+  if(typeof BORRADAS === 'undefined' || !BORRADAS.length) return false;
+  return BORRADAS.indexOf(folio) >= 0 || BORRADAS.indexOf(String(folio)) >= 0 ||
+         BORRADAS.indexOf(Number(folio)) >= 0;
+}
+
+// Une las fuentes con el MISMO dedup por folio que usa recalcularDeudaPorRut
+// en el backend (D26 -> D25 -> D26_EXTRA, gana la ultima aparicion, que es la
+// reimportacion mas completa). Sin esto se contaria dos veces cada folio
+// duplicado, que fue el bug de los $243.984.784 del 12-08-2026.
+function _vencFuente(){
+  var map = new Map();
+  [ (typeof D26 !== 'undefined' ? D26 : []),
+    (typeof D25 !== 'undefined' ? D25 : []),
+    (typeof D26_EXTRA !== 'undefined' ? D26_EXTRA : []) ].forEach(function(arr){
+    (arr || []).forEach(function(r){ if(r && r.folio) map.set(String(r.folio), r); });
+  });
+  return Array.from(map.values());
+}
+
+function _vencFecha(r){
+  var v = r.fecha_venc_iso ? String(r.fecha_venc_iso).slice(0,10) : '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return { iso: v, estimado: false };
+  var f = r.fecha_iso ? String(r.fecha_iso).slice(0,10) : '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(f)){
+    var d = new Date(f + 'T00:00:00');
+    d.setDate(d.getDate() + _VENC_PLAZO_DEF);
+    return { iso: d.toISOString().slice(0,10), estimado: true };
+  }
+  return null;   // sin fecha utilizable: no se inventa
+}
+
+function _vencPendientes(){
+  var out = [];
+  _vencFuente().forEach(function(r){
+    if(!r || !r.folio) return;
+    if(!(Number(r.saldo) > 0)) return;
+    if(_vencEsBorrada(r.folio)) return;
+    var _pg = !!(typeof EST !== 'undefined' && EST[r.folio] && EST[r.folio].pagado);
+    if(_pg && !_vencVerPagadas) return;
+    var fv = _vencFecha(r);
+    if(!fv) return;
+    out.push({ r: r, iso: fv.iso, mes: fv.iso.slice(0,7), estimado: fv.estimado, pagado: _pg });
+  });
+  return out;
+}
+
+function _vencPlata(n){ return '$' + Math.round(Number(n)||0).toLocaleString('es-CL'); }
+
+function _vencTogglePagadas(){
+  _vencVerPagadas = !_vencVerPagadas;
+  var b = document.getElementById('vencBtnPag');
+  if(b){
+    b.textContent = _vencVerPagadas ? '👁 Ocultar pagadas' : '👁 Ver pagadas';
+    b.style.background = _vencVerPagadas ? '#64748b' : '#16a34a';
+  }
+  renderVenc();
+}
+
+function _vencLimpiar(){
+  ['vencBus','vencVend','vencEst','vencMonto'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = (id === 'vencMonto') ? '0' : '';
+  });
+  renderVenc();
+}
+
+function renderVenc(){
+  var items = _vencPendientes();
+  var porMes = {};
+  items.forEach(function(x){
+    if(!porMes[x.mes]) porMes[x.mes] = { n:0, total:0, est:0, pagN:0, pagTotal:0, filas:[] };
+    // Las pagadas NO suman al total del mes: ese numero debe seguir
+    // respondiendo "cuanto me falta cobrar", no "cuanto factture".
+    if(x.pagado){ porMes[x.mes].pagN++; porMes[x.mes].pagTotal += Number(x.r.saldo)||0; }
+    else {
+      porMes[x.mes].n++;
+      porMes[x.mes].total += Number(x.r.saldo)||0;
+      if(x.estimado) porMes[x.mes].est++;
+    }
+    porMes[x.mes].filas.push(x);
+  });
+
+  var meses = Object.keys(porMes).sort();
+  if(!meses.length){
+    document.getElementById('vencChips').innerHTML = '';
+    document.getElementById('vencResumen').innerHTML = '';
+    document.getElementById('vencTabla').innerHTML =
+      '<div style="padding:24px;text-align:center;color:var(--gris)">No hay facturas pendientes con fecha utilizable.</div>';
+    return;
+  }
+
+  // Vendedores reales presentes en los datos, no una lista escrita a mano.
+  var selV = document.getElementById('vencVend');
+  if(selV){
+    var prev = selV.value;
+    var vends = {};
+    items.forEach(function(x){ var v=(x.r.vendedor||'').trim(); if(v) vends[v]=1; });
+    var lista = Object.keys(vends).sort();
+    if(selV.options.length !== lista.length + 1){
+      selV.innerHTML = '<option value="">Todos</option>' +
+        lista.map(function(v){ return '<option>' + v + '</option>'; }).join('');
+      if(lista.indexOf(prev) >= 0) selV.value = prev;
+    }
+  }
+
+  var hoyMes = new Date().toISOString().slice(0,7);
+  if(!_vencMesSel || !porMes[_vencMesSel]){
+    _vencMesSel = porMes[hoyMes] ? hoyMes : meses[0];
+  }
+
+  var NOM = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var chips = meses.map(function(m){
+    var d = porMes[m];
+    var sel = (m === _vencMesSel);
+    var pasado = (m < hoyMes);
+    var bg = sel ? '#1e3a5f' : (pasado ? '#fee2e2' : '#e8f4fd');
+    var col = sel ? '#fff' : (pasado ? '#991b1b' : '#0369a1');
+    var etq = NOM[parseInt(m.slice(5,7),10)] + ' ' + m.slice(0,4);
+    return '<button onclick="_vencMesSel=\'' + m + '\';renderVenc()" '
+      + 'style="border:0;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;font-weight:800;'
+      + 'background:' + bg + ';color:' + col + '">'
+      + etq + '<br><span style="font-weight:600;font-size:10px">' + d.n + ' · ' + _vencPlata(d.total) + '</span></button>';
+  }).join('');
+  document.getElementById('vencChips').innerHTML = chips;
+
+  var d = porMes[_vencMesSel];
+  document.getElementById('vencResumen').innerHTML =
+    'Vencen en ' + NOM[parseInt(_vencMesSel.slice(5,7),10)] + ' ' + _vencMesSel.slice(0,4) + ': '
+    + '<b>' + d.n + ' facturas</b> por <b>' + _vencPlata(d.total) + '</b>'
+    + (d.est ? ' <span style="color:var(--gris);font-weight:600">(' + d.est + ' con fecha estimada ≈)</span>' : '')
+    + ((_vencVerPagadas && d.pagN) ? ' <span style="color:#1d4ed8;font-weight:700">+ ' + d.pagN + ' ya pagadas (' + _vencPlata(d.pagTotal) + ')</span>' : '')
+    + ' <button onclick="renderVenc()" style="border:0;border-radius:6px;padding:3px 9px;font-size:10px;'
+    + 'font-weight:700;cursor:pointer;background:#e2e8f0;color:#334155;margin-left:8px">🔄 Actualizar</button>';
+
+  // ---- Filtros ----
+  var _q  = (document.getElementById('vencBus')   || {}).value || '';
+  var _v  = (document.getElementById('vencVend')  || {}).value || '';
+  var _e  = (document.getElementById('vencEst')   || {}).value || '';
+  var _mn = parseInt((document.getElementById('vencMonto') || {}).value || '0') || 0;
+  _q = _q.toLowerCase().trim();
+
+  var visibles = d.filas.filter(function(x){
+    if(_mn && !((Number(x.r.saldo)||0) >= _mn)) return false;
+    if(_v && (x.r.vendedor||'') !== _v) return false;
+    if(_q){
+      var txt = ((x.r.empresa||'') + ' ' + (x.r.folio||'') + ' ' + (x.r.rut||'')).toLowerCase();
+      if(txt.indexOf(_q) < 0) return false;
+    }
+    if(_e){
+      var es = (typeof EST !== 'undefined' && EST[String(x.r.folio)]) ? EST[String(x.r.folio)] : {};
+      var tieneHist = !!(es.historial && es.historial.length);
+      if(_e === '__SIN__'){ if(tieneHist) return false; }
+      else if((es.estadoGest || 'PENDIENTE') !== _e) return false;
+    }
+    return true;
+  });
+
+  var _tv = visibles.reduce(function(a,x){ return a + (Number(x.r.saldo)||0); }, 0);
+  var _cnt = document.getElementById('vencCnt');
+  if(_cnt){
+    _cnt.textContent = visibles.length + ' de ' + d.n + ' · ' + _vencPlata(_tv);
+    _cnt.className = 'cnt' + (visibles.length < d.n ? '' : ' rojo');
+  }
+
+  var filas = visibles.slice().sort(function(a,b){
+    if(a.iso !== b.iso) return a.iso < b.iso ? -1 : 1;
+    return (Number(b.r.saldo)||0) - (Number(a.r.saldo)||0);
+  });
+
+  // Folios que SI existen en D26: solo esos aceptan enviarEmailCobranza(),
+  // que busca unicamente en D26 y avisa "Factura no encontrada" si no esta.
+  var _enD26 = new Set((typeof D26 !== 'undefined' ? D26 : []).map(function(x){ return String(x.folio); }));
+
+  var _ICO = {'PENDIENTE':'⏳','EN-TRELLO':'🟦','CONTACTADO':'📞','COMPROMETIDO':'🤝',
+              'SIN-RESPUESTA':'🔕','DICOM':'⚠️','INCOBRABLE':'❌','PAGADO':'✅','FALTA-50%':'⚡'};
+
+  var th = 'padding:7px 8px;font-size:10px;text-align:left;background:#f1f5f9;color:#475569;font-weight:800';
+  var td = 'padding:6px 8px;font-size:11px;border-bottom:1px solid #f1f5f9';
+  var html = '<table style="width:100%;border-collapse:collapse">'
+    + '<tr><th style="' + th + '">Vence</th><th style="' + th + '">Folio</th>'
+    + '<th style="' + th + '">Empresa</th><th style="' + th + '">RUT</th>'
+    + '<th style="' + th + ';text-align:right">Saldo</th>'
+    + '<th style="' + th + '">Gestión</th>'
+    + '<th style="' + th + '">Vendedor</th>'
+    + '<th style="' + th + ';text-align:center">Acciones</th></tr>';
+
+  filas.forEach(function(x){
+    var f = String(x.r.folio);
+    var pt = x.iso.split('-');
+    var est = (typeof EST !== 'undefined' && EST[f]) ? EST[f] : {};
+    var eg = est.estadoGest || 'PENDIENTE';
+
+    // Ultima gestion registrada y ultimo compromiso, para ver el avance
+    // sin tener que abrir la ficha.
+    var hist = (est.historial && est.historial.length) ? est.historial : [];
+    var ultComp = '', ultTs = '';
+    hist.forEach(function(h){
+      if(h && h.compromisoFecha) ultComp = String(h.compromisoFecha).slice(0,10);
+      if(h && h.ts) ultTs = String(h.ts).slice(0,10);
+    });
+
+    var gest = '<span style="white-space:nowrap">' + (_ICO[eg] || '⏳') + ' ' + eg + '</span>';
+    if(ultComp){
+      var pc = ultComp.split('-');
+      gest += '<br><span style="font-size:9px;color:#2e7d32;font-weight:700">💰 Paga ' + pc[2] + '/' + pc[1] + '</span>';
+    } else if(ultTs){
+      var pu = ultTs.split('-');
+      gest += '<br><span style="font-size:9px;color:var(--gris)">últ. ' + pu[2] + '/' + pu[1] + '</span>';
+    }
+
+    var fEsc = f.replace(/'/g, "");
+    var btn = 'border:0;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin:1px';
+    var acc = '<button onclick="openMod(\'' + fEsc + '\')" title="Anotar gestión, compromiso de pago y estado" '
+            + 'style="' + btn + ';background:#1e3a5f;color:#fff">📝 Anotar</button>';
+    if(_enD26.has(f) && (x.r.correo || '')){
+      acc += '<button onclick="enviarEmailCobranza(\'' + fEsc + '\')" title="Preparar correo de cobranza" '
+           + 'style="' + btn + ';background:#7c3aed;color:#fff">📧 Correo</button>';
+    }
+
+    // Desmarcar reutiliza handlePagBtn(), el mismo punto de entrada del Panel:
+    // si la factura esta pagada llama a anularPagoFolio() (pide confirmacion,
+    // corta el vinculo con la transferencia y deja registro en bitacora).
+    if(x.pagado){
+      acc = '<button onclick="handlePagBtn(\'' + fEsc + '\')" title="Quitar la marca de pagada de esta factura" '
+          + 'style="' + btn + ';background:#b91c1c;color:#fff">↩️ Desmarcar</button>' + acc;
+    }
+
+    var estilo = x.pagado ? 'text-decoration:line-through;color:#1d4ed8;opacity:.75' : '';
+    html += '<tr style="' + estilo + '">'
+      + '<td style="' + td + ';white-space:nowrap">' + pt[2] + '/' + pt[1]
+      + (x.estimado ? ' <span title="Fecha estimada: emisión + 30 días" style="color:#b45309;font-weight:800">≈</span>' : '')
+      + '</td>'
+      + '<td style="' + td + '">' + f + '</td>'
+      + '<td style="' + td + '">' + (x.r.empresa || '') + '</td>'
+      + '<td style="' + td + '">' + (x.r.rut || '') + '</td>'
+      + '<td style="' + td + ';text-align:right;font-weight:700">' + _vencPlata(x.r.saldo) + '</td>'
+      + '<td style="' + td + '">' + gest + '</td>'
+      + '<td style="' + td + ';color:var(--gris)">' + (x.r.vendedor || '') + '</td>'
+      + '<td style="' + td + ';text-align:center;white-space:nowrap">' + acc + '</td>'
+      + '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('vencTabla').innerHTML = html;
+}
+</script>
+
+<!-- ==========================================================================
+     ANTI-DUPLICADO — Preguntar al vendedor por WhatsApp (agregado 2026-09-03)
+
+     Problema reportado: el boton 🧾 abre WhatsApp con el mensaje al vendedor,
+     pero NO deja ningun registro. No hay forma de saber si ya se pregunto por
+     esa factura, y se termina mandando el mismo mensaje dos veces.
+
+     Que hace:
+       1) Antes de abrir WhatsApp, avisa si YA se pregunto por esa factura
+          (a quien y hace cuantos dias) y deja cancelar.
+       2) Despues de abrir WhatsApp, registra la consulta llamando a cqDesde(),
+          la funcion que el Panel ya usa para eso: escribe en el historial de
+          la factura, en la bitacora, guarda en Firebase y refresca las vistas.
+
+     Que NO hace: no modifica notaVendedorWsp ni cqDesde (las envuelve), no
+     toca pagos, ni EST fuera de lo que cqDesde ya escribia, ni Kommo.
+     Si algo falla aca, WhatsApp se abre igual: el original corre primero.
+     ========================================================================== -->
+<script>
+(function(){
+  var DIAS_AVISO = 45;   // si la ultima consulta es mas vieja que esto, no molesta
+
+  function _cwFactura(folio){
+    var lista = [];
+    if(typeof D26 !== 'undefined' && D26) lista = lista.concat(D26);
+    if(typeof D25 !== 'undefined' && D25) lista = lista.concat(D25);
+    return lista.filter(function(x){ return x && String(x.folio) === String(folio); })[0] || null;
+  }
+
+  function _cwUltimaConsulta(folio){
+    if(typeof EST === 'undefined' || !EST[folio]) return null;
+    var e = EST[folio];
+    if(e.consultaTs) return { ts: e.consultaTs, txt: e.consulta || 'Consulta al vendedor' };
+    var h = (e.historial && e.historial.length) ? e.historial : [];
+    var ult = null;
+    h.forEach(function(x){
+      if(x && x.tipo && String(x.tipo).indexOf('Consulta') >= 0) ult = x;
+    });
+    return ult ? { ts: ult.ts, txt: ult.nota || 'Consulta al vendedor' } : null;
+  }
+
+  var _orig = window.notaVendedorWsp;
+  if(typeof _orig !== 'function') return;   // si no existe, no se toca nada
+
+  window.notaVendedorWsp = function(folio){
+    // ---- 1) Aviso anti-duplicado ----
+    try{
+      var prev = _cwUltimaConsulta(folio);
+      if(prev && prev.ts){
+        var dias = Math.floor((Date.now() - new Date(prev.ts).getTime()) / 86400000);
+        if(dias >= 0 && dias <= DIAS_AVISO){
+          var f = new Date(prev.ts);
+          var fTxt = ('0'+f.getDate()).slice(-2) + '/' + ('0'+(f.getMonth()+1)).slice(-2) + '/' + f.getFullYear();
+          var cuando = dias === 0 ? 'hoy' : (dias === 1 ? 'ayer' : 'hace ' + dias + ' dias');
+          if(!confirm('⚠️ Ya preguntaste por la factura ' + folio + '.\n\n'
+                    + prev.txt + '\n' + fTxt + ' (' + cuando + ')\n\n'
+                    + '¿Quieres volver a preguntar de todas formas?')) return;
+        }
+      }
+    }catch(e){ console.error('[anti-duplicado]', e); }
+
+    // ---- 2) Comportamiento original: abrir WhatsApp ----
+    var r = _orig.apply(this, arguments);
+
+    // ---- 3) Registrar la consulta con la funcion canonica del Panel ----
+    try{
+      if(typeof cqDesde === 'function'){
+        var fac = _cwFactura(folio);
+        var vend = (fac && fac.vendedor) ? fac.vendedor : 'vendedor';
+        cqDesde(folio, vend + ' por WhatsApp', '🧾');
+      }
+    }catch(e){ console.error('[anti-duplicado registro]', e); }
+
+    return r;
+  };
 })();
 </script>
 </body>

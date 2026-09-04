@@ -474,3 +474,232 @@ exports.listarAlertasDelDia = functions
       res.status(500).json({ ok: false, error: e.message });
     }
   });
+
+/* ==========================================================================
+   AGENDA DIARIA DE COBRANZA — Fodor SpA (agregado 2026-09-03)
+
+   Por que existe: los compromisos de pago SI se guardan en el Panel
+   (EST[folio].historial[].compromisoFecha) y el Panel incluso los muestra
+   en "Compromisos para hoy". El problema reportado por la usuaria no es
+   que falte la funcion, es que hay que acordarse de entrar a mirarla.
+   Esta funcion invierte eso: la agenda la busca a ella.
+
+   Que hace: cada dia habil a las 08:30 (America/Santiago) revisa los
+   compromisos de pago y deja UN mensaje en /alertas_whatsapp_deborah, la
+   misma cola que ya lee whatsapp-watcher.js en el Mac.
+
+   Que NO hace: no modifica EST, ni el historial, ni la bitacora, ni
+   D26/D25/D24/D26_EXTRA, ni deuda_por_rut, ni Kommo. No crea notas. Solo
+   lee estado/* y escribe la cola de avisos mas su propia marca de dia.
+   ========================================================================== */
+
+const AGENDA_TOPE_LISTA = 10;   // maximo de clientes detallados por bloque
+const AGENDA_ZONA = 'America/Santiago';
+
+function _agPlata(n) {
+  return '$' + (Math.round(Number(n) || 0)).toLocaleString('es-CL');
+}
+
+// Fecha de HOY en Chile como 'YYYY-MM-DD'. Se compara como texto contra
+// compromisoFecha (que el Panel guarda con <input type="date">, mismo
+// formato) para no arrastrar errores de zona horaria.
+function _agHoy() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: AGENDA_ZONA });
+}
+
+function _agFecha(iso) {
+  const s = String(iso || '').slice(0, 10);
+  const p = s.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] : s;
+}
+
+function _agDias(desde, hasta) {
+  const a = new Date(desde + 'T00:00:00Z'), b = new Date(hasta + 'T00:00:00Z');
+  return Math.round((b - a) / 86400000);
+}
+
+// Copia local deliberada del decodificador de nodos. NO se reutiliza el de
+// calcularYPublicarDeudaPorRut porque esta definido dentro de esa funcion y
+// extraerlo obligaria a modificar codigo critico durante un cambio que no lo
+// necesita. Deuda tecnica anotada a proposito.
+function _agDecodificar(snap) {
+  if (!snap.exists()) return null;
+  const v = snap.val();
+  if (typeof v === 'string') {
+    try {
+      let p = JSON.parse(v);
+      if (typeof p === 'string') p = JSON.parse(p);
+      return p;
+    } catch (e) {
+      console.error('agenda: no se pudo decodificar', snap.ref.toString(), e.message);
+      return null;
+    }
+  }
+  return v;
+}
+
+function _agArray(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  return Object.values(v);
+}
+
+async function construirAgendaCobranza() {
+  const db = admin.database();
+  const hoy = _agHoy();
+
+  const [d26, d25, d24, d26e, estSnap, borrSnap, borr25Snap] = await Promise.all([
+    db.ref('estado/D26').once('value'),
+    db.ref('estado/D25').once('value'),
+    db.ref('estado/D24').once('value'),
+    db.ref('estado/D26_EXTRA').once('value'),
+    db.ref('estado/EST').once('value'),
+    db.ref('estado/BORRADAS').once('value'),
+    db.ref('estado/BORRADAS25').once('value'),
+  ]);
+
+  // Mismo dedup por folio que recalcularDeudaPorRut (fix 12-08-2026):
+  // recorrer D26 -> D25 -> D24 -> D26_EXTRA y quedarse con la ultima
+  // aparicion deja la version mas completa de cada folio.
+  const porFolio = new Map();
+  for (const r of [
+    ..._agArray(_agDecodificar(d26)),
+    ..._agArray(_agDecodificar(d25)),
+    ..._agArray(_agDecodificar(d24)),
+    ..._agArray(_agDecodificar(d26e)),
+  ]) {
+    if (r && r.folio) porFolio.set(String(r.folio), r);
+  }
+
+  const borradas = new Set(
+    [..._agArray(_agDecodificar(borrSnap)), ..._agArray(_agDecodificar(borr25Snap))]
+      .map((f) => String(f))
+  );
+
+  const EST = _agDecodificar(estSnap) || {};
+  const vencidos = [], deHoy = [], proximos = [];
+
+  for (const folio in EST) {
+    const e = EST[folio];
+    if (!e || e.pagado) continue;
+    if (borradas.has(String(folio))) continue;
+
+    const hist = Array.isArray(e.historial) ? e.historial : _agArray(e.historial);
+    if (!hist.length) continue;
+
+    // Ultima gestion con compromiso (por ts; si no hay ts, por orden).
+    let ult = null;
+    for (const h of hist) {
+      if (!h || !h.compromisoFecha) continue;
+      if (!ult) { ult = h; continue; }
+      if (String(h.ts || '') >= String(ult.ts || '')) ult = h;
+    }
+    if (!ult) continue;
+
+    // Estado de gestion vigente = el de la ultima entrada del historial.
+    const vig = hist[hist.length - 1] || {};
+    if (vig.estadoGest === 'ANULADA' || vig.estadoGest === 'PAGADO') continue;
+
+    const comp = String(ult.compromisoFecha).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(comp)) continue;
+
+    const r = porFolio.get(String(folio)) || {};
+    const item = {
+      folio: String(folio),
+      empresa: r.empresa || '(sin razon social)',
+      saldo: Number(r.saldo) || 0,
+      comp,
+      dias: _agDias(comp, hoy),
+    };
+
+    if (comp < hoy) vencidos.push(item);
+    else if (comp === hoy) deHoy.push(item);
+    else if (_agDias(hoy, comp) <= 7) proximos.push(item);
+  }
+
+  vencidos.sort((a, b) => b.saldo - a.saldo);
+  deHoy.sort((a, b) => b.saldo - a.saldo);
+
+  const suma = (l) => l.reduce((s, x) => s + x.saldo, 0);
+  const linea = (x) => '• ' + x.empresa + ' — ' + _agPlata(x.saldo) + ' (folio ' + x.folio + ')';
+
+  let txt = '📅 *AGENDA DE COBRANZA* — ' + _agFecha(hoy) + '\n';
+
+  if (deHoy.length) {
+    txt += '\n✅ *Prometieron pagar HOY* (' + deHoy.length + ' · ' + _agPlata(suma(deHoy)) + ')\n';
+    txt += deHoy.slice(0, AGENDA_TOPE_LISTA).map(linea).join('\n');
+    if (deHoy.length > AGENDA_TOPE_LISTA) txt += '\n… y ' + (deHoy.length - AGENDA_TOPE_LISTA) + ' mas';
+    txt += '\n';
+  }
+
+  if (vencidos.length) {
+    txt += '\n🚨 *Prometieron y no pagaron* (' + vencidos.length + ' · ' + _agPlata(suma(vencidos)) + ')\n';
+    txt += vencidos.slice(0, AGENDA_TOPE_LISTA)
+      .map((x) => linea(x) + ' — dijo ' + _agFecha(x.comp) + ', hace ' + x.dias + 'd').join('\n');
+    if (vencidos.length > AGENDA_TOPE_LISTA) txt += '\n… y ' + (vencidos.length - AGENDA_TOPE_LISTA) + ' mas';
+    txt += '\n';
+  }
+
+  if (proximos.length) {
+    txt += '\n🔔 Prometieron pagar en los proximos 7 dias: ' + proximos.length +
+           ' · ' + _agPlata(suma(proximos)) + '\n';
+  }
+
+  if (!deHoy.length && !vencidos.length && !proximos.length) {
+    txt += '\nNo hay compromisos de pago registrados.\n' +
+           'Si cobraste y te dieron fecha, anotala en el Panel para que aparezca aca.';
+  }
+
+  return {
+    texto: txt.trim(),
+    hoy,
+    n_hoy: deHoy.length,
+    n_vencidos: vencidos.length,
+    n_proximos: proximos.length,
+  };
+}
+
+exports.agendaCobranzaDiaria = functions
+  .runWith(CONFIG_MEMORIA)
+  .pubsub.schedule('30 8 * * 1-5')
+  .timeZone(AGENDA_ZONA)
+  .onRun(async () => {
+    const a = await construirAgendaCobranza();
+
+    // Idempotencia: si este dia ya se encolo (reintento de Cloud Functions),
+    // la transaccion aborta y no se manda dos veces el mismo mensaje.
+    const marca = await admin.database().ref('agenda_cobranza/ultimo_envio')
+      .transaction((cur) => (cur === a.hoy ? undefined : a.hoy));
+    if (!marca.committed) {
+      console.log('agenda: ya se habia enviado la de ' + a.hoy + ', no se repite.');
+      return null;
+    }
+
+    await admin.database().ref('alertas_whatsapp_deborah').push({
+      texto: a.texto,
+      tipo: 'agenda_cobranza',
+      ts: Date.now(),
+      enviado: false,
+    });
+
+    console.log('agenda encolada ' + a.hoy + ': hoy=' + a.n_hoy +
+                ' vencidos=' + a.n_vencidos + ' proximos=' + a.n_proximos);
+    return null;
+  });
+
+// Prueba manual: devuelve el texto EXACTO que se enviaria, sin encolar nada
+// ni tocar la marca de dia. Sirve para revisar el mensaje antes de confiar
+// en el envio automatico.
+exports.agendaCobranzaPreview = functions
+  .runWith(CONFIG_MEMORIA)
+  .https.onRequest(async (req, res) => {
+    try {
+      const a = await construirAgendaCobranza();
+      res.set('Content-Type', 'text/plain; charset=utf-8');
+      res.send(a.texto + '\n\n---\n(vista previa: NO se envio nada)\n' +
+               'hoy=' + a.n_hoy + ' vencidos=' + a.n_vencidos + ' proximos=' + a.n_proximos);
+    } catch (e) {
+      console.error('ERROR en agendaCobranzaPreview:', e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });

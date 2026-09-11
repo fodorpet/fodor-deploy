@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fodor Spa — Panel de Facturación v2026-09-07_10:01</title>
+<title>Fodor Spa — Panel de Facturación v2026-09-08_10:57</title>
 <style>
 :root {
   --verde:#4ade80; --verde-c:#14532d;
@@ -502,7 +502,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
 <!-- SHARE BAR -->
 <div class="share-bar">
   <strong style="font-size:12px">💾 Datos guardados automáticamente en este navegador</strong>
-  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-07_10:01</span>
+  <span id="chipVersion" style="font-size:10px;background:#1d4ed8;color:white;padding:2px 8px;border-radius:10px;font-weight:700;" title="Versión del sistema — si no coincide con la última publicada, recarga con Cmd+Shift+R">v2026-09-08_10:57</span>
   <span id="fbSyncInd" style="font-size:11px;font-weight:700;color:#888;padding:3px 10px;background:#f1f5f9;border-radius:20px;">⏳ Conectando...</span>
   <button id="userInd" onclick="mostrarModalUsuario()" style="background:#7c3aed;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👤 Sin identificar</button>
   <button onclick="gestionarUsuarios()" style="background:#4f46e5;color:white;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer;">👥 Usuarios</button>
@@ -520,6 +520,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="bshare" id="btnRepararFechas" style="background:#0891b2;color:white;border-color:#0891b2" onclick="repararFechasFacturas()" title="Corrige facturas guardadas con la fecha en formato ilegible (las que salen como undefined-undefined-... o con badge SIN FECHA). Muestra la lista antes de aplicar y deja respaldo.">🔧 Reparar fechas</button>
   <button class="bshare" style="background:#7c3aed;color:white;border-color:#7c3aed" onclick="limpiarFoliosInexistentes()" title="Borra marcas de pago sobre folios que no son facturas (errores de tipeo)">🧽 Limpiar folios inexistentes</button>
   <button class="bshare" style="background:#0f766e;color:white;border-color:#0f766e" onclick="mantenimientoLimpiarPagos()" title="Elimina duplicados de WebPay y registros corruptos de MercadoPago. Descarga respaldo antes y verifica en Firebase.">🧹 Mantenimiento de pagos</button>
+  <button class="bshare" onclick="tandaCobranza()" style="background:#7c3aed;color:white;border-color:#7c3aed;font-weight:700" title="Crea los borradores de cobranza en Outlook">📧 Tanda de cobranza</button>
   <button class="bshare" onclick="enviarTodasATrello()" style="background:#0052cc;color:white;border-color:#0052cc;font-weight:700">🟦 Enviar todo a Trello</button>
   <button class="bshare" onclick="resetearTodo()" style="color:var(--rojo);border-color:var(--rojo-c)">🗑 Limpiar todo</button>
   <span id="lastSave" style="margin-left:auto;font-size:10px;color:var(--gris)"></span>
@@ -3588,19 +3589,104 @@ function _registrarEmailEnviado(folio, correo, empresa, trackToken){
   }catch(e){console.error('[FODOR] _registrarEmailEnviado error:',e);}
 }
 
-function enviarEmailCobranza(folio){
-  var r = D26.find(function(x){return x.folio===folio;});
-  if(!r){alert('Factura no encontrada');return;}
-  var correo = r.correo||'';
-  if(!correo){alert('Esta factura no tiene correo registrado.\nAgrégalo desde Gestionar.');return;}
+// ── Armado del correo de cobranza — FUENTE UNICA (09-09-2026) ──
+// La usan el envio individual y el envio masivo. Un solo lugar donde vive
+// el texto, para que no se desincronicen.
+// Devuelve null si la factura no sirve para enviar; el motivo va en .motivo
+// ── Correos de destino: separar, validar, excluir internos (09-09-2026) ──
+// Por que existe: el campo r.correo puede traer VARIOS correos en un solo
+// string ("ventas@fodor.cl,marcelo@fodor.cl"). Al pasarlo tal cual a Outlook
+// quedaba una direccion invalida. Ademas hay facturas cuyo correo registrado
+// es interno de Fodor: mandarles cobranza es cobrarse a uno mismo.
+var _COB_DOMINIOS_PROPIOS = ['fodor.cl','fodorspa.cl'];
+function _cobCorreosValidos(txt){
+  var crudos = String(txt||'').split(/[,;\s]+/);
+  var val=[], internos=[];
+  crudos.forEach(function(c){
+    c = c.trim().replace(/^<|>$/g,'').toLowerCase();
+    if(!c) return;
+    if(!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(c)) return;
+    var dom = c.split('@')[1];
+    if(_COB_DOMINIOS_PROPIOS.indexOf(dom)>=0){ internos.push(c); return; }
+    if(val.indexOf(c)<0) val.push(c);
+  });
+  return {validos:val, internos:internos};
+}
+
+function _armarCorreoCobranza(r){
+  if(!r) return {ok:false, motivo:'Factura no encontrada'};
+  var folio = r.folio;
+  var _cc = _cobCorreosValidos(r.correo);
+  if(!_cc.validos.length){
+    return {ok:false, motivo: _cc.internos.length
+      ? 'Solo tiene correo interno de Fodor ('+_cc.internos.join(', ')+')'
+      : 'Sin correo registrado'};
+  }
+  var correos = _cc.validos;
+  var correo = correos.join(', ');
   var empresa = r.empresa||'';
   var monto = fmt(r.saldo);
   var fp = r.forma_pago||'';
   var dias = diasVenc(r);
+  // ── Plantillas de cobranza por tramo de mora (09-09-2026) ──
+  // Por que existe: antes TODAS las facturas recibian el mismo texto de primer
+  // aviso ("a la brevedad posible"), incluidas las de 600+ dias de mora. El tono
+  // no escalaba con la deuda, lo que le ensena al cliente que la cobranza es
+  // automatica y que no pasa nada si no responde.
+  // Cortes: A 1-15 recordatorio | B 16-45 formal | C 46-90 firme | D 91+ especial.
+  // El tramo D NO se excluye aqui (envio individual = decision consciente), pero
+  // se advierte en pantalla. La exclusion aplica al envio masivo (Entrega 2).
+  var _vIso = r.fecha_venc_iso;
+  if(!_fechaEsValida(String(_vIso||'').slice(0,10)) && r.fecha_iso && r.dias_plazo>0){
+    var _dv = new Date(r.fecha_iso); _dv.setDate(_dv.getDate()+r.dias_plazo);
+    _vIso = _dv.toISOString().slice(0,10);
+  }
+  var _vTxt = _fechaEsValida(String(_vIso||'').slice(0,10))
+    ? new Date(String(_vIso).slice(0,10)+'T12:00:00').toLocaleDateString('es-CL') : '';
+  var _lVenc = _vTxt ? '\n   • Vencimiento: '+_vTxt+' ('+dias+' días de mora)'
+                     : '\n   • Días de mora: '+dias;
+  var _lFp   = fp ? '\n   • Condición de pago: '+fp : '';
+  if(dias===_DIAS_FECHA_INVALIDA || !isFinite(dias)){
+    return {ok:false, motivo:'Fecha ilegible — corrígela desde Gestionar antes de enviar'};
+  }
+  var _tramo = (dias<=15)?'A':(dias<=45)?'B':(dias<=90)?'C':'D';
+  // Datos de pago — van en los tres tramos, antes de la firma.
+  var _PAGO = '\n\nDatos para transferencia:'
+    + '\n   • Empresa: Fodor Spa'
+    + '\n   • RUT: 76.515.816-8'
+    + '\n   • Banco: Bci (Banco de Crédito e Inversiones)'
+    + '\n   • Cuenta corriente: N° 61598682'
+    + '\n   • Correo: pagos@fodor.cl'
+    + '\n\nTambién puede pagar con tarjeta a través de WebPay:'
+    + '\nhttps://www.webpay.cl/portalpagodirecto/pages/institucion.jsf?idEstablecimiento=44793925';
+  var _firma = '\n\nAtentamente,\nEquipo de Cobranza\nFodor Spa';
+  var asunto, cuerpo;
+  if(_tramo==='A'){
+    asunto = '[COB] Recordatorio de pago — Factura N° '+folio+' — Fodor Spa';
+    cuerpo = 'Estimados '+empresa+':\n\nJunto con saludar, les escribimos para recordarles que la siguiente factura registra su vencimiento cumplido:\n\n   • Factura N°: '+folio+'\n   • Monto: '+monto+_lVenc+_lFp+'\n\nSi el pago ya fue realizado, les agradecemos indicarnos la fecha y el medio para regularizar nuestro registro. Si aún está pendiente, agradeceremos su gestión en los próximos días.\n\nPuede responder directamente a este correo para confirmarnos el pago o resolver cualquier duda.'+_PAGO+_firma;
+  } else if(_tramo==='B'){
+    asunto = '[COB] Factura N° '+folio+' vencida — requiere regularización — Fodor Spa';
+    cuerpo = 'Estimados '+empresa+':\n\nNos dirigimos a ustedes respecto de la siguiente factura, que a la fecha permanece impaga:\n\n   • Factura N°: '+folio+'\n   • Monto adeudado: '+monto+_lVenc+_lFp+'\n\nA la fecha no hemos recibido el pago ni una respuesta que nos permita gestionar esta situación. Les solicitamos regularizar el pago dentro de los próximos 5 días hábiles, o bien contactarnos para acordar una fecha concreta.\n\nSi existe alguna observación sobre la factura o algún documento pendiente de nuestra parte, les pedimos informarlo a la brevedad para resolverlo.\n\nPuede responder directamente a este correo con la información del pago o sus observaciones.'+_PAGO+_firma;
+  } else {
+    asunto = '[COB] Factura N° '+folio+' con '+dias+' días de mora — Fodor Spa';
+    cuerpo = 'Estimados '+empresa+':\n\nLa siguiente factura mantiene un incumplimiento de pago que a la fecha alcanza '+dias+' días:\n\n   • Factura N°: '+folio+'\n   • Monto adeudado: '+monto+_lVenc+_lFp+'\n\nSi esta factura ya fue pagada, le agradeceremos mucho hacérnoslo saber para regularizar nuestro registro. Si aún está pendiente, quedamos atentos a su respuesta para coordinar el pago o acordar una fecha que les acomode.'+_PAGO+_firma;
+  }
+  return {ok:true, tramo:_tramo, asunto:asunto, cuerpo:cuerpo, correo:correo,
+          correos:correos, folio:folio, empresa:empresa, dias:dias};
+}
+
+function enviarEmailCobranza(folio){
+  var r = D26.find(function(x){return x.folio===folio;});
+  var _c = _armarCorreoCobranza(r);
+  if(!_c.ok){
+    alert(_c.motivo==='Sin correo registrado'
+      ? 'Esta factura no tiene correo registrado.\nAgrégalo desde Gestionar.'
+      : _c.motivo);
+    return;
+  }
+  var correo=_c.correo, empresa=_c.empresa, dias=_c.dias, _tramo=_c.tramo;
+  var asunto=_c.asunto, cuerpo=_c.cuerpo;
   var trackToken = String(folio)+'_'+Date.now();
-  var trackUrl = 'https://cobranzas-fodor.vercel.app/index_cifrado.html?track='+trackToken;
-  var asunto = '[COB] Aviso de Cobranza — Factura N° '+folio+' — Fodor Spa';
-  var cuerpo = 'Estimados '+empresa+',\n\nEsperamos que se encuentren bien.\n\nNos comunicamos con ustedes para informarles que registramos pendiente de pago la siguiente factura:\n\n   • Factura N°: '+folio+'\n   • Monto: '+monto+(fp?'\n   • Condición de pago: '+fp:'')+'\n   • Días vencida: '+dias+' días\n\nAgradecemos gestionar el pago a la brevedad posible. Si ya realizaron el pago, por favor ignoren este mensaje o contáctennos para confirmar.\n\nPara consultas o para confirmar su pago, puede hacer clic en el siguiente enlace:\n'+trackUrl+'\n\nSaludos cordiales,\nEquipo de Cobranza\nFodor Spa';
   var mailto = 'mailto:'+encodeURIComponent(correo)+'?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
   var prev = document.getElementById('_emailPrev');
   if(prev) prev.remove();
@@ -3616,14 +3702,216 @@ function enviarEmailCobranza(folio){
     +'<textarea readonly style="width:100%;height:180px;font-size:11px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;background:#fff;resize:none;color:#374151;line-height:1.6;box-sizing:border-box">'+cuerpo+'</textarea>'
     +'</div>'
     +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;font-size:11px;color:#166534;margin-bottom:14px">'
-    +'🔗 <b>Seguimiento activo:</b> Se detectará automáticamente cuando el cliente abra el enlace del email.'
+    +'📋 <b>Queda en bitácora:</b> Se registra el envío y la factura pasa a CONTACTADO.'
     +'</div>'
+    +(_tramo==='D'?'<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;font-size:11px;color:#991b1b;margin-bottom:14px">\u26a0\ufe0f <b>Mora extrema ('+dias+' d\u00edas).</b> Un correo est\u00e1ndar rinde poco en este tramo: conviene llamar o proponer acuerdo de pago. Se excluye del env\u00edo masivo.</div>':'')
     +'<div style="display:flex;gap:10px;justify-content:flex-end;">'
     +'<button onclick="document.getElementById(\'_emailPrev\').remove()" style="background:#e5e7eb;color:#374151;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>'
     +'<a href="'+mailto+'" onclick="_registrarEmailEnviado(\''+folio+'\',\''+correo+'\',\''+empresa.replace(/'/g,"")+'\',\''+trackToken+'\');cambiarEstadoDM(\''+folio+'\',\'CONTACTADO\');document.getElementById(\'_emailPrev\').remove();" style="background:#7c3aed;color:white;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block">📧 Abrir en Outlook</a>'
     +'</div>'
     +'</div>';
   document.body.appendChild(d);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+//  TANDA DE COBRANZA — crea borradores en Outlook (09-09-2026)
+//
+//  Por que existe: enviar factura por factura no escala. Esto arma
+//  la tanda completa, la muestra para aprobacion, y pide al servidor
+//  local que cree los borradores en Outlook.
+//
+//  Que NO hace: no envia. Crea BORRADORES. Deborah revisa y envia.
+//
+//  Excluye: pagadas, borradas, sin correo, fecha ilegible,
+//  tramo D (91+ dias: se cobra por telefono, no por correo generico)
+//  y las que ya recibieron correo hoy.
+//
+//  Requiere el servidor de cobranza-masiva/servidor-cobranza.py.
+//  Con el Panel abierto de la forma antigua, el boton avisa y no hace nada.
+// ══════════════════════════════════════════════════════════════════
+var _COB_TOKEN = null;
+
+function _cobFechaHoy(){ return new Date().toLocaleDateString('es-CL'); }
+
+function _cobRecolectar(){
+  var lista=[], excl={pagadas:0, sinCorreo:0, tramoD:0, hoy:0, fechaMala:0, internos:0};
+  (D26||[]).forEach(function(r){
+    var f=r.folio, fb=String(f), est=EST[f]||EST[fb]||{};
+    if(est.pagado || BORRADAS.indexOf(f)>=0 || BORRADAS.indexOf(fb)>=0){ excl.pagadas++; return; }
+    if(est.ultimoEmail === _cobFechaHoy()){ excl.hoy++; return; }
+    var c=_armarCorreoCobranza(r);
+    if(!c.ok){
+      if(c.motivo.indexOf('interno')>=0) excl.internos++;
+      else if(c.motivo.indexOf('correo')>=0) excl.sinCorreo++;
+      else excl.fechaMala++;
+      return;
+    }
+    if(c.tramo==='D'){ excl.tramoD++; return; }
+    lista.push(c);
+  });
+  lista.sort(function(a,b){ return b.dias-a.dias; });
+  return {lista:lista, excl:excl};
+}
+
+function tandaCobranza(){
+  var res=_cobRecolectar(), lista=res.lista, e=res.excl;
+  if(!lista.length){
+    alert('No hay facturas para enviar.\n\nExcluidas: '+e.pagadas+' pagadas/borradas, '
+      +e.sinCorreo+' sin correo, '+e.internos+' con correo interno, '
+      +e.tramoD+' con más de 90 días, '+e.hoy+' ya contactadas hoy.');
+    return;
+  }
+  window._COB_LISTA = lista;
+  var porTramo={A:0,B:0,C:0};
+  lista.forEach(function(c){ porTramo[c.tramo]++; });
+
+  var filas = lista.map(function(c,i){
+    var col = c.tramo==='A'?'#dcfce7':(c.tramo==='B'?'#fef9c3':'#fee2e2');
+    return '<tr data-tramo="'+c.tramo+'" data-i="'+i+'">'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee;text-align:center">'
+        +'<input type="checkbox" class="_cobChk" data-i="'+i+'" onchange="_cobContar()" style="cursor:pointer;width:15px;height:15px"></td>'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee;font-weight:700;color:#1d4ed8">'+c.folio+'</td>'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee">'+(c.empresa||'—')+'</td>'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:700">'+c.dias+'d</td>'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee;text-align:center">'
+        +'<span style="background:'+col+';border-radius:5px;padding:2px 7px;font-size:10px;font-weight:800">'+c.tramo+'</span></td>'
+      +'<td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:10px;color:#64748b">'+c.correo+'</td></tr>';
+  }).join('');
+
+  var d=document.createElement('div');
+  d.id='_cobTanda';
+  d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  d.innerHTML='<div style="background:white;border-radius:12px;padding:20px;max-width:860px;width:94%;max-height:90vh;display:flex;flex-direction:column;font-family:sans-serif;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
+    +'<div style="font-weight:800;font-size:16px;color:#1e293b">📧 Tanda de cobranza — elige a quién enviar</div>'
+    +'<div style="font-size:12px;color:#64748b;margin-bottom:10px">No se envía nada. Se crean borradores en Outlook para que los revises y envíes tú.</div>'
+    +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:11px;color:#475569;margin-bottom:10px;line-height:1.7">'
+    +'<b>No se incluyen:</b> '+e.tramoD+' con más de 90 días de mora · '+e.sinCorreo+' sin correo · '
+    +e.pagadas+' pagadas o borradas · '+e.hoy+' ya contactadas hoy'
+    +(e.internos?' · <b style="color:#b45309">'+e.internos+' con correo interno de Fodor</b>':'')
+    +(e.fechaMala?' · '+e.fechaMala+' con fecha ilegible':'')
+    +'</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap">'
+    +'<input id="_cobBuscar" onkeyup="_cobFiltrar()" placeholder="Buscar empresa o folio..." style="flex:1;min-width:160px;padding:6px 9px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px">'
+    +'<select id="_cobTramoF" onchange="_cobFiltrar()" style="padding:6px 9px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px">'
+    +'<option value="">Todos los tramos</option>'
+    +'<option value="A">A · 1-15 días ('+porTramo.A+')</option>'
+    +'<option value="B">B · 16-45 días ('+porTramo.B+')</option>'
+    +'<option value="C">C · 46-90 días ('+porTramo.C+')</option></select>'
+    +'<button onclick="_cobMarcar(true)" style="background:#e0e7ff;color:#3730a3;border:none;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">Marcar visibles</button>'
+    +'<button onclick="_cobMarcar(false)" style="background:#f1f5f9;color:#475569;border:none;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer">Ninguna</button>'
+    +'</div>'
+    +'<div style="flex:1;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;min-height:180px">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead style="position:sticky;top:0"><tr style="background:#f1f5f9">'
+    +'<th style="padding:6px;width:34px"></th><th style="padding:6px;text-align:left">Folio</th>'
+    +'<th style="padding:6px;text-align:left">Empresa</th><th style="padding:6px;text-align:right">Mora</th>'
+    +'<th style="padding:6px">Tramo</th><th style="padding:6px;text-align:left">Correo</th></tr></thead>'
+    +'<tbody id="_cobBody">'+filas+'</tbody></table></div>'
+    +'<div id="_cobEstado" style="font-size:12px;color:#475569;margin-bottom:8px"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:space-between;align-items:center">'
+    +'<div id="_cobCuenta" style="font-size:12px;color:#64748b;font-weight:700">Ninguna seleccionada de '+lista.length+'</div>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button onclick="document.getElementById(\'_cobTanda\').remove()" style="background:#e5e7eb;color:#374151;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>'
+    +'<button id="_cobIr" disabled onclick="_cobEjecutarSel(this)" style="background:#cbd5e1;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:not-allowed">Crear borradores</button>'
+    +'</div></div></div>';
+  document.body.appendChild(d);
+  _cobContar();
+}
+
+// Tope de seguridad: el servidor rechaza tandas mayores.
+var _COB_MAX = 50;
+
+function _cobFiltrar(){
+  var q=(document.getElementById('_cobBuscar').value||'').toLowerCase();
+  var t=document.getElementById('_cobTramoF').value;
+  var filas=document.querySelectorAll('#_cobBody tr');
+  for(var i=0;i<filas.length;i++){
+    var f=filas[i], txt=f.textContent.toLowerCase();
+    var ok = (!q || txt.indexOf(q)>=0) && (!t || f.getAttribute('data-tramo')===t);
+    f.style.display = ok ? '' : 'none';
+  }
+}
+
+function _cobMarcar(valor){
+  var filas=document.querySelectorAll('#_cobBody tr');
+  for(var i=0;i<filas.length;i++){
+    if(valor && filas[i].style.display==='none') continue;
+    var chk=filas[i].querySelector('._cobChk');
+    if(chk) chk.checked = valor;
+  }
+  _cobContar();
+}
+
+function _cobContar(){
+  var chks=document.querySelectorAll('._cobChk');
+  var n=0; for(var i=0;i<chks.length;i++) if(chks[i].checked) n++;
+  var cuenta=document.getElementById('_cobCuenta');
+  var btn=document.getElementById('_cobIr');
+  var exceso = n>_COB_MAX;
+  cuenta.innerHTML = n===0 ? 'Ninguna seleccionada de '+chks.length
+    : '<b style="color:#7c3aed">'+n+' seleccionadas</b> de '+chks.length
+      +(exceso?' — <b style="color:#b91c1c">máximo '+_COB_MAX+' por tanda</b>':'');
+  var activo = n>0 && !exceso;
+  btn.disabled = !activo;
+  btn.style.background = activo ? '#7c3aed' : '#cbd5e1';
+  btn.style.cursor = activo ? 'pointer' : 'not-allowed';
+  btn.textContent = n>0 ? ('Crear '+n+' borrador'+(n===1?'':'es')) : 'Crear borradores';
+}
+
+function _cobEjecutarSel(btn){
+  var chks=document.querySelectorAll('._cobChk'), sel=[];
+  for(var i=0;i<chks.length;i++){
+    if(chks[i].checked) sel.push(window._COB_LISTA[parseInt(chks[i].getAttribute('data-i'),10)]);
+  }
+  if(!sel.length) return;
+  _cobEjecutar(sel, btn);
+}
+
+function _cobEjecutar(envio, btn){
+  var est=document.getElementById('_cobEstado');
+  btn.disabled=true; btn.textContent='Creando...';
+  est.textContent='Conectando con el servidor local...';
+  fetch('/cobranza/token').then(function(r){
+    if(!r.ok) throw new Error('sin servidor');
+    return r.json();
+  }).then(function(j){
+    _COB_TOKEN=j.token;
+    est.textContent='Creando '+envio.length+' borradores en Outlook. Puede tardar un minuto...';
+    return fetch('/cobranza/borradores',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Cobranza-Token':_COB_TOKEN},
+      body:JSON.stringify({correos:envio.map(function(c){
+        return {folio:c.folio, correos:c.correos, asunto:c.asunto, cuerpo:c.cuerpo};
+      })})
+    });
+  }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+  .then(function(res){
+    if(!res.ok) throw new Error(res.j.error||'error del servidor');
+    var creados=res.j.creados||[], fallas=res.j.fallas||[];
+    // Solo se registran los que el servidor confirmo. Si uno fallo, la
+    // factura NO queda marcada como contactada y entra en la proxima tanda.
+    creados.forEach(function(folio){
+      var c=envio.find(function(x){ return String(x.folio)===String(folio); });
+      if(c){
+        try{
+          _registrarEmailEnviado(c.folio, c.correo, (c.empresa||'').replace(/'/g,''), '');
+          cambiarEstadoDM(c.folio,'CONTACTADO');
+        }catch(err){ console.error('[FODOR] registro tanda:',err); }
+      }
+    });
+    est.innerHTML='<b style="color:#166534">✅ '+creados.length+' borradores creados en Outlook.</b>'
+      +(fallas.length?'<br><b style="color:#991b1b">'+fallas.length+' con error</b> (quedan pendientes para la próxima tanda): '
+        +fallas.slice(0,5).map(function(f){return f.folio;}).join(', '):'')
+      +'<br><span style="color:#64748b">Revísalos en Outlook → Borradores y envíalos desde ahí.</span>';
+    btn.textContent='Listo'; btn.style.background='#16a34a';
+    setTimeout(function(){ try{ f26(); renderDM(); }catch(e){} }, 600);
+  }).catch(function(err){
+    est.innerHTML='<b style="color:#991b1b">No se pudo: '+(err.message||err)+'</b>'
+      +'<br><span style="color:#64748b">Si dice «sin servidor», cierra el Panel y ábrelo con '
+      +'<b>ABRIR-PANEL-CON-COBRANZA.command</b> (carpeta cobranza-masiva).</span>';
+    btn.disabled=false; btn.textContent='Reintentar';
+  });
 }
 
 // ==================== TRELLO BULK SYNC ====================
@@ -6233,14 +6521,14 @@ function eliminarTrf(id){
   if(!confirm('¿Eliminar esta transferencia?'))return;
   var trf=TRF_DATA.find(function(t){return t.id===id;});
   TRF_DATA=TRF_DATA.filter(function(t){return t.id!==id;});
-  // Cruce bidireccional: borrar también de Cartola si coincide fecha+monto
-  if(trf&&typeof CARTOLA_DATA!=='undefined'){
-    var antes=CARTOLA_DATA.length;
-    CARTOLA_DATA=CARTOLA_DATA.filter(function(r){
-      return !(r.fecha===trf.fecha && r.monto_abono===trf.monto);
-    });
-    if(CARTOLA_DATA.length<antes) renderCartola();
-  }
+  // RETIRADO 2026-09-10 (D3): antes esto borraba de CARTOLA_DATA todo movimiento
+  // con la misma fecha y monto. Coincidir en fecha+monto NO prueba que sean el
+  // mismo pago: dos clientes distintos pueden pagar igual el mismo dia, y se
+  // borraba el registro del banco (fuente de verdad) por eliminar uno manual.
+  // Desde el fix del 10-09 esos movimientos ademas llevan vinculo a factura.
+  // Esta funcion no tiene consumidores en la UI; se limpia igual para que el
+  // patron no reviva. Si hace falta borrar el movimiento del banco, se hace
+  // desde la propia Cartola, por id.
   if(trf) BITACORA.unshift({ts:new Date().toISOString(),tipo:'🗑 Transferencia',autor:CURRENT_USER||'Sistema',folio:trf.folio||'—',empresa:trf.origen||'',nota:'Eliminó transferencia $'+Math.round(trf.monto||0).toLocaleString('es-CL')+' | Fecha: '+trf.fecha,compromisoFecha:''});
   guardarEstado();
   try{if(_fbDb)_fbSetEstado({TRF_DATA:JSON.stringify(TRF_DATA),CARTOLA_DATA:JSON.stringify(CARTOLA_DATA),BITACORA:JSON.stringify(BITACORA)});}catch(e){}
@@ -8918,8 +9206,8 @@ function _fbSetEstado(campos, opciones){
         +'<div style="font-size:56px;margin-bottom:16px">✅</div>'
         +'<div style="font-size:24px;font-weight:800;color:#1e293b;margin-bottom:6px">Fodor Spa</div>'
         +'<div style="width:48px;height:3px;background:#7c3aed;margin:0 auto 20px;border-radius:2px"></div>'
-        +'<div style="font-size:15px;color:#475569;line-height:1.8;margin-bottom:28px">Hemos registrado la recepción<br>de nuestro mensaje.<br><br>Ante cualquier consulta<br>no dude en contactarnos.</div>'
-        +'<div style="font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px">contacto@fodorspa.cl</div>'
+        +'<div style="font-size:15px;color:#475569;line-height:1.8;margin-bottom:28px">Confirmamos que recibió nuestro mensaje.<br><br>Ante cualquier consulta<br>no dude en contactarnos.</div>'
+        +'<div style="font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px">dfodor@fodor.cl</div>'
         +'</div></div>';
     });
   }catch(e){}
@@ -10609,6 +10897,7 @@ function renderGetnet(){
     <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
       <span style="font-size:16px">🔍</span>
       <input type="text" id="busCartola" placeholder="Buscar por RUT, nombre o monto..." oninput="renderCartola()" style="border:1px solid var(--borde);border-radius:8px;padding:6px 10px;font-size:12px;outline:none;font-family:inherit;width:240px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#334155;cursor:pointer;white-space:nowrap;margin-left:8px;"><input type="checkbox" id="ctlSoloPend" onchange="renderCartola()" style="cursor:pointer;">Solo abonos sin conciliar</label>
     </div>
   </div>
   <div style="background:white;border-radius:10px;box-shadow:var(--sombra);overflow:hidden;">
@@ -10623,11 +10912,12 @@ function renderGetnet(){
             <th style="text-align:right">Cargo ($)</th>
             <th onclick="sortCt('abono')" style="cursor:pointer;text-align:right">Abono ($) ↕</th>
             <th style="text-align:right">Saldo ($)</th>
+            <th style="text-align:center">Factura</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="cartolaBody">
-          <tr><td colspan="8" style="text-align:center;color:var(--gris);padding:40px;font-size:13px;">Carga una cartola BCI para comenzar</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:var(--gris);padding:40px;font-size:13px;">Carga una cartola BCI para comenzar</td></tr>
         </tbody>
       </table>
     </div>
@@ -11103,18 +11393,34 @@ function renderCartola(){
   var tbody=document.getElementById('cartolaBody');
   if(!tbody) return;
   var busq=((document.getElementById('busCartola')||{}).value||'').toLowerCase().trim();
+  // ETAPA2 2026-09-10: estado de conciliacion visible en la propia Cartola.
+  // El folio vive en r.folio desde el fix del 10-09, pero los movimientos vinculados
+  // ANTES de ese fix no lo guardaron: para esos se reconstruye desde EST (pagoTipo BCI).
+  // Indice armado una sola vez por render — recorrer EST por fila seria O(n*m).
+  var _ctEstIdx={};
+  try{
+    if(typeof EST!=='undefined'){
+      Object.keys(EST).forEach(function(f){
+        var e=EST[f];
+        if(e&&e.pagado&&e.pagoTipo==='BCI'&&e.pagoId) _ctEstIdx[e.pagoId]=f;
+      });
+    }
+  }catch(ex){ console.error('[CARTOLA] indice EST:',ex); }
+  function _ctFolio(r){ return (r&&r.folio) ? String(r.folio) : (_ctEstIdx[(r&&r.id)||'']||''); }
+  var soloPend = !!((document.getElementById('ctlSoloPend')||{}).checked);
   // KPIs sobre todos los datos (sin filtro)
   var totalAbonos=0, totalCargos=0, ultimoSaldo=0;
   CARTOLA_DATA.forEach(function(r){ totalAbonos+=r.monto_abono; totalCargos+=r.monto_cargo; });
   if(CARTOLA_DATA.length) ultimoSaldo=CARTOLA_DATA[0].saldo;
   function fmt(n){ return n?'$'+Math.abs(n).toLocaleString('es-CL'):'—'; }
   var el=document.getElementById('ctlTotal'); if(el) el.textContent=CARTOLA_DATA.length.toLocaleString('es-CL');
-  var el2=document.getElementById('ctlSub');  if(el2) el2.textContent=CARTOLA_DATA.length+' movimientos';
+  var _ctPend=CARTOLA_DATA.filter(function(r){ return r.monto_abono>0 && !_ctFolio(r); }).length;
+  var el2=document.getElementById('ctlSub');  if(el2) el2.textContent=CARTOLA_DATA.length+' movimientos · '+_ctPend+' abono'+(_ctPend===1?'':'s')+' sin conciliar';
   var el3=document.getElementById('ctlAbonos'); if(el3) el3.textContent=fmt(totalAbonos);
   var el4=document.getElementById('ctlCargos'); if(el4) el4.textContent=fmt(totalCargos);
   var el5=document.getElementById('ctlSaldo');  if(el5) el5.textContent=fmt(ultimoSaldo);
   if(!CARTOLA_DATA.length){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gris);padding:40px;font-size:13px;">Sin movimientos — carga una cartola BCI</td></tr>';
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--gris);padding:40px;font-size:13px;">Sin movimientos — carga una cartola BCI</td></tr>';
     return;
   }
   // Filtro por búsqueda
@@ -11126,8 +11432,9 @@ function renderCartola(){
     var vb=_ctSort.key==='abono'?b.monto_abono:b.fecha;
     return va<vb?_ctSort.dir:va>vb?-_ctSort.dir:0;
   });
+  if(soloPend) lista=lista.filter(function(r){ return r.monto_abono>0 && !_ctFolio(r); });
   if(!lista.length){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gris);padding:30px;font-size:13px;">Sin resultados para "'+busq+'"</td></tr>';
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--gris);padding:30px;font-size:13px;">'+(soloPend?'No hay abonos sin conciliar.':'Sin resultados para "'+busq+'"')+'</td></tr>';
     return;
   }
   var html='';
@@ -11141,6 +11448,14 @@ function renderCartola(){
     html+='<td style="text-align:right;color:#dc2626;font-weight:700">'+(r.monto_cargo>0?'$'+r.monto_cargo.toLocaleString('es-CL'):'')+'</td>';
     html+='<td style="text-align:right;color:#16a34a;font-weight:700">'+(r.monto_abono>0?'$'+r.monto_abono.toLocaleString('es-CL'):'')+'</td>';
     html+='<td style="text-align:right;color:#1d4ed8;font-size:11px">'+(r.saldo?'$'+r.saldo.toLocaleString('es-CL'):'')+'</td>';
+    var _ctF=_ctFolio(r);
+    html+='<td style="text-align:center;white-space:nowrap">'+(_ctF
+      ? '<span title="Conciliado con la factura '+_ctF+'" style="background:#dcfce7;color:#15803d;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:800;">\u2705 '+_ctF+'</span>'
+        +'<button onclick="desvincularDesdeCartola(\''+r.id+'\')" title="Quitar el vínculo con la factura '+_ctF+'" style="margin-left:6px;background:#fef9c3;color:#854d0e;border:1px solid #fde68a;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;">Quitar</button>'
+      : (r.monto_abono>0
+         ? '<span style="background:#334155;color:#cbd5e1;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:700;">pendiente</span>'
+           +'<button onclick="vincularDesdeCartola(\''+r.id+'\')" title="Asignar este pago a una factura" style="margin-left:6px;background:#16a34a;color:#fff;border:none;border-radius:5px;padding:2px 9px;font-size:10px;font-weight:700;cursor:pointer;">Vincular</button>'
+         : '<span style="color:#64748b;font-size:11px">\u2014</span>'))+'</td>';
     html+='<td><button onclick="eliminarCartola(\''+r.id+'\')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer">🗑</button></td>';
     html+='</tr>';
   });
@@ -11148,17 +11463,36 @@ function renderCartola(){
 }
 
 function eliminarCartola(id){
-  if(!confirm('¿Eliminar este movimiento?')) return;
   var ctl=CARTOLA_DATA.find(function(r){return r.id===id;});
-  CARTOLA_DATA=CARTOLA_DATA.filter(function(r){return r.id!==id;});
-  // Cruce bidireccional: borrar también de Transferencias si coincide fecha+monto
-  if(ctl&&ctl.monto_abono>0&&typeof TRF_DATA!=='undefined'){
-    var antes=TRF_DATA.length;
-    TRF_DATA=TRF_DATA.filter(function(t){
-      return !(t.fecha===ctl.fecha && t.monto===ctl.monto_abono);
-    });
-    if(TRF_DATA.length<antes) renderTrf();
+  // D2 2026-09-10: avisar si el movimiento esta conciliado. Borrarlo dejaba la
+  // factura marcada como pagada apuntando a un comprobante inexistente.
+  var _folioLig='';
+  try{
+    if(ctl){
+      _folioLig=String(ctl.folio||'');
+      if(!_folioLig && typeof EST!=='undefined'){
+        Object.keys(EST).some(function(f){
+          var e=EST[f];
+          if(e&&e.pagado&&e.pagoTipo==='BCI'&&String(e.pagoId||'')===String(ctl.id)){ _folioLig=f; return true; }
+          return false;
+        });
+      }
+    }
+  }catch(ex){ console.error('[CARTOLA] chequeo de vinculo:',ex); }
+  if(_folioLig){
+    if(!confirm('⚠️ Este movimiento está conciliado con la factura '+_folioLig+'.\n\n'
+      +'Si lo eliminas, esa factura queda marcada como pagada sin respaldo.\n'
+      +'Lo correcto es anular el pago primero, desde la factura.\n\n'
+      +'¿Eliminar de todas formas?')) return;
+  } else {
+    if(!confirm('¿Eliminar este movimiento?')) return;
   }
+  CARTOLA_DATA=CARTOLA_DATA.filter(function(r){return r.id!==id;});
+  // RETIRADO 2026-09-10 (D1): antes esto borraba de TRF_DATA toda transferencia
+  // con la misma fecha y monto. Coincidir en fecha+monto NO prueba que sean el
+  // mismo pago — dos clientes pueden pagar igual el mismo dia — y se eliminaban
+  // transferencias legitimas de terceros sin aviso. Si hace falta borrar una
+  // transferencia, se borra desde Transferencias, por id.
   if(ctl) BITACORA.unshift({ts:new Date().toISOString(),tipo:'🗑 Cartola BCI',autor:CURRENT_USER||'Sistema',folio:'—',empresa:ctl.desc||'',nota:'Eliminó movimiento BCI $'+Math.round((ctl.monto_abono||ctl.monto_cargo)||0).toLocaleString('es-CL')+' | Fecha: '+ctl.fecha,compromisoFecha:''});
   guardarEstado();
   try{if(_fbDb)_fbSetEstado({CARTOLA_DATA:JSON.stringify(CARTOLA_DATA),TRF_DATA:JSON.stringify(TRF_DATA),BITACORA:JSON.stringify(BITACORA)});}catch(e){}
@@ -11182,6 +11516,75 @@ function borrarDuplicadosCartola(){
   CARTOLA_DATA=CARTOLA_DATA.filter(function(r){return dups.indexOf(r.id)<0;});
   guardarEstado(); renderCartola();
   alert('✅ '+dups.length+' duplicados eliminados.');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// VINCULAR / DESVINCULAR DESDE LA PROPIA CARTOLA — 2026-09-10 (Etapa 3)
+// Por que existe: el cruce automatico empareja por nombre, pero el banco entrega
+// descripciones como "TRANSFERENCIA DE FONDOS AUTOSERVICIO" o "TRANSFER DE
+// <persona>", sin razon social. Para la mayoria de los abonos no hay candidata que
+// sugerir, y sin una via manual esos movimientos no se pueden cerrar nunca.
+// No duplica logica: reutiliza vincularCruceBCI (guardas + registrarPago +
+// persistencia) y anularPago (nucleo canonico).
+// ─────────────────────────────────────────────────────────────────────────────
+function _ctFolioDe(r){
+  if(!r) return '';
+  if(r.folio) return String(r.folio);
+  var f='';
+  try{
+    if(typeof EST!=='undefined'){
+      Object.keys(EST).some(function(k){
+        var e=EST[k];
+        if(e&&e.pagado&&e.pagoTipo==='BCI'&&String(e.pagoId||'')===String(r.id)){ f=k; return true; }
+        return false;
+      });
+    }
+  }catch(ex){ console.error('[CARTOLA] _ctFolioDe:',ex); }
+  return f;
+}
+
+function vincularDesdeCartola(id){
+  var c=(typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:[]).find(function(r){return r.id===id;});
+  if(!c){ alert('No encontré ese movimiento.'); return; }
+  if(!(c.monto_abono>0)){ alert('Este movimiento es un cargo (egreso), no un pago de cliente.'); return; }
+  var yaTiene=_ctFolioDe(c);
+  if(yaTiene){ alert('Este movimiento ya está conciliado con la factura '+yaTiene+'.\n\nPara cambiarlo, primero usa "Quitar".'); return; }
+  var F=(typeof fmt==='function')?fmt:function(v){return '$'+(Number(v)||0).toLocaleString('es-CL');};
+  var folio=prompt('Vincular este pago a una factura\n\n'
+    +'Fecha: '+(c.fecha||'—')+'\n'
+    +'Monto: '+F(c.monto_abono)+'\n'
+    +'Banco dice: '+(c.desc||'—')+'\n\n'
+    +'Escribe el N° de folio de la factura:','');
+  if(folio===null) return;
+  folio=String(folio).trim();
+  if(!folio){ return; }
+  // vincularCruceBCI valida que la factura exista, que el comprobante no esté en
+  // otra factura, registra el pago por el núcleo y persiste. No se replica nada.
+  vincularCruceBCI(id, folio);
+  try{ renderCartola(); }catch(e){}
+}
+
+function desvincularDesdeCartola(id){
+  var c=(typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:[]).find(function(r){return r.id===id;});
+  if(!c){ alert('No encontré ese movimiento.'); return; }
+  var folio=_ctFolioDe(c);
+  if(!folio){ alert('Este movimiento no está conciliado con ninguna factura.'); return; }
+  var F=(typeof fmt==='function')?fmt:function(v){return '$'+(Number(v)||0).toLocaleString('es-CL');};
+  if(!confirm('¿Quitar el vínculo con la factura '+folio+'?\n\n'
+    +'Movimiento: '+(c.fecha||'—')+' · '+F(c.monto_abono)+'\n\n'
+    +'La factura vuelve a quedar PENDIENTE (salvo que tenga otro pago que la respalde).')) return;
+  var res=anularPago(folio, 'Vínculo quitado desde Cartola BCI');
+  if(!res||!res.ok){
+    alert('No se pudo quitar el vínculo: '+((res&&res.motivo)||'motivo desconocido'));
+    return;
+  }
+  // anularPago ya limpió c.folio (corte bidireccional) y persistió por _persistirPagos.
+  try{ renderCartola(); }catch(e){}
+  try{ renderTrf(); }catch(e){}
+  try{ renderCruceBCI(); }catch(e){}
+  try{ f26(); }catch(e){}
+  alert(res.resultado==='sigue-pagada'
+    ? '↩️ Vínculo quitado. La factura '+folio+' sigue pagada porque tiene otro comprobante que la respalda.'
+    : '↩️ Vínculo quitado. La factura '+folio+' volvió a PENDIENTE.');
 }
 // ==================== FIN CARTOLA BCI ====================
 
@@ -11741,9 +12144,15 @@ function vincularCruceBCI(cartolaId, folio){
     return;
   }
   try{ guardarEstado(); }catch(e){ console.error('[CRUCE-BCI] guardarEstado:',e); }
-  try{ if(_fbDb) _fbSetEstado({EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA)}); }catch(e){}
+  // BCI 2026-09-10: CARTOLA_DATA queda FUERA de guardarEstado() a proposito (ver nota
+  // de PERF en guardarEstado). Antes de este fix no se persistia aca tampoco, asi que
+  // el folio recien escrito por registrarPago se perdia al recargar la pagina.
+  // try/catch propio: si localStorage esta lleno, no debe tumbar el guardado en la nube.
+  try{ LS.setItem('fodorspa_cart_v1',JSON.stringify(CARTOLA_DATA)); }catch(e){ console.error('[CRUCE-BCI] LS cartola:',e); }
+  try{ if(_fbDb) _fbSetEstado({EST:JSON.stringify(EST),BITACORA:JSON.stringify(BITACORA),CARTOLA_DATA:JSON.stringify(CARTOLA_DATA)}); }catch(e){}
   renderCruceBCI();
   try{ renderFactCL(); }catch(e){}
+  try{ renderCartola(); }catch(e){}
   try{ f26(); }catch(e){}
   alert('✅ Folio '+fs+' vinculado al movimiento del '+(c.fecha||'')+' — '+F_cruceBCI(c.monto_abono)+'.');
 }
@@ -11783,10 +12192,14 @@ var PAGO_FUENTES = {
 function _buscarComprobante(id){
   var n = String(id||'').trim();
   if(!n) return null;
+  // BCI 2026-09-10: sin esta fuente, registrarPago nunca ejecutaba el bloque de
+  // VINCULO BIDIRECCIONAL para un movimiento de la Cartola (real quedaba null), asi
+  // que el movimiento nunca guardaba su folio y volvia a aparecer como pendiente.
   var fuentes = [['TRF', typeof TRF_DATA!=='undefined'?TRF_DATA:null],
                  ['WEBPAY', typeof WEBPAY_DATA!=='undefined'?WEBPAY_DATA:null],
                  ['GETNET', typeof GETNET_DATA!=='undefined'?GETNET_DATA:null],
-                 ['MP', typeof MP_DATA!=='undefined'?MP_DATA:null]];
+                 ['MP', typeof MP_DATA!=='undefined'?MP_DATA:null],
+                 ['BCI', typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:null]];
   for(var i=0;i<fuentes.length;i++){
     var arr = fuentes[i][1];
     if(!arr || !arr.length) continue;
@@ -11979,6 +12392,20 @@ function anularPago(folio, motivo, opciones){
     }
   }catch(_e){ console.error('[FODOR] anularPago: no se pudo desvincular la TRF:', _e); }
 
+  // D7 2026-09-10: mismo corte para la Cartola BCI. Desde el fix del 10-09 el
+  // movimiento guarda su folio; si no se limpiaba aca, quedaba apuntando a una
+  // factura que ya no esta pagada (registros inconsistentes).
+  try{
+    if(typeof CARTOLA_DATA!=='undefined' && CARTOLA_DATA && CARTOLA_DATA.forEach){
+      CARTOLA_DATA.forEach(function(c){
+        if(c && String(c.folio||'').trim() === fo){
+          _trfDesvinculadas.push(String(c.id||''));
+          c.folio = '';
+        }
+      });
+    }
+  }catch(_e){ console.error('[FODOR] anularPago: no se pudo desvincular el movimiento BCI:', _e); }
+
   if(o.historial !== false){
     e.historial = e.historial || [];
     e.historial.push({
@@ -12022,6 +12449,10 @@ function _persistirPagos(){
       var payload = { EST: JSON.stringify(EST) };
       if(typeof BITACORA!=='undefined') payload.BITACORA = JSON.stringify(BITACORA);
       if(typeof TRF_DATA!=='undefined') payload.TRF_DATA = JSON.stringify(TRF_DATA);
+      // BCI 2026-09-10: la Cartola tambien guarda el vinculo (c.folio) desde el fix
+      // de esta fecha, y anularPago lo limpia. Sin incluirla aca, el corte del
+      // vinculo se hacia solo en memoria y volvia al recargar.
+      if(typeof CARTOLA_DATA!=='undefined') payload.CARTOLA_DATA = JSON.stringify(CARTOLA_DATA);
       var _p = _fbSetEstado(payload);
       if(_p && typeof _p.then==='function'){
         _p.then(function(res){
@@ -12054,6 +12485,11 @@ function _pagosDeFolio(folio){
   scan(typeof WEBPAY_DATA!=='undefined'?WEBPAY_DATA:[], 'WEBPAY');
   scan(typeof GETNET_DATA!=='undefined'?GETNET_DATA:[], 'GETNET');
   scan(typeof MP_DATA!=='undefined'?MP_DATA:[], 'MP');
+  // D6 2026-09-10: sin esta fuente, una factura pagada SOLO desde la Cartola
+  // parecia no tener ningun respaldo, y _recalcularEstadoFactura la devolvia a
+  // PENDIENTE en silencio (riesgo: recobrar a un cliente que ya pago).
+  // Los consumidores usan unicamente pr.p.id y pr.p.fecha, presentes en CARTOLA_DATA.
+  scan(typeof CARTOLA_DATA!=='undefined'?CARTOLA_DATA:[], 'BCI');
   return res;
 }
 

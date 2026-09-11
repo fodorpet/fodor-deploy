@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+# ============================================================
+#  Servidor local del Panel Fodor + creacion de borradores
+#
+#  Por que existe: el Panel servido con "python3 -m http.server"
+#  solo entrega archivos. Este ademas expone UN endpoint que crea
+#  borradores en Outlook, para no tener que apretar el boton de
+#  correo factura por factura.
+#
+#  Que NO hace: no envia correos. Solo crea borradores. El envio
+#  lo sigue haciendo Deborah desde Outlook.
+#
+#  Seguridad:
+#   - Escucha solo en 127.0.0.1 (no accesible desde la red).
+#   - Token aleatorio por arranque; el endpoint lo exige.
+#   - Exige cabecera Origin del propio Panel (bloquea que otra
+#     pagina web abierta en el navegador dispare correos).
+#   - Tope de borradores por tanda.
+# ============================================================
+import http.server, socketserver, json, os, secrets, subprocess, sys, functools
+
+PUERTO   = 8788
+RAIZ     = os.path.expanduser('~/fodor-deploy/public')
+TOKEN    = secrets.token_urlsafe(24)
+ORIGEN   = 'http://localhost:%d' % PUERTO
+MAX_TANDA = 50
+
+APPLESCRIPT = '''
+on run argv
+    set elAsunto to item 1 of argv
+    set elCuerpo to item 2 of argv
+    tell application "Microsoft Outlook"
+        set m to make new outgoing message with properties {subject:elAsunto, content:elCuerpo}
+        repeat with i from 3 to (count of argv)
+            make new recipient at m with properties {email address:{address:(item i of argv)}}
+        end repeat
+        try
+            save m
+            return "OK-save"
+        on error
+            open m
+            return "OK-open"
+        end try
+    end tell
+end run
+'''
+
+def _a_html(txt):
+    # Outlook interpreta el cuerpo como HTML: los saltos de linea se pierden.
+    # Descubierto el 09-09-2026, el primer correo salio como un parrafo corrido.
+    esc = (txt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+    return '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' \
+           + esc.replace('\n', '<br>') + '</div>'
+
+def crear_borrador(asunto, cuerpo, destinos):
+    # destinos: lista de direcciones ya validadas por el Panel
+    args = ['osascript', '-', asunto, _a_html(cuerpo)] + list(destinos)
+    r = subprocess.run(args, input=APPLESCRIPT, capture_output=True, text=True, timeout=30)
+    if r.returncode != 0 or 'OK' not in r.stdout:
+        err = (r.stderr or r.stdout or 'error desconocido').strip()[:300]
+        print('      motivo: %s' % err, flush=True)
+        return err
+    return None
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a): pass
+
+    # El navegador corta conexiones al recargar (el Panel pesa 3 MB).
+    # Sin esto, cada corte imprimia un traceback enorme en la Terminal
+    # y parecia que el servidor se habia caido. Detectado el 09-09-2026.
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+
+    def handle_error(self, *a):
+        pass
+
+    def _json(self, codigo, obj):
+        cuerpo = json.dumps(obj).encode()
+        self.send_response(codigo)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(cuerpo)))
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
+    def do_GET(self):
+        if self.path == '/cobranza/token':
+            return self._json(200, {'token': TOKEN})
+        return super().do_GET()
+
+    def do_POST(self):
+        if self.path != '/cobranza/borradores':
+            return self._json(404, {'error': 'no existe'})
+        origen = self.headers.get('Origin')
+        if origen not in (ORIGEN, 'http://127.0.0.1:%d' % PUERTO):
+            return self._json(403, {'error': 'origen no autorizado: %s' % origen})
+        if self.headers.get('X-Cobranza-Token') != TOKEN:
+            return self._json(403, {'error': 'token invalido'})
+        try:
+            n = int(self.headers.get('Content-Length', 0))
+            datos = json.loads(self.rfile.read(n))
+            correos = datos.get('correos', [])
+        except Exception as e:
+            return self._json(400, {'error': 'json invalido: %s' % e})
+        if not isinstance(correos, list) or not correos:
+            return self._json(400, {'error': 'lista vacia'})
+        if len(correos) > MAX_TANDA:
+            return self._json(400, {'error': 'maximo %d por tanda, llegaron %d' % (MAX_TANDA, len(correos))})
+
+        ok, fallas = [], []
+        for c in correos:
+            folio = str(c.get('folio', '?'))
+            try:
+                dest = c.get('correos') or ([c['correo']] if c.get('correo') else [])
+                dest = [str(d).strip() for d in dest if str(d).strip()]
+                if not dest:
+                    raise ValueError('sin destinatario')
+                err = crear_borrador(str(c['asunto']), str(c['cuerpo']), dest)
+            except Exception as e:
+                err = str(e)[:300]
+            (fallas.append({'folio': folio, 'error': err}) if err else ok.append(folio))
+            print('   %s %s%s' % ('OK ' if not err else 'ERR', folio,
+                  '' if not err else '  <-- ' + err.replace(chr(10), ' ')[:200]), flush=True)
+        print('   --- tanda: %d creados, %d con error ---' % (len(ok), len(fallas)), flush=True)
+        return self._json(200, {'creados': ok, 'fallas': fallas})
+
+if not os.path.isfile(os.path.join(RAIZ, 'index.html')):
+    print('ERROR: no encuentro %s/index.html' % RAIZ); sys.exit(1)
+
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(('127.0.0.1', PUERTO),
+        functools.partial(Handler, directory=RAIZ)) as httpd:
+    print('')
+    print('  Panel sirviendose en http://localhost:%d' % PUERTO)
+    print('  Creacion de borradores: ACTIVA (maximo %d por tanda)' % MAX_TANDA)
+    print('  NO cierres esta ventana mientras uses el Panel.')
+    print('')
+    httpd.serve_forever()

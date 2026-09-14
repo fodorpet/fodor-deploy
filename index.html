@@ -450,6 +450,7 @@ tr.fila-sel td{background:#1e3a5f!important;outline:2px solid #3b82f6;outline-of
   <button class="tab-btn" onclick="showTab('tGetnet',this)">🏧 GetNet</button>
   <button class="tab-btn" onclick="showTab('tMercadoPago',this)">🟢 MercadoPago</button>
   <button class="tab-btn" onclick="showTab('tTrf',this)">💸 Transferencias</button>
+  <button class="tab-btn" onclick="showTab('tRevision',this)">🔎 Por revisar <span id="revBadge" style="display:none;background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tCartola',this);renderCartola()">🏦 Cartola BCI</button>
   <button class="tab-btn" onclick="showTab('tCotiz',this);(function(){if(typeof COT_DATA!=='undefined'&&!COT_DATA.length){try{var _r=LS.getItem('fodorspa_cot_v1');if(_r){var _p=JSON.parse(_r);if(_p&&_p.length)COT_DATA=_p;}}catch(e){}}})();renderCotiz()">📝 Cotizaciones <span id="cotBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
   <button class="tab-btn" onclick="showTab('tOT',this);renderOT()">🔧 Órd. Trabajo <span id="otBadge" style="display:none;background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800;margin-left:4px;">0</span></button>
@@ -2026,6 +2027,7 @@ function cargarEstado(){
     try{var _ktBk=localStorage.getItem('_fsp_kommo_tel');if(_ktBk){var _ktBkP=JSON.parse(_ktBk);if(_ktBkP&&typeof _ktBkP==='object')KOMMO_TEL=_ktBkP;}}catch(e){}
     if(saved.METAS) METAS = Object.assign({recMensual:0,contactosDiarios:0,ventaPorVendedor:{}}, saved.METAS);
     if(saved.TRF_DESCARTES) TRF_DESCARTES = saved.TRF_DESCARTES;
+    if(saved.REVISION_VEND) REVISION_VEND = saved.REVISION_VEND;
     var el = document.getElementById('lastSave');
     if(el && saved.ts) el.textContent = 'Última actualización: ' + new Date(saved.ts).toLocaleString('es-CL');
   } catch(e){ console.warn('Error cargando estado:', e); }
@@ -2085,6 +2087,7 @@ function guardarEstado(){
       EST: EST, BITACORA: BITACORA, BORRADAS: BORRADAS, BORRADAS25: BORRADAS25,
       D26_EXTRA: D26_EXTRA, GETNET_ELIMINADO: GETNET_ELIMINADO,
       METAS: METAS, OT_DATA: OT_DATA, TRF_DESCARTES: TRF_DESCARTES,
+      REVISION_VEND: (typeof REVISION_VEND!=='undefined'?REVISION_VEND:{}),
       ts: new Date().toISOString()
     });
     var _nucleoOk = false, _cuotaLlena = false;
@@ -6184,6 +6187,7 @@ function showTab(id, btn){
   if(id==='tVentas'){ try{renderVentas();}catch(e){console.error('[VENTAS]',e);} }
   if(id==='tXls'){renderTrf();}
   if(id==='tWebpay') renderWebpay();
+  if(id==='tRevision') renderRevision();
   if(id==='tGetnet') renderGetnet();
   if(id==='tMercadoPago') renderMercadoPago();
   if(id==='tFactCL') renderFactCL();
@@ -6407,6 +6411,218 @@ function trfRealId(t){
   // 4. Último recurso: ID interno secuencial
   return t.id+'';
 }
+
+// ==================== CARPETA: POR REVISAR CON VENDEDORES (2026-09) ====================
+if(typeof REVISION_VEND === 'undefined') var REVISION_VEND = {}; // {'TRF_<id>'|'WP_<id>': {...}}
+
+function _revSync(){
+  try{ guardarEstado(); }catch(e){}
+  // permitirVacio: al resolver el ULTIMO pago, REVISION_VEND queda en "{}" y el
+  // guardia de _fbSetEstado lo trataria como borrado accidental y no escribiria
+  // nada; la carpeta reapareceria llena al recargar. Vaciarla es legitimo aqui.
+  try{ if(_fbDb) _fbSetEstado({REVISION_VEND: JSON.stringify(REVISION_VEND)}, {permitirVacio:true}); }catch(e){}
+}
+function _revDias(f){
+  if(!f) return 0;
+  var d = new Date(f+'T00:00:00');
+  if(isNaN(d)) return 0;
+  return Math.max(0, Math.round((new Date() - d)/86400000));
+}
+function _revColor(d){ return d>30 ? '#dc2626' : d>=15 ? '#f59e0b' : '#16a34a'; }
+function _revBg(d){ return d>30 ? '#fee2e2' : d>=15 ? '#fef3c7' : '#dcfce7'; }
+function _revMesNom(m){
+  var N=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  if(!m||m.length<7) return 'Sin fecha';
+  return (N[parseInt(m.slice(5,7),10)-1]||'?')+' '+m.slice(0,4);
+}
+function marcarRevision(origen, id){
+  var snap = null;
+  if(origen==='TRF'){
+    var t=(TRF_DATA||[]).find(function(x){return x.id===id;});
+    if(!t){alert('No se encontró la transferencia.');return;}
+    var rutM=(t.obs||'').match(/RUT:\s*([^|]+)/i);
+    snap={origen:'TRF', id:id, fecha:t.fecha||'', monto:t.monto||0,
+          cliente:(t.origen||'').substring(0,60), rut:rutM?rutM[1].trim():'',
+          ref:(typeof trfRealId==='function'?trfRealId(t):(t.id||''))};
+  } else {
+    var w=(WEBPAY_DATA||[]).find(function(x){return x.id===id;});
+    if(!w){alert('No se encontró el pago WebPay.');return;}
+    snap={origen:'WP', id:id, fecha:w.fecha||'', monto:w.monto||0,
+          cliente:(w.nombre||'').substring(0,60), rut:w.rut||'', ref:w.codAut||''};
+  }
+  var k = origen+'_'+id;
+  var prev = REVISION_VEND[k]||{};
+  var vend = prompt('¿Con qué vendedor hay que revisar este pago de '+fmt(snap.monto)+'?', prev.vendedor||'');
+  if(vend===null) return;
+  vend=(vend||'').trim(); if(!vend) vend='Sin asignar';
+  var nota = prompt('Nota (opcional) — qué hay que preguntar:', prev.nota||'');
+  if(nota===null) nota=prev.nota||'';
+  snap.vendedor=vend;
+  snap.nota=(nota||'').trim();
+  snap.fechaMarca = prev.fechaMarca || new Date().toISOString().slice(0,10);
+  snap.marcadoPor = prev.marcadoPor || (typeof CURRENT_USER!=='undefined'?CURRENT_USER:'');
+  REVISION_VEND[k]=snap;
+  _revSync();
+  try{renderTrf();}catch(e){}
+  try{renderWebpay();}catch(e){}
+  try{renderRevision();}catch(e){}
+  revContador();
+}
+function quitarRevision(k, preguntar){
+  if(preguntar!==false && !confirm('¿Marcar como resuelto y sacar de la carpeta?')) return;
+  delete REVISION_VEND[k];
+  _revSync();
+  try{renderTrf();}catch(e){}
+  try{renderWebpay();}catch(e){}
+  try{renderRevision();}catch(e){}
+  revContador();
+}
+function revBtn(origen, id){
+  var k=origen+'_'+id;
+  if(REVISION_VEND[k]){
+    var v=REVISION_VEND[k].vendedor||'';
+    return '<button onclick="event.stopPropagation();marcarRevision(\''+origen+'\',\''+id+'\')" title="En carpeta de revisión — '+String(v).replace(/"/g,'')+'. Click para editar." style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;">🔎 En revisión</button>';
+  }
+  return '<button onclick="event.stopPropagation();marcarRevision(\''+origen+'\',\''+id+'\')" title="Mandar a la carpeta Por revisar con vendedores" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">🔎 Revisar</button>';
+}
+function revContador(){
+  var n=Object.keys(REVISION_VEND||{}).length;
+  var b=document.getElementById('revBadge');
+  if(b){ b.textContent=n; b.style.display=n>0?'inline-block':'none'; }
+}
+function renderRevision(){
+  var cont=document.getElementById('revBody');
+  if(!cont) return;
+  var filtroVend=(document.getElementById('revFiltroVend')||{}).value||'';
+  var items=Object.keys(REVISION_VEND).map(function(k){
+    var o=Object.assign({}, REVISION_VEND[k]); o._k=k; o._dias=_revDias(o.fecha); return o;
+  });
+  var totalGlobal=items.reduce(function(s,o){return s+(o.monto||0);},0);
+  // selector de vendedores
+  var vends={}; items.forEach(function(o){ vends[o.vendedor||'Sin asignar']=true; });
+  var sel=document.getElementById('revFiltroVend');
+  if(sel){
+    var actual=sel.value;
+    sel.innerHTML='<option value="">Todos los vendedores</option>'+Object.keys(vends).sort().map(function(v){
+      return '<option value="'+v+'"'+(v===actual?' selected':'')+'>'+v+'</option>';
+    }).join('');
+  }
+  if(filtroVend) items=items.filter(function(o){return (o.vendedor||'Sin asignar')===filtroVend;});
+
+  var rc=document.getElementById('revCount'); if(rc) rc.textContent=items.length+' pago'+(items.length!==1?'s':'')+' por revisar';
+  var rt=document.getElementById('revTotal'); if(rt) rt.textContent=fmt(items.reduce(function(s,o){return s+(o.monto||0);},0));
+  var rv=document.getElementById('revVenc'); if(rv) rv.textContent=items.filter(function(o){return o._dias>30;}).length;
+  var rg=document.getElementById('revTotalGlobal'); if(rg) rg.textContent=fmt(totalGlobal);
+
+  if(!items.length){
+    cont.innerHTML='<div style="text-align:center;padding:50px 20px;color:#94a3b8;">'
+      +'<div style="font-size:40px;margin-bottom:10px;">🎉</div>'
+      +'<div style="font-weight:800;color:#475569;font-size:15px;">No hay pagos pendientes de revisar</div>'
+      +'<div style="font-size:12px;margin-top:6px;">Marca un pago con 🔎 Revisar desde Transferencias o WebPay y aparecerá acá.</div></div>';
+    revContador(); return;
+  }
+  // agrupar por MES (desc) y dentro por vendedor
+  var porMes={};
+  items.forEach(function(o){ var m=(o.fecha||'').slice(0,7)||'0000-00'; (porMes[m]=porMes[m]||[]).push(o); });
+  var html='';
+  Object.keys(porMes).sort().reverse().forEach(function(m){
+    var lista=porMes[m];
+    var totMes=lista.reduce(function(s,o){return s+(o.monto||0);},0);
+    html+='<div style="margin-bottom:22px;">'
+      +'<div style="display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;border-radius:9px 9px 0 0;padding:9px 14px;">'
+        +'<span style="font-size:14px;font-weight:900;">📅 '+_revMesNom(m)+'</span>'
+        +'<span style="font-size:11px;opacity:0.75;">'+lista.length+' pago'+(lista.length!==1?'s':'')+'</span>'
+        +'<span style="margin-left:auto;font-size:14px;font-weight:900;">'+fmt(totMes)+'</span>'
+      +'</div>';
+    var porVend={};
+    lista.forEach(function(o){ var v=o.vendedor||'Sin asignar'; (porVend[v]=porVend[v]||[]).push(o); });
+    Object.keys(porVend).sort().forEach(function(v){
+      var sub=porVend[v].sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+      var totV=sub.reduce(function(s,o){return s+(o.monto||0);},0);
+      html+='<div style="border:1px solid #e2e8f0;border-top:none;background:#fff;">'
+        +'<div style="display:flex;align-items:center;gap:8px;background:#f8fafc;padding:7px 14px;border-bottom:1px solid #e2e8f0;">'
+          +'<span style="font-size:12px;font-weight:800;color:#334155;">👤 '+v+'</span>'
+          +'<span style="font-size:11px;color:#64748b;">'+sub.length+'</span>'
+          +'<span style="margin-left:auto;font-size:12px;font-weight:800;color:#0f172a;">'+fmt(totV)+'</span>'
+          +'<button onclick="copiarRevisionVendedor(\''+String(v).replace(/'/g,"\\'")+'\',\''+m+'\')" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;" title="Copiar lista para mandar por WhatsApp">📋 Copiar p/ WhatsApp</button>'
+        +'</div>';
+      sub.forEach(function(o){
+        var col=_revColor(o._dias), bgd=_revBg(o._dias);
+        var org=o.origen==='WP'
+          ?'<span style="background:#f3e8ff;color:#7c3aed;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;">💳 WebPay</span>'
+          :'<span style="background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:800;">💸 Transf.</span>';
+        html+='<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;">'
+          +'<span style="font-size:11px;color:#475569;font-weight:700;min-width:78px;">'+((o.fecha||'').split('-').reverse().join('/'))+'</span>'
+          +org
+          +'<span style="font-size:13px;font-weight:900;color:#15803d;min-width:95px;text-align:right;">'+fmt(o.monto||0)+'</span>'
+          +'<span style="font-size:11px;color:#334155;flex:1;min-width:150px;">'+(o.cliente||'—')+(o.rut?' <small style="color:#94a3b8;">'+o.rut+'</small>':'')+(o.ref?'<br><small style="color:#94a3b8;">Ref: '+o.ref+'</small>':'')+'</span>'
+          +(o.nota?'<span style="font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:2px 8px;max-width:230px;">📝 '+o.nota+'</span>':'')
+          +'<span style="background:'+bgd+';color:'+col+';border-radius:8px;padding:2px 9px;font-size:10px;font-weight:900;white-space:nowrap;">'+o._dias+' días</span>'
+          +'<span style="display:inline-flex;gap:5px;">'
+            +'<button onclick="irAPago(\''+o.origen+'\',\''+o.id+'\')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;cursor:pointer;">🔗 Ir al pago</button>'
+            +'<button onclick="marcarRevision(\''+o.origen+'\',\''+o.id+'\')" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;cursor:pointer;">✏️ Editar</button>'
+            +'<button onclick="quitarRevision(\''+o._k+'\',true)" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:800;cursor:pointer;">✅ Resuelto</button>'
+          +'</span>'
+        +'</div>';
+      });
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  cont.innerHTML=html;
+  revContador();
+}
+function irAPago(origen, id){
+  if(origen==='WP'){
+    showTab('tWebpay', document.querySelector('[onclick*="tWebpay"]'));
+    var b=document.getElementById('wpBus');
+    var w=(WEBPAY_DATA||[]).find(function(x){return x.id===id;});
+    if(b&&w){ b.value=(w.rut||w.nombre||''); renderWebpay(); }
+  } else {
+    showTab('tTrf', document.querySelector('[onclick*="tTrf"]'));
+    var bt=document.getElementById('busTrf');
+    var t=(TRF_DATA||[]).find(function(x){return x.id===id;});
+    if(bt&&t){ bt.value=String(t.monto||''); try{initTrfFecha();}catch(e){} renderTrf(); }
+  }
+}
+function copiarRevisionVendedor(v, mes){
+  var lista=Object.keys(REVISION_VEND).map(function(k){return REVISION_VEND[k];})
+    .filter(function(o){ return (o.vendedor||'Sin asignar')===v && (!mes || (o.fecha||'').slice(0,7)===mes); })
+    .sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  if(!lista.length) return;
+  var txt='Hola '+v+', necesito identificar estos pagos ('+_revMesNom(mes)+'):\n\n';
+  lista.forEach(function(o,i){
+    txt+=(i+1)+'. '+((o.fecha||'').split('-').reverse().join('/'))+' · '+fmt(o.monto||0)+' · '+(o.origen==='WP'?'WebPay':'Transferencia');
+    if(o.cliente) txt+=' · '+o.cliente;
+    if(o.ref) txt+=' · Ref '+o.ref;
+    if(o.nota) txt+='\n   ('+o.nota+')';
+    txt+='\n';
+  });
+  txt+='\n¿De qué cliente/factura son? Gracias.';
+  try{
+    navigator.clipboard.writeText(txt).then(function(){ alert('✅ Copiado. Pégalo en WhatsApp.'); },
+      function(){ prompt('Copia este texto:', txt); });
+  }catch(e){ prompt('Copia este texto:', txt); }
+}
+function exportarRevision(){
+  var items=Object.keys(REVISION_VEND).map(function(k){return REVISION_VEND[k];});
+  if(!items.length){ alert('No hay pagos en la carpeta.'); return; }
+  items.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||'') || (a.vendedor||'').localeCompare(b.vendedor||''); });
+  var rows=[['Mes','Fecha','Origen','Monto','Cliente','RUT','Referencia','Vendedor','Nota','Días','Marcado el','Marcado por']];
+  items.forEach(function(o){
+    rows.push([(o.fecha||'').slice(0,7), o.fecha||'', o.origen==='WP'?'WebPay':'Transferencia', o.monto||0,
+      o.cliente||'', o.rut||'', o.ref||'', o.vendedor||'Sin asignar', o.nota||'', _revDias(o.fecha), o.fechaMarca||'', o.marcadoPor||'']);
+  });
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:9},{wch:11},{wch:14},{wch:13},{wch:32},{wch:13},{wch:16},{wch:16},{wch:34},{wch:7},{wch:11},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Por revisar');
+  XLSX.writeFile(wb,'pagos_por_revisar_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+setTimeout(function(){ try{ revContador(); }catch(e){} }, 1500);
+
+// ================== FIN CARPETA POR REVISAR ==================
+
 function descartarCruce(trf_id, folio, descartar){
   var k = trf_id+'_'+folio;
   if(descartar) TRF_DESCARTES[k]=true;
@@ -6608,7 +6824,7 @@ function renderTrf(){
       <td style="padding:6px 10px;color:#6b7280;font-size:11px;">${(()=>{var o=t.obs||'';var bm=o.match(/Banco\s+[\wáéíóúÁÉÍÓÚ]+(?:\s+[\wáéíóúÁÉÍÓÚ]+)*/i);var banco=bm?bm[0].trim():'';return o.substring(0,35)+(banco?'<br><span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700;white-space:nowrap;margin-top:2px;display:inline-block">🏦 '+banco+'</span>':'');})()}</td>
       <td style="padding:6px 10px;">${esDup?'<span style="font-size:10px;color:#ef4444;">No se exporta</span>':folioCell}</td>
       <td style="padding:6px 10px;">${estado}</td>
-      <td style="padding:6px 10px;text-align:center;white-space:nowrap;">${esDup?'':trfAcciones(t)+' '+aplicarBtn}</td>
+      <td style="padding:6px 10px;text-align:center;white-space:nowrap;">${esDup?'':trfAcciones(t)+' '+aplicarBtn+' '+revBtn('TRF',t.id)}</td>
     </tr>`;
   }).join('');
   var sinDup=todos.filter(t=>!dupIds.has(t.id)).length;
@@ -7323,7 +7539,16 @@ function detectarDuplicados(lista){
 }
 function exportarXlsPagos(){
   var mes=(document.getElementById('mesXls')||{}).value||'';
-  var todos=TRF_DATA.filter(t=>!mes||t.fecha.startsWith(mes)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  // FIX 14-09-2026: una sola transferencia con fecha vacia/nula (tipicas de las
+  // agregadas a mano) tiraba TypeError en el sort y mataba la exportacion entera
+  // sin aviso — el boton "Exportar Cartola" no hacia nada. Mismo patron que la
+  // renderXls() huerfana de julio. Se blinda fecha y origen; nada mas cambia.
+  var _sinFecha=0;
+  var todos=TRF_DATA.filter(function(t){
+    if(!t) return false;
+    if(!t.fecha) _sinFecha++;
+    return !mes || (t.fecha||'').indexOf(mes)===0;
+  }).sort(function(a,b){ return (a.fecha||'').localeCompare(b.fecha||''); });
   var dups=detectarDuplicados(todos);
   var data=todos.filter(t=>!dups.has(t.id));
   var excluidos=todos.length-data.length;
@@ -7338,10 +7563,11 @@ function exportarXlsPagos(){
   var wb=XLSX.utils.book_new();
   var ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:5},{wch:18},{wch:12},{wch:14},{wch:40},{wch:30},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,'Cartola',ws);
+  XLSX.utils.book_append_sheet(wb,ws,'Cartola');
   var nombre='cartola_fodorspa'+(mes?'_'+mes:'')+'.xlsx';
   XLSX.writeFile(wb,nombre);
-  if(excluidos>0)alert('✅ Exportado: '+data.length+' registros\n🚫 Excluidos como duplicados: '+excluidos);
+  var _avisoSF = _sinFecha>0 ? '\n⚠️ '+_sinFecha+' transferencia(s) sin fecha — quedaron al principio de la planilla. Puedes arreglarlas con el boton 🔧 Reparar Fechas.' : '';
+  if(excluidos>0||_sinFecha>0)alert('✅ Exportado: '+data.length+' registros'+(excluidos>0?'\n🚫 Excluidos como duplicados: '+excluidos:'')+_avisoSF);
 }
 function copiarTabla(){
   var table=document.getElementById('xlsTable');
@@ -9427,6 +9653,7 @@ function _fbSetEstado(campos, opciones){
           else{ var _gnSet=new Set(GETNET_DATA.map(function(r){return r.id;})); _gn.forEach(function(r){if(!_gnSet.has(r.id))GETNET_DATA.push(r);}); }
         }
       }catch(e){} }
+      if(data.REVISION_VEND) { try{ REVISION_VEND = JSON.parse(data.REVISION_VEND); try{renderRevision();}catch(e2){} try{revContador();}catch(e2){} }catch(e){} }
       if(data.MP_DATA) { try{
         var _mp=JSON.parse(data.MP_DATA);
         if(_mp&&_mp.length>0){
@@ -10237,7 +10464,7 @@ function renderWebpay(){
       +'<td>'+r.marca+'</td>'
       +'<td>'+folioCell+'</td>'
       +'<td>'+cotizCell+'</td>'
-      +'<td><button data-wp-del="'+r.id+'" onclick="eliminarWP(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:15px;padding:2px 6px" title="Eliminar registro">🗑</button></td>'
+      +'<td style="white-space:nowrap;">'+revBtn('WP',r.id)+' <button data-wp-del="'+r.id+'" onclick="eliminarWP(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:15px;padding:2px 6px" title="Eliminar registro">🗑</button></td>'
       +'</tr>';
   });
   var tb=document.getElementById('tbWebpay'); if(tb) tb.innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:#888;padding:20px">Sin datos — carga un archivo WebPay</td></tr>';
@@ -10925,6 +11152,35 @@ function renderGetnet(){
 </div>
 
 <!-- ==================== TAB WEBPAY ==================== -->
+<div class="tab-content" id="tRevision">
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;background:linear-gradient(90deg,#faf5ff,#f8fafc);border-bottom:1px solid #e9d5ff;">
+      <div>
+        <div style="font-size:16px;font-weight:900;color:#5b21b6;">🔎 Por revisar con vendedores</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px;">Pagos recibidos que no están asociados a ninguna factura ni cotización</div>
+      </div>
+      <div style="display:flex;gap:18px;margin-left:auto;align-items:center;flex-wrap:wrap;">
+        <div style="text-align:right;"><div style="font-size:10px;color:#64748b;font-weight:700;">PENDIENTES</div><div id="revCount" style="font-size:14px;font-weight:900;color:#0f172a;">0 pagos por revisar</div></div>
+        <div style="text-align:right;"><div style="font-size:10px;color:#64748b;font-weight:700;">MONTO FILTRADO</div><div id="revTotal" style="font-size:16px;font-weight:900;color:#15803d;">$0</div></div>
+        <div style="text-align:right;"><div style="font-size:10px;color:#64748b;font-weight:700;">MONTO TOTAL</div><div id="revTotalGlobal" style="font-size:13px;font-weight:800;color:#334155;">$0</div></div>
+        <div style="text-align:right;"><div style="font-size:10px;color:#64748b;font-weight:700;">+30 DÍAS</div><div id="revVenc" style="font-size:16px;font-weight:900;color:#dc2626;">0</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;padding:10px 18px;background:#fff;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;">
+      <select id="revFiltroVend" onchange="renderRevision()" style="border:1.5px solid #e2e8f0;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;outline:none;"><option value="">Todos los vendedores</option></select>
+      <button onclick="renderRevision()" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;">↻ Actualizar</button>
+      <button onclick="exportarRevision()" style="background:#217346;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:800;cursor:pointer;margin-left:auto;">📥 Exportar Excel</button>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;padding:8px 18px;background:#fafafa;border-bottom:1px solid #f1f5f9;font-size:10px;color:#64748b;font-weight:700;">
+      <span>ANTIGÜEDAD:</span>
+      <span style="background:#dcfce7;color:#16a34a;border-radius:8px;padding:2px 9px;font-weight:900;">menos de 15 días</span>
+      <span style="background:#fef3c7;color:#f59e0b;border-radius:8px;padding:2px 9px;font-weight:900;">15 a 30 días</span>
+      <span style="background:#fee2e2;color:#dc2626;border-radius:8px;padding:2px 9px;font-weight:900;">más de 30 días — difícil de reconstruir</span>
+    </div>
+    <div id="revBody" style="padding:16px 18px;background:#f8fafc;min-height:220px;"></div>
+  </div>
+</div>
+
 <div class="tab-content" id="tWebpay">
   <div id="wpMesBtns" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 14px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0"><span style="font-size:11px;font-weight:700;color:#475569;margin-right:4px">&#128197; Mes:</span><button class="wp-mes-btn active" onclick="setMesWP('',this)">Todos</button></div>
   <div class="kpi-row">
@@ -15077,7 +15333,7 @@ function otDescargarPlantilla(){
   var wb=XLSX.utils.book_new();
   var ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:10},{wch:14},{wch:25},{wch:14},{wch:30},{wch:14},{wch:10},{wch:12},{wch:16},{wch:20}];
-  XLSX.utils.book_append_sheet(wb,'OT',ws);
+  XLSX.utils.book_append_sheet(wb,ws,'OT');
   XLSX.writeFile(wb,'plantilla_OT_'+_localHoy()+'.xlsx');
 }
 
@@ -15508,7 +15764,7 @@ function invDescargarPlantilla(){
   var ws=XLSX.utils.aoa_to_sheet(rows);
   // Ancho de columnas
   ws['!cols']=[{wch:6},{wch:45},{wch:20},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,'Inventario',ws);
+  XLSX.utils.book_append_sheet(wb,ws,'Inventario');
   XLSX.writeFile(wb,'plantilla_inventario_'+_localHoy()+'.xlsx');
 }
 
@@ -15670,7 +15926,7 @@ function invExportarMovimientos(){
   });
   var ws1=XLSX.utils.aoa_to_sheet(hist);
   ws1['!cols']=[{wch:12},{wch:8},{wch:12},{wch:30},{wch:10},{wch:35}];
-  XLSX.utils.book_append_sheet(wb,'Movimientos',ws1);
+  XLSX.utils.book_append_sheet(wb,ws1,'Movimientos');
   var stock=[['Artículo','Descripción','Stock actual','Mínimo','Estado']];
   INV_DATA.forEach(function(p){
     var est=p.cant<=0?'Sin stock':(p.min>0&&p.cant<p.min?'Bajo mínimo':'OK');
@@ -15678,7 +15934,7 @@ function invExportarMovimientos(){
   });
   var ws2=XLSX.utils.aoa_to_sheet(stock);
   ws2['!cols']=[{wch:30},{wch:30},{wch:12},{wch:10},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,'Stock Actual',ws2);
+  XLSX.utils.book_append_sheet(wb,ws2,'Stock Actual');
   XLSX.writeFile(wb,'inventario_Fodor_'+_localHoy()+'.xlsx');
 }
 
@@ -17061,7 +17317,8 @@ function _unlockApp(){
     }catch(e){console.error('bodeguero init:',e);}
     return;
   }
-  (window._appInit ? window._appInit().then(function(){ try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);} }).catch(function(e){console.error('_appInit:',e);}) : (function(){ try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);} })())
+  try{if(typeof window._appInit==='function') window._appInit();}catch(e){console.error('_appInit:',e);}
+  try{if(typeof window._appInit2==='function') window._appInit2();}catch(e){console.error('_appInit2:',e);}
   // FIX-D26-REST: Carga facturas D26 vía REST con auth token anónimo (requiere auth != null en Firebase Rules)
   (function(){
     var _d26Unsub = firebase.auth().onAuthStateChanged(function(user){
